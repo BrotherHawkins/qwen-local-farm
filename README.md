@@ -145,10 +145,10 @@ python qwen.py ask "Do this without using GPU memory." qwen14-cpu
 
 ## Benchmarks
 
-Benchmark file on the original Windows test machine:
+Benchmark input on the original Windows test machine:
 
 ```text
-C:\claude\karpathy-obsidian-spike\raw\articles\karpathy-llm-wiki-gist.md
+A local Markdown copy of a Karpathy llm-wiki gist/article.
 ```
 
 Task: summarize the Markdown article in exactly 8 bullets using a `4096` token context and `384` max output tokens.

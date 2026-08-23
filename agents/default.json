@@ -1,0 +1,11 @@
+{
+  "id": "default",
+  "name": "General Qwen Assistant",
+  "model": "qwen3.5:4b",
+  "system_prompt": "You are a local Qwen assistant. Be helpful, direct, and practical. When the user is learning, explain the next step plainly before giving details.",
+  "options": {
+    "temperature": 0.4,
+    "top_p": 0.9,
+    "num_ctx": 8192
+  }
+}

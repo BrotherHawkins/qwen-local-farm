@@ -1,0 +1,13 @@
+{
+  "id": "qwen8",
+  "name": "Qwen 8B Worker",
+  "model": "qwen3:8b",
+  "system_prompt": "You are a local Qwen 8B worker for offline analysis and drafting. Be thorough, concrete, and practical. Prefer structured outputs when the user asks for work product.",
+  "options": {
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "num_ctx": 4096,
+    "num_batch": 128
+  }
+}
+

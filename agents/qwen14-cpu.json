@@ -1,0 +1,14 @@
+{
+  "id": "qwen14-cpu",
+  "name": "Qwen 14B CPU/RAM Worker",
+  "model": "qwen3:14b",
+  "system_prompt": "You are a local Qwen 14B worker for very slow offline CPU/RAM analysis. Be faithful, structured, and practical. Prefer concise work product over conversational chatter.",
+  "options": {
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "num_ctx": 4096,
+    "num_batch": 32,
+    "num_gpu": 0
+  }
+}
+

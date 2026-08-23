@@ -2,7 +2,7 @@
 
 This folder sets up a local Qwen LLM service using Ollama. It is meant to be runnable on Windows, macOS, and Linux with a simple Python operator script.
 
-Roadmap: [docs/roadmap.md](docs/roadmap.md)
+Planning docs: [roadmap](docs/roadmap.md), [AI usage](docs/ai-usage.md), [chunking roadmap](docs/chunking-roadmap.md)
 
 Default model: `qwen3.5:4b`
 

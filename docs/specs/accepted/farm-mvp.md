@@ -1,6 +1,6 @@
 # Farm MVP
 
-Status: Draft
+Status: Accepted
 
 ## WHY
 

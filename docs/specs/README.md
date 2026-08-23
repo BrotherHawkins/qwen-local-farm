@@ -46,6 +46,28 @@ Change specs stay in one chronological folder and use an internal `Status` field
 
 Merging a draft spec does not make it accepted. A human controls progression from `Draft` to `Accepted`.
 
+## Implementation Plans
+
+When a human accepts a behavior spec, the next AI-assisted step should be an implementation plan before runtime code is changed.
+
+Implementation plans live in:
+
+```text
+docs/specs/plans/
+```
+
+Plan files should tie an accepted spec to:
+
+- intended implementation steps
+- test plan
+- manual verification plan
+- docs updates
+- spec lifecycle updates needed after implementation
+
+The plan should name when the canonical spec can move from `accepted/` to `implemented/` and when any related change spec can move to `Implemented`.
+
+Planning-only PRs can still use `NO-SPEC`, but once an accepted behavior spec is being implemented, the implementation PR should cite the relevant plan.
+
 ## Change Types
 
 Change specs should identify one of:

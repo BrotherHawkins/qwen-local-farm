@@ -1,0 +1,127 @@
+# Specs
+
+This folder contains living behavioral specs for Qwen Local Farm.
+
+Roadmaps describe where the project may go. Specs describe behavior that is being proposed, accepted, implemented, or deprecated.
+
+Specs should be practical, short enough to maintain, and specific enough to test.
+
+## Spec Types
+
+### Canonical Specs
+
+Canonical specs describe subsystem behavior.
+
+Locations:
+
+```text
+docs/specs/drafts/
+docs/specs/accepted/
+docs/specs/implemented/
+docs/specs/deprecated/
+```
+
+Moving a canonical spec between lifecycle folders is a human-controlled status change.
+
+### Change Specs
+
+Change specs describe a specific proposed add/modify/delete behavior change.
+
+Location:
+
+```text
+docs/specs/changes/
+```
+
+Change specs stay in one chronological folder and use an internal `Status` field. They should not move between lifecycle folders.
+
+## Status Values
+
+| Status | Meaning |
+| --- | --- |
+| `Draft` | Useful thinking, not binding yet. |
+| `Accepted` | Human-approved behavior target. |
+| `Implemented` | Behavior has landed in code/docs/tests. |
+| `Deprecated` | Behavior is no longer the preferred contract. |
+
+Merging a draft spec does not make it accepted. A human controls progression from `Draft` to `Accepted`.
+
+## Change Types
+
+Change specs should identify one of:
+
+| Type | Meaning |
+| --- | --- |
+| `Add` | Introduces new behavior. |
+| `Modify` | Changes existing behavior. |
+| `Delete` | Removes existing behavior. |
+
+## Required Sections
+
+Behavior specs and change specs should include:
+
+```text
+# Title
+
+Status: Draft | Accepted | Implemented | Deprecated
+Type: Add | Modify | Delete    # change specs only
+
+## WHY
+
+## Scope
+
+## Non-Goals
+
+## Behavior
+
+## Acceptance Criteria
+
+## Open Questions
+```
+
+## WHY Comes First
+
+Every behavior-changing spec should explain why the behavior exists before defining details.
+
+The WHY should cover:
+
+- the user or caller problem
+- the product principle being protected
+- the tradeoff being made
+
+## Spec Requirements For PRs
+
+Behavior-changing PRs should do one of:
+
+1. Add or update a canonical spec.
+2. Add a change spec.
+3. Cite an existing spec if the behavior is already covered.
+
+Use the lightest spec artifact that keeps future behavior understandable.
+
+Examples:
+
+| Work Type | Spec Expectation |
+| --- | --- |
+| Major feature | Update/add canonical spec and add a change spec. |
+| Small behavior change | Change spec may be enough. |
+| Tiny fix | Cite existing spec and update tests. |
+| Planning/docs-only | Mark `NO-SPEC`. |
+
+## NO-SPEC Changes
+
+Use `NO-SPEC` for changes that do not define or alter accepted behavior.
+
+Examples:
+
+- roadmap exploration
+- planning docs
+- typo fixes
+- PR summary updates
+- benchmark notes
+
+## Dashboard
+
+Keep [SPEC_DASHBOARD.md](SPEC_DASHBOARD.md) updated when adding or changing specs.
+
+The dashboard is intentionally manual for now. Future tooling can regenerate or audit it.

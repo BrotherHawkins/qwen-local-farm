@@ -9,6 +9,18 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - [AI usage and delegation](ai-usage.md): how GPT, Claude, Codex, scripts, and other callers should decide when to use the farm.
 - [Chunking roadmap](chunking-roadmap.md): how the farm should eventually handle files or folders that exceed a model's context window.
 
+## Implemented Baseline
+
+- Immediate asks through `python qwen.py ask`.
+- Agent gateway for synchronous local chat.
+- Filesystem-backed worker-farm MVP:
+  - `python qwen.py farm run <input-folder> --mode summarize`
+  - `python qwen.py farm run <input-folder> --mode prompt --instructions <text>`
+  - `python qwen.py farm list`
+  - `python qwen.py farm status`
+  - `python qwen.py farm status <run-id>`
+  - Markdown, JSON, raw response, and run status artifacts.
+
 ## North Star
 
 Build a local AI worker farm with two clear interaction modes:
@@ -30,9 +42,9 @@ The human should be able to enable or disable farm availability, but should not 
 
 ## Near-Term Priorities
 
-1. Define the worker-farm job model.
-2. Add structured output conventions.
-3. Add chunking and map/reduce workflows for large inputs.
+1. Harden the worker-farm MVP after real use.
+2. Add chunking and map/reduce workflows for large inputs.
+3. Add stricter structured output conventions and schema helpers.
 4. Add AI-facing usage docs and skills.
 5. Explore processing modes beyond plain chat/summarization.
 6. Add observability for job status, model routing, failures, and output review.
@@ -62,23 +74,18 @@ Current state:
 
 - `python qwen.py ask "..." [agent-id]` supports immediate local asks.
 - The gateway exposes synchronous chat endpoints.
+- `python qwen.py farm run <input-folder> --mode summarize` processes readable text files into durable farm artifacts.
+- `python qwen.py farm list` and `python qwen.py farm status [run-id]` inspect farm state.
 
 Roadmap:
 
-- Add a job queue for offline work with a simple first contract: "work these inputs here, put results over there."
-- Treat one input folder as the first-class MVP unit of work.
-- Treat each supported file inside that folder as a sub-job.
-- Update status after every file, not only at the end of a run.
+- Add queue-only runs for offline work with a simple first contract: "work these inputs here, put results over there."
 - Add a stable run/job object with `id`, `status`, `agent`, `model`, `input`, `output`, `created_at`, `started_at`, `finished_at`, and `error`.
-- Store farm state under `.run/farm/` by default, with a future override such as `QWEN_FARM_HOME`.
 - Add commands:
-  - `python qwen.py farm run input-folder --mode summarize`
-  - `python qwen.py farm list`
-  - `python qwen.py farm status <run-id>`
   - `python qwen.py farm collect <run-id>`
   - `python qwen.py farm scan`
 - Let immediate asks remain simple and separate from queued work.
-- Process immediately by default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
+- Keep process-now as the default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
 
 Proposed output shape:
 
@@ -110,7 +117,7 @@ Open questions:
 
 Likely next PR:
 
-- Add a minimal filesystem-backed job queue with submit/list/show commands and one worker loop.
+- Add chunking or schema hardening based on the first real farm usage.
 
 ## 2. Status And Overview Artifacts
 
@@ -462,22 +469,22 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ### Milestone 1: Durable Jobs
 
-- Filesystem-backed job queue.
-- Submit/list/show/collect commands.
-- Job outputs written to `.run/jobs/`.
-- One local worker loop.
-- `FARM_STATUS.md` plus `farm-status.json`.
-- First command shape: `python qwen.py farm run input-folder --mode summarize`.
-- Process-now default, with queue-only left for later.
+- Implemented: filesystem-backed process-now farm run.
+- Implemented: `farm run`, `farm list`, and `farm status`.
+- Implemented: `FARM_STATUS.md` plus `farm-status.json`.
+- Implemented: per-job Markdown, JSON, and raw response artifacts.
+- Deferred: `farm collect`.
+- Deferred: queue-only runs.
+- Deferred: long-running worker loop.
 
 ### Milestone 2: Structured Results
 
-- Output schema folder.
-- Markdown plus JSON sidecar outputs.
-- Validation and repair retry for JSON results.
-- First AI-facing usage doc.
-- `summarize` result contract first.
-- Generic custom-prompt support underneath the first mode.
+- Implemented: Markdown plus JSON sidecar outputs.
+- Implemented: `summarize` result contract first.
+- Implemented: generic custom-prompt support.
+- Implemented: first AI-facing usage doc.
+- Next: output schema folder.
+- Next: stricter validation helpers.
 
 ### Milestone 2a: Early Mode Rollout
 

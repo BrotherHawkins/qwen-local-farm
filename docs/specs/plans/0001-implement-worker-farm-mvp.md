@@ -1,18 +1,18 @@
 # 0001 Implement Worker Farm MVP
 
-Status: Draft Plan
-Spec: [Farm MVP](../accepted/farm-mvp.md)
+Status: Implemented
+Spec: [Farm MVP](../implemented/farm-mvp.md)
 Change Spec: [0001 Add Worker Farm MVP](../changes/0001-add-worker-farm-mvp.md)
 
 ## WHY
 
-The Farm MVP spec is accepted, so the next step is to translate the behavior contract into an implementation plan before writing the runtime code.
+The Farm MVP spec was accepted, so this plan translated the behavior contract into implementation steps before runtime code changed.
 
-This plan keeps implementation, tests, verification, and spec lifecycle updates tied together so a future AI or human can inspect what is intended, what was built, and what still needs proof.
+The plan keeps implementation, tests, verification, and spec lifecycle updates tied together so a future AI or human can inspect what was intended, what was built, and what was verified.
 
 ## Scope
 
-Implement the first filesystem-backed worker-farm slice:
+Implemented the first filesystem-backed worker-farm slice:
 
 - `python qwen.py farm run <input-folder> --mode summarize`
 - `python qwen.py farm run <input-folder> --mode prompt --instructions <text>`
@@ -27,7 +27,7 @@ Implement the first filesystem-backed worker-farm slice:
 
 ## Non-Goals
 
-This implementation plan does not include:
+This implementation does not include:
 
 - queue-only runs
 - background scheduler or daemon
@@ -43,7 +43,7 @@ This implementation plan does not include:
 
 ### 1. Add Farm Modules
 
-Create focused Python modules under `src/` rather than growing `qwen.py` into a large implementation file.
+Created focused Python modules under `src/` rather than growing `qwen.py` into a large implementation file.
 
 Likely split:
 
@@ -56,7 +56,7 @@ Keep pure filesystem/status helpers unit-testable without Ollama.
 
 ### 2. Extend CLI
 
-Extend `qwen.py` with a `farm` namespace:
+Extended `qwen.py` with a `farm` namespace:
 
 ```bash
 python qwen.py farm run <input-folder> --mode summarize
@@ -74,23 +74,23 @@ The CLI should stay friendly for non-power-users:
 
 ### 3. Implement Run Storage
 
-Implement the default farm home:
+Implemented the default farm home:
 
 ```text
 .run/farm/
 ```
 
-Create run folders using:
+Run folders use:
 
 ```text
 farm-run-YYYY-MM-DD-HHMMSS-xxxx
 ```
 
-If `--output <dir>` is provided, create the run folder inside that destination.
+If `--output <dir>` is provided, the run folder is created inside that destination and remembered in `.run/farm/runs.json`.
 
 ### 4. Implement File Discovery
 
-Process readable text files under the input folder.
+Processes readable text files under the input folder.
 
 Skip:
 
@@ -108,11 +108,11 @@ Skip:
 - Office documents
 - minified assets
 
-Record skipped files in status counts or warnings if doing so stays simple.
+Skipped files are recorded in status counts and `skipped_files`.
 
 ### 5. Implement Status Artifacts
 
-Write both:
+Writes both:
 
 ```text
 farm-status.json
@@ -139,12 +139,12 @@ The model owns the mode-specific `result` payload.
 
 ### 7. Implement Modes
 
-Start with:
+Implemented:
 
 - `summarize`
 - `prompt`
 
-For `summarize`, ask the model for:
+For `summarize`, asks the model for:
 
 ```json
 {
@@ -171,20 +171,20 @@ Default behavior:
 
 ### 9. Update Docs
 
-After implementation:
+Completed docs/spec lifecycle updates:
 
-- update `README.md` with farm commands
-- update `docs/ai-usage.md` with farm delegation examples
-- update `docs/roadmap.md` to mark the MVP slice as implemented or move remaining items forward
-- move [Farm MVP](../accepted/farm-mvp.md) from `accepted/` to `implemented/` only when acceptance criteria are satisfied
-- update [SPEC_DASHBOARD.md](../SPEC_DASHBOARD.md)
-- mark [0001 Add Worker Farm MVP](../changes/0001-add-worker-farm-mvp.md) `Implemented`
+- updated `README.md` with farm commands
+- updated `docs/ai-usage.md` with farm delegation examples
+- updated `docs/roadmap.md` to mark the MVP slice as implemented and move remaining items forward
+- moved [Farm MVP](../implemented/farm-mvp.md) from `accepted/` to `implemented/`
+- updated [SPEC_DASHBOARD.md](../SPEC_DASHBOARD.md)
+- marked [0001 Add Worker Farm MVP](../changes/0001-add-worker-farm-mvp.md) `Implemented`
 
 ## Test Plan
 
 ### Unit Tests
 
-Add tests for:
+Added tests for:
 
 - run ID format and sortability
 - farm home and output path selection
@@ -199,7 +199,7 @@ Add tests for:
 
 ### Integration-Style Local Tests
 
-Use temporary folders and monkeypatched model invocation to verify:
+Used temporary folders and monkeypatched model invocation to verify:
 
 - happy path with two text files
 - generated/vendor folders are skipped
@@ -211,19 +211,19 @@ Use temporary folders and monkeypatched model invocation to verify:
 
 ### Manual Ollama Verification
 
-Run at least one real local model test after unit tests pass:
+Ran one real local model smoke test after unit tests passed:
 
 ```bash
-python qwen.py farm run <small-folder> --mode summarize --output <temp-results>
-python qwen.py farm status
-python qwen.py farm status <run-id>
+python qwen.py farm run .run/manual-farm-input-2 --output .run/manual-farm-results-2 --mode summarize --instructions "Keep this smoke test concise." --agent default
+python qwen.py farm list
+python qwen.py farm status farm-run-2026-08-23-191804-92de
 ```
 
-Manual model verification can be documented in the PR because GitHub CI should not require Ollama or model downloads.
+The smoke test used `qwen3.5:4b` and completed successfully.
 
 ## Verification Plan
 
-Before opening or merging the implementation PR:
+Before opening or merging the implementation PR, run:
 
 ```bash
 python -m compileall qwen.py examples src tests
@@ -234,7 +234,7 @@ Also verify the GitHub `ci` checks pass on the PR.
 
 ## Acceptance Checklist
 
-- All acceptance criteria in [Farm MVP](../accepted/farm-mvp.md) are satisfied or explicitly deferred by a follow-up spec/change.
+- All acceptance criteria in [Farm MVP](../implemented/farm-mvp.md) are satisfied or explicitly deferred by a follow-up spec/change.
 - Unit tests cover pure helpers and CLI parsing.
 - Integration-style tests cover filesystem behavior without requiring Ollama.
 - Manual Ollama verification is recorded in the PR body.

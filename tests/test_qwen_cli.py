@@ -31,3 +31,37 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.command, "ask")
         self.assertEqual(args.message, "hello")
         self.assertEqual(args.agent, "coder")
+
+    def test_parse_args_accepts_farm_run(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "run",
+                "notes",
+                "--mode",
+                "prompt",
+                "--instructions",
+                "Summarize risks",
+                "--agent",
+                "qwen8",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "run")
+        self.assertEqual(args.input_folder, "notes")
+        self.assertEqual(args.mode, "prompt")
+        self.assertEqual(args.instructions, "Summarize risks")
+        self.assertEqual(args.agent, "qwen8")
+
+    def test_parse_args_accepts_farm_status_run_id(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "status")
+        self.assertEqual(args.run_id, "farm-run-1")

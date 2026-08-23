@@ -184,7 +184,8 @@ def start_ollama() -> None:
     print(f"Ollama started at {OLLAMA_BASE_URL}")
 
 
-def ensure_model() -> None:
+def ensure_model(model_name: str | None = None) -> None:
+    target_model = model_name or MODEL
     ollama = find_ollama()
     if not ollama:
         print_ollama_install_help()
@@ -193,12 +194,12 @@ def ensure_model() -> None:
     start_ollama()
 
     result = subprocess.run([ollama, "list"], check=True, text=True, capture_output=True)
-    if MODEL in result.stdout:
-        print(f"Model is available: {MODEL}")
+    if target_model in result.stdout:
+        print(f"Model is available: {target_model}")
         return
 
-    print(f"Pulling {MODEL}. This can take a while the first time.")
-    subprocess.run([ollama, "pull", MODEL], check=True)
+    print(f"Pulling {target_model}. This can take a while the first time.")
+    subprocess.run([ollama, "pull", target_model], check=True)
 
 
 def start_gateway() -> None:
@@ -336,6 +337,38 @@ def stop_all() -> None:
     stop_process_from_pid_file(OLLAMA_PID_FILE, "Ollama server")
 
 
+def handle_farm(args: argparse.Namespace) -> None:
+    from src import qwen_farm
+
+    if args.farm_command == "run":
+        agent = qwen_farm.load_agent(ROOT, args.agent, MODEL)
+        ensure_model(str(agent["model"]))
+        status = qwen_farm.run_farm(
+            root=ROOT,
+            input_folder=Path(args.input_folder),
+            output_dir=Path(args.output) if args.output else None,
+            mode=args.mode,
+            instructions=args.instructions,
+            agent_id=args.agent,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+        )
+        print(f"Farm run complete: {status['run_id']}")
+        print(f"Status: {status['status']}")
+        print(f"Output: {status['output']['path']}")
+        return
+
+    if args.farm_command == "list":
+        print(qwen_farm.list_runs_text(ROOT))
+        return
+
+    if args.farm_command == "status":
+        print(qwen_farm.status_text(ROOT, args.run_id))
+        return
+
+    raise RuntimeError(f"Unknown farm command: {args.farm_command}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Manage the local Qwen worker service.")
     subparsers = parser.add_subparsers(dest="command", required=False)
@@ -346,6 +379,21 @@ def parse_args() -> argparse.Namespace:
     ask = subparsers.add_parser("ask")
     ask.add_argument("message")
     ask.add_argument("agent", nargs="?", default="default")
+
+    farm = subparsers.add_parser("farm")
+    farm_subparsers = farm.add_subparsers(dest="farm_command", required=True)
+
+    farm_run = farm_subparsers.add_parser("run")
+    farm_run.add_argument("input_folder")
+    farm_run.add_argument("--output")
+    farm_run.add_argument("--mode", choices=["summarize", "prompt"], default="summarize")
+    farm_run.add_argument("--instructions")
+    farm_run.add_argument("--agent", default="default")
+
+    farm_subparsers.add_parser("list")
+
+    farm_status = farm_subparsers.add_parser("status")
+    farm_status.add_argument("run_id", nargs="?")
 
     args = parser.parse_args()
     if not args.command:
@@ -379,6 +427,8 @@ def main() -> None:
         ensure_model()
     elif args.command == "logs":
         print_logs()
+    elif args.command == "farm":
+        handle_farm(args)
 
 
 if __name__ == "__main__":

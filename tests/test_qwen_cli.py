@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import sys
+import unittest
+from unittest.mock import patch
+
+import qwen
+
+
+class OllamaHostValueTests(unittest.TestCase):
+    def test_ollama_host_value_uses_parsed_netloc(self) -> None:
+        with patch.object(qwen, "OLLAMA_BASE_URL", "http://0.0.0.0:11434"):
+            self.assertEqual(qwen.ollama_host_value(), "0.0.0.0:11434")
+
+    def test_ollama_host_value_falls_back_to_default_host(self) -> None:
+        with patch.object(qwen, "OLLAMA_BASE_URL", "not-a-url"):
+            self.assertEqual(qwen.ollama_host_value(), "127.0.0.1:11434")
+
+
+class ParseArgsTests(unittest.TestCase):
+    def test_parse_args_defaults_to_status(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "status")
+
+    def test_parse_args_accepts_ask_agent(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "ask", "hello", "coder"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "ask")
+        self.assertEqual(args.message, "hello")
+        self.assertEqual(args.agent, "coder")

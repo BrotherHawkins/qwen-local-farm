@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 1 |
 | Accepted | 0 |
-| Implemented | 0 |
+| Implemented | 1 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -46,6 +46,7 @@ None.
 
 | ID | Status | Type | Spec | Summary |
 | --- | --- | --- | --- | --- |
+| 0000 | Implemented | Add | [0000-add-minimal-pr-gate.md](changes/0000-add-minimal-pr-gate.md) | Adds the first lightweight GitHub Actions PR gate for compile and unit test checks. |
 | 0001 | Draft | Add | [0001-add-worker-farm-mvp.md](changes/0001-add-worker-farm-mvp.md) | Proposes adding the first filesystem-backed worker-farm MVP. |
 
 ## Stale Drafts To Revisit

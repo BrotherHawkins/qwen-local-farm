@@ -76,8 +76,10 @@ Type: Add | Modify | Delete    # change specs only
 
 ## Acceptance Criteria
 
-## Open Questions
+## Deferred To Roadmap
 ```
+
+Specs should not carry unresolved open questions. Decisions should be answered in the spec, or deferred into roadmap/backlog language.
 
 ## WHY Comes First
 

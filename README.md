@@ -1,6 +1,6 @@
 # Local Qwen Worker
 
-This folder sets up a local Qwen LLM service for Windows using Ollama.
+This folder sets up a local Qwen LLM service using Ollama. It is meant to be runnable on Windows, macOS, and Linux with a simple Python operator script.
 
 Default model: `qwen3.5:4b`
 
@@ -17,26 +17,29 @@ Installed local models:
 
 ## Quick Start
 
-Open PowerShell in this folder:
+Install Python 3.10+ and Ollama, then open a terminal in this folder:
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\qwen.ps1 setup
-.\qwen.ps1 start
-.\qwen.ps1 ask "Say hello in one sentence."
+```bash
+python qwen.py setup
+python qwen.py start
+python qwen.py ask "Say hello in one sentence."
 ```
+
+On some systems the Python command is `python3` instead of `python`. On Windows, `py -3 qwen.py ...` also works.
 
 Stop it when you are done:
 
-```powershell
-.\qwen.ps1 stop
+```bash
+python qwen.py stop
 ```
 
 Check status:
 
-```powershell
-.\qwen.ps1 status
+```bash
+python qwen.py status
 ```
+
+Windows users can also use the PowerShell convenience wrapper, `.\qwen.ps1`, with the same commands. Platform-specific setup notes are in [docs/platforms.md](docs/platforms.md).
 
 ## What Gets Started
 
@@ -61,45 +64,39 @@ Most clients only require an API key field because they were designed for hosted
 
 List agents:
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8765/agents
+```bash
+curl http://127.0.0.1:8765/agents
 ```
 
 Chat with the default agent:
 
-```powershell
-$body = @{ message = "Draft a tiny checklist for testing a script." } | ConvertTo-Json
-Invoke-RestMethod http://127.0.0.1:8765/agents/default/chat -Method Post -Body $body -ContentType "application/json"
+```bash
+python qwen.py ask "Draft a tiny checklist for testing a script."
 ```
 
 OpenAI-style call through the gateway:
 
-```powershell
-$body = @{
-  model = "qwen3.5:4b"
-  messages = @(
-    @{ role = "user"; content = "Give me a JSON object with status=ok." }
-  )
-} | ConvertTo-Json -Depth 5
-
-Invoke-RestMethod http://127.0.0.1:8765/v1/chat/completions -Method Post -Body $body -ContentType "application/json"
+```bash
+curl http://127.0.0.1:8765/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3.5:4b","messages":[{"role":"user","content":"Give me a JSON object with status=ok."}]}'
 ```
 
 ## Changing Model Size
 
-For the current PowerShell session:
+For the current terminal session:
 
-```powershell
-$env:QWEN_MODEL = "qwen3.5:9b"
-.\qwen.ps1 start
+```bash
+QWEN_MODEL="qwen3.5:9b" python qwen.py start
 ```
 
 If the larger model feels slow or runs out of VRAM, go back to:
 
-```powershell
-$env:QWEN_MODEL = "qwen3:4b"
-.\qwen.ps1 start
+```bash
+QWEN_MODEL="qwen3:4b" python qwen.py start
 ```
+
+PowerShell uses `$env:QWEN_MODEL = "qwen3.5:9b"` before the `python qwen.py start` command. See [docs/platforms.md](docs/platforms.md) for shell-specific examples.
 
 If you keep using a different model, update the `model` field in `agents/default.json`.
 
@@ -122,8 +119,8 @@ Add a new JSON file under `agents/`, for example `agents/reviewer.json`:
 
 Then call:
 
-```powershell
-.\qwen.ps1 ask "Review this idea: ..." reviewer
+```bash
+python qwen.py ask "Review this idea: ..." reviewer
 ```
 
 Built-in agents:
@@ -139,16 +136,16 @@ Built-in agents:
 
 Use an agent by passing its id:
 
-```powershell
-.\qwen.ps1 ask "Make a careful outline for this research task." qwen8
-.\qwen.ps1 ask "Do the same in CPU/RAM mode." qwen8-cpu
-.\qwen.ps1 ask "Do a deeper slow-pass analysis." qwen14-hybrid
-.\qwen.ps1 ask "Do this without using GPU memory." qwen14-cpu
+```bash
+python qwen.py ask "Make a careful outline for this research task." qwen8
+python qwen.py ask "Do the same in CPU/RAM mode." qwen8-cpu
+python qwen.py ask "Do a deeper slow-pass analysis." qwen14-hybrid
+python qwen.py ask "Do this without using GPU memory." qwen14-cpu
 ```
 
 ## Benchmarks
 
-Benchmark file:
+Benchmark file on the original Windows test machine:
 
 ```text
 C:\claude\karpathy-obsidian-spike\raw\articles\karpathy-llm-wiki-gist.md
@@ -156,28 +153,28 @@ C:\claude\karpathy-obsidian-spike\raw\articles\karpathy-llm-wiki-gist.md
 
 Task: summarize the Markdown article in exactly 8 bullets using a `4096` token context and `384` max output tokens.
 
-Results were saved under:
+Local benchmark runs are saved under:
 
 ```text
-C:\Github\GHE\qwen-local-farm\.run\benchmarks\
+.run/benchmarks/
 ```
 
 Committed benchmark records are archived under:
 
 ```text
-C:\Github\GHE\qwen-local-farm\docs\benchmarks\
+docs/benchmarks/
 ```
 
 4B and 8B summary files:
 
 ```text
-C:\Github\GHE\qwen-local-farm\.run\benchmarks\summarize-20260823-103024-files\
+docs/benchmarks/summarize-20260823-103024-files/
 ```
 
 14B summary files:
 
 ```text
-C:\Github\GHE\qwen-local-farm\.run\benchmarks\summarize-qwen14-20260823-105219-files\
+docs/benchmarks/summarize-qwen14-20260823-105219-files/
 ```
 
 Speed results:
@@ -245,29 +242,35 @@ For hybrid VRAM plus RAM behavior, set `num_gpu` to a positive layer count inste
 "num_gpu": 24
 ```
 
-For tighter VRAM use, lower `num_gpu`, `num_ctx`, and `num_batch` before trying larger models. For more GPU use, raise `num_gpu` gradually and watch `.\qwen.ps1 status` or `nvidia-smi`.
+For tighter VRAM use, lower `num_gpu`, `num_ctx`, and `num_batch` before trying larger models. For more GPU use, raise `num_gpu` gradually and watch `python qwen.py status`, `nvidia-smi`, or the platform-specific GPU tooling for your machine.
 
 ## Useful Commands
 
-```powershell
-.\qwen.ps1 setup            # Install Ollama if needed and pull the default model
-.\qwen.ps1 start            # Start Ollama, pull the model if missing, start the agent gateway
-.\qwen.ps1 stop             # Stop the gateway and unload the model
-.\qwen.ps1 status           # Show model, GPU, and endpoint status
-.\qwen.ps1 ask "hello"      # Send one prompt to the default agent
+```bash
+python qwen.py setup            # Check Ollama and pull the default model
+python qwen.py start            # Start Ollama, pull the model if missing, start the agent gateway
+python qwen.py stop             # Stop the gateway and unload the model
+python qwen.py status           # Show model, GPU, and endpoint status
+python qwen.py ask "hello"      # Send one prompt to the default agent
 ```
 
-Logs and process IDs live in `.run/`.
+Logs and process IDs live in `.run/`. On Windows, `.\qwen.ps1 setup`, `.\qwen.ps1 start`, `.\qwen.ps1 stop`, `.\qwen.ps1 status`, and `.\qwen.ps1 ask "hello"` are also available.
 
 ## LAN Access
 
 By default this binds to `127.0.0.1`, which means only this machine can use it. That is the safer newbie default.
 
-To expose the gateway to your local network for the current terminal session:
+To expose the gateway to your local network for the current terminal session on macOS/Linux:
+
+```bash
+QWEN_GATEWAY_HOST="0.0.0.0" python qwen.py start
+```
+
+In PowerShell:
 
 ```powershell
 $env:QWEN_GATEWAY_HOST = "0.0.0.0"
-.\qwen.ps1 start
+python qwen.py start
 ```
 
-You may also need to allow the port through Windows Firewall. Only do this on a trusted private network.
+You may also need to allow the port through your OS firewall. Only do this on a trusted private network.

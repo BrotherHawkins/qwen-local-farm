@@ -43,6 +43,56 @@ python qwen.py status
 
 Windows users can also use the PowerShell convenience wrapper, `.\qwen.ps1`, with the same commands. Platform-specific setup notes are in [docs/platforms.md](docs/platforms.md).
 
+## Worker Farm
+
+Use the farm when you want local offline work staged into files instead of a single immediate answer.
+
+Summarize every readable text file in a folder:
+
+```bash
+python qwen.py farm run notes --mode summarize
+```
+
+Write the run under a chosen results folder:
+
+```bash
+python qwen.py farm run notes --output results --mode summarize
+```
+
+Apply custom instructions to every readable text file:
+
+```bash
+python qwen.py farm run notes --mode prompt --instructions "For each file, identify risks and next actions."
+```
+
+Use a larger or CPU/RAM-oriented agent:
+
+```bash
+python qwen.py farm run notes --mode summarize --agent qwen8
+python qwen.py farm run notes --mode summarize --agent qwen14-cpu
+```
+
+Inspect runs:
+
+```bash
+python qwen.py farm list
+python qwen.py farm status
+python qwen.py farm status farm-run-2026-08-23-143022-a7f3
+```
+
+Each run writes:
+
+```text
+farm-status.json
+FARM_STATUS.md
+jobs/job-0001/input.json
+jobs/job-0001/result.md
+jobs/job-0001/result.json
+jobs/job-0001/raw-response.txt
+```
+
+If `--output` is omitted, runs are written under `.run/farm/`. If `--output` is provided, the farm creates a run folder inside that destination and records it in `.run/farm/runs.json` so `farm list` and `farm status` can still find it.
+
 ## What Gets Started
 
 Two local endpoints are available:

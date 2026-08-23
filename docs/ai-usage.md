@@ -134,7 +134,7 @@ Immediate ask is not the same as worker-farm processing. It is synchronous and s
 
 ## Worker-Farm Interface
 
-The future worker-farm interface should support active invocation and drop-folder intake.
+The worker-farm interface supports active CLI invocation now. Drop-folder intake is still future work.
 
 Active invocation:
 
@@ -142,9 +142,23 @@ Active invocation:
 python qwen.py farm run input-folder --output results --mode summarize
 ```
 
-If `--output` is omitted, the farm should write outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm should create a structured run folder inside that destination.
+Custom prompt invocation:
 
-The first implementation should process immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
+```bash
+python qwen.py farm run input-folder --mode prompt --instructions "For each file, identify risks and next actions."
+```
+
+Status inspection:
+
+```bash
+python qwen.py farm list
+python qwen.py farm status
+python qwen.py farm status <run-id>
+```
+
+If `--output` is omitted, the farm writes outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm creates a structured run folder inside that destination and records it in `.run/farm/runs.json` so later status commands can find it.
+
+The first implementation processes immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
 
 Future HTTP equivalent:
 
@@ -194,7 +208,7 @@ Example:
 
 `mode` provides rails. `instructions` preserves caller intent. `options` make automation reliable.
 
-The first implementation should support `summarize` and a generic custom-prompt path. Later early modes should roll out in this order:
+The first implementation supports `summarize` and a generic custom-prompt path. Later early modes should roll out in this order:
 
 1. `summarize` or custom prompt.
 2. `extract`.
@@ -203,7 +217,7 @@ The first implementation should support `summarize` and a generic custom-prompt 
 
 ## Expected Outputs
 
-Every completed job should produce both human-readable and machine-readable outputs.
+Every completed job produces both human-readable and machine-readable outputs.
 
 ```text
 result.md
@@ -211,7 +225,7 @@ result.json
 raw-response.txt
 ```
 
-Every farm run should produce:
+Every farm run produces:
 
 ```text
 FARM_STATUS.md
@@ -222,7 +236,7 @@ The JSON status and result files are the source of truth for primary AIs and scr
 
 ## Filesystem State
 
-The first worker-farm implementation should be filesystem-first.
+The worker-farm implementation is filesystem-first.
 
 Default farm home:
 
@@ -236,7 +250,7 @@ Future override:
 QWEN_FARM_HOME
 ```
 
-Run IDs should use timestamp plus a short random suffix:
+Run IDs use timestamp plus a short random suffix:
 
 ```text
 farm-run-2026-08-23-143022-a7f3

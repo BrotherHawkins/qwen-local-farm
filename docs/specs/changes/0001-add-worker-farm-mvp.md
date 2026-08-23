@@ -1,6 +1,6 @@
 # 0001 Add Worker Farm MVP
 
-Status: Draft
+Status: Accepted
 Type: Add
 
 ## WHY
@@ -18,7 +18,7 @@ The design favors:
 
 ## Scope
 
-This change proposes adding the first worker-farm MVP behavior described in [drafts/farm-mvp.md](../drafts/farm-mvp.md).
+This change proposes adding the first worker-farm MVP behavior described in [accepted/farm-mvp.md](../accepted/farm-mvp.md).
 
 It covers:
 

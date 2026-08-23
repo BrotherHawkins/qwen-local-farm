@@ -139,8 +139,12 @@ The future worker-farm interface should support active invocation and drop-folde
 Active invocation:
 
 ```bash
-python qwen.py farm --input input-folder --output results --mode summarize
+python qwen.py farm run input-folder --output results --mode summarize
 ```
+
+If `--output` is omitted, the farm should write outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm should create a structured run folder inside that destination.
+
+The first implementation should process immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
 
 Future HTTP equivalent:
 
@@ -190,6 +194,13 @@ Example:
 
 `mode` provides rails. `instructions` preserves caller intent. `options` make automation reliable.
 
+The first implementation should support `summarize` and a generic custom-prompt path. Later early modes should roll out in this order:
+
+1. `summarize` or custom prompt.
+2. `extract`.
+3. `classify`.
+4. `review`.
+
 ## Expected Outputs
 
 Every completed job should produce both human-readable and machine-readable outputs.
@@ -208,6 +219,30 @@ farm-status.json
 ```
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.
+
+## Filesystem State
+
+The first worker-farm implementation should be filesystem-first.
+
+Default farm home:
+
+```text
+.run/farm/
+```
+
+Future override:
+
+```text
+QWEN_FARM_HOME
+```
+
+Run IDs should use timestamp plus a short random suffix:
+
+```text
+farm-run-2026-08-23-143022-a7f3
+```
+
+This keeps the farm legible to non-technical users and easy for primary AIs to inspect. SQLite or another index can be added later behind the same CLI/API if the filesystem layout becomes limiting.
 
 ## Status Interpretation
 
@@ -242,6 +277,7 @@ Early modes:
 | Mode | Use When | Caution |
 | --- | --- | --- |
 | `summarize` | The user wants concise understanding of many text files. | Large files may need chunking. |
+| custom prompt | The caller wants to apply specific instructions to each file. | Still needs result JSON and status discipline. |
 | `extract` | The user wants structured facts, tasks, links, claims, names, or dates. | Validate JSON before trusting it. |
 | `classify` | The user wants files/items sorted into labels. | Labels should be provided or discoverable. |
 | `review` | The user wants risks, bugs, contradictions, or gaps. | Whole-context reasoning may matter; chunk carefully. |

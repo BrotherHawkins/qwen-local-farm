@@ -38,6 +38,24 @@ The human should be able to enable or disable farm availability, but should not 
 6. Add observability for job status, model routing, failures, and output review.
 7. Add capability discovery and guided setup reports.
 
+## MVP Decisions
+
+These decisions should guide the first worker-farm implementation PR:
+
+| Question | Decision |
+| --- | --- |
+| Storage | Filesystem first; consider SQLite later only if querying/history/concurrency becomes painful. |
+| Farm home | Default to `.run/farm/`; allow an override such as `QWEN_FARM_HOME`. |
+| Run ID | Use timestamp plus short random suffix, such as `farm-run-2026-08-23-143022-a7f3`. |
+| Output destination | Optional. If omitted, write under the run folder. If provided, create a run folder inside the destination. |
+| Command namespace | Use `python qwen.py farm ...` for worker-farm commands. |
+| First run behavior | Process immediately by default; add `--queue-only` later for submit-without-processing. |
+| First input shape | One folder, with each eligible readable text file treated as a sub-job. |
+| First mode | Implement `summarize` first, with a generic custom-prompt path underneath. |
+| Mode rollout | `summarize` or custom prompt, then `extract`, then `classify`, then `review`. |
+
+The user-facing abstraction should stay files and folders. More technical storage or scheduling can be added behind that abstraction later.
+
 ## 1. Immediate Ask vs Worker Farm
 
 Current state:
@@ -51,20 +69,22 @@ Roadmap:
 - Treat one input folder as the first-class MVP unit of work.
 - Treat each supported file inside that folder as a sub-job.
 - Update status after every file, not only at the end of a run.
-- Add a stable job object with `id`, `status`, `agent`, `model`, `input`, `output`, `created_at`, `started_at`, `finished_at`, and `error`.
-- Store job inputs and outputs under `.run/jobs/` by default.
+- Add a stable run/job object with `id`, `status`, `agent`, `model`, `input`, `output`, `created_at`, `started_at`, `finished_at`, and `error`.
+- Store farm state under `.run/farm/` by default, with a future override such as `QWEN_FARM_HOME`.
 - Add commands:
-  - `python qwen.py submit <file-or-folder> --agent qwen14-hybrid`
-  - `python qwen.py jobs`
-  - `python qwen.py job <id>`
-  - `python qwen.py collect <id>`
+  - `python qwen.py farm run input-folder --mode summarize`
+  - `python qwen.py farm list`
+  - `python qwen.py farm status <run-id>`
+  - `python qwen.py farm collect <run-id>`
+  - `python qwen.py farm scan`
 - Let immediate asks remain simple and separate from queued work.
+- Process immediately by default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
 
 Proposed output shape:
 
 ```text
 results/
-  farm-run-2026-08-23-001/
+  farm-run-2026-08-23-143022-a7f3/
     FARM_STATUS.md
     farm-status.json
     outputs/
@@ -84,9 +104,9 @@ The caller chooses the destination area. The farm owns the run structure inside 
 
 Open questions:
 
-- Should queued jobs be plain filesystem records first, SQLite later, or SQLite from the start?
 - Should workers run only when explicitly started, or should there be a background scheduler?
 - How configurable should run-folder naming and output layout be?
+- Should human labels live only in metadata, or optionally become part of run folder names later?
 
 Likely next PR:
 
@@ -111,7 +131,7 @@ Future fields may include:
 
 ```json
 {
-  "farm_run_id": "farm-run-2026-08-23-001",
+  "farm_run_id": "farm-run-2026-08-23-143022-a7f3",
   "status": "running",
   "total_files": 12,
   "completed_files": 7,
@@ -220,9 +240,17 @@ Early modes:
 | Mode | ELI5 Meaning | Example Use |
 | --- | --- | --- |
 | `summarize` | Read this and tell me the important ideas in a shorter form. | Summarize a folder of notes. |
+| `custom prompt` | Apply caller-provided instructions to each file. | "For each file, tell me what changed and what looks risky." |
 | `extract` | Pull specific useful things out. | Extract tasks, dates, claims, links, or facts. |
 | `classify` | Put each input into useful buckets. | Assign topic, priority, status, or routing labels. |
 | `review` | Look for things that need attention. | Find bugs, risks, contradictions, gaps, or missing tests. |
+
+Implementation order:
+
+1. `summarize` or custom prompt.
+2. `extract`.
+3. `classify`.
+4. `review`.
 
 Later sub-roadmap modes:
 
@@ -439,6 +467,8 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Job outputs written to `.run/jobs/`.
 - One local worker loop.
 - `FARM_STATUS.md` plus `farm-status.json`.
+- First command shape: `python qwen.py farm run input-folder --mode summarize`.
+- Process-now default, with queue-only left for later.
 
 ### Milestone 2: Structured Results
 
@@ -446,6 +476,14 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Markdown plus JSON sidecar outputs.
 - Validation and repair retry for JSON results.
 - First AI-facing usage doc.
+- `summarize` result contract first.
+- Generic custom-prompt support underneath the first mode.
+
+### Milestone 2a: Early Mode Rollout
+
+- `extract`.
+- `classify`.
+- `review`.
 
 ### Milestone 3: Chunked Workflows
 
@@ -480,9 +518,10 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 These are the decisions to make before implementation gets too deep:
 
-1. Job storage: filesystem first or SQLite first?
-2. Output format: Markdown primary with JSON sidecars, or JSON primary with Markdown renderings?
-3. Chunking strategy: Markdown heading chunks first, tokenizer-aware chunks later?
-4. Worker behavior: manually run workers only, or background scheduler?
-5. AI integration: docs-only first, or generate reusable skill/instruction files immediately?
-6. Capability discovery: static JSON first, runtime endpoint first, or both together?
+1. Job storage layout: exact folder/file names under `.run/farm/`.
+2. Output schema: first `summarize` JSON result shape.
+3. Custom prompt contract: how much structure is required when mode is prompt-driven.
+4. Chunking strategy: Markdown heading chunks first, tokenizer-aware chunks later?
+5. Worker behavior beyond MVP: manually run workers only, or background scheduler?
+6. AI integration: docs-only first, or generate reusable skill/instruction files immediately?
+7. Capability discovery: static JSON first, runtime endpoint first, or both together?

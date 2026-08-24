@@ -192,7 +192,9 @@ python qwen.py farm run input-folder --mode summarize --snippets auto
 python qwen.py farm run input-folder --mode summarize --snippets 3
 ```
 
-`--snippets auto` resolves a requested count per file/job from exact token count when available, otherwise from chunk count or file size. Fixed counts are useful for repeatable dogfood comparisons. The model suggests candidate snippets, but the farm only persists snippets that it can verify as exact source text. Auto counts are best effort: inspect the verified/requested count in status artifacts, and expect obvious scaffolding such as front matter, source URLs, conversion headers, and bibliography lines to be filtered out.
+`--snippets auto` resolves a requested count per file/job from exact token count when available, otherwise from chunk count or file size. Fixed counts are useful for repeatable dogfood comparisons. The model suggests candidate snippets, but the farm only persists snippets that it can verify as exact source text.
+
+The farm ranks verified candidates before final selection. `result.md` stays clean and renders only selected snippets; `result.json` keeps score metadata on selected snippets. Inspect the `snippets` object in `result.json` or `farm-status.json` for selected/verified/requested counts plus compact drop diagnostics such as `unverified`, `low_signal`, `duplicate`, and `too_long`. Auto counts are best effort, while fixed counts remain strict.
 
 Example `.qwen-farm.json`:
 

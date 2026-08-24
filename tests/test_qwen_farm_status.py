@@ -33,3 +33,36 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertEqual(counts["running"], 1)
         self.assertEqual(counts["complete"], 1)
         self.assertEqual(counts["skipped"], 2)
+
+    def test_status_markdown_shows_selected_verified_requested_when_different(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-1",
+                "status": "complete",
+                "mode": "summarize",
+                "agent": "default",
+                "model": "qwen-test",
+                "runtime": {
+                    "summarize": {},
+                    "concurrency": {},
+                },
+                "counts": {"total": 1},
+                "jobs": [
+                    {
+                        "job_id": "job-0001",
+                        "status": "complete",
+                        "input_path": "input.txt",
+                        "result_md": "jobs/job-0001/result.md",
+                        "timing": {},
+                        "chunking": {"enabled": False, "strategy": "single-pass"},
+                        "snippets": {
+                            "requested_count": 4,
+                            "verified_count": 3,
+                            "selected_count": 2,
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertIn("`2/3/4`", markdown)

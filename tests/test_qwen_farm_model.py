@@ -196,7 +196,7 @@ class JsonParsingTests(unittest.TestCase):
                     "OPEN QUESTIONS:",
                     "- None",
                     "SOURCE SNIPPETS:",
-                    "- TEXT: Exact source passage.",
+                    "- TEXT: Exact source passage because it captures a useful claim.",
                     "  REASON: Useful.",
                     "- TEXT: Made up passage.",
                     "  REASON: Bad.",
@@ -209,13 +209,23 @@ class JsonParsingTests(unittest.TestCase):
             client=client,  # type: ignore[arg-type]
             mode="summarize",
             file_path="article.txt",
-            content="Intro.\nExact source passage.\nOutro.",
+            content="Intro.\nExact source passage because it captures a useful claim.\nOutro.",
             instructions=None,
             timeout=1,
             snippet_request={"policy": "fixed", "requested_count": 2, "max_chars": 100},
         )
 
-        self.assertEqual([item["text"] for item in result.payload["snippets"]], ["Exact source passage."])
+        self.assertEqual(
+            [item["text"] for item in result.payload["snippets"]],
+            ["Exact source passage because it captures a useful claim."],
+        )
+        self.assertIsNotNone(result.snippet_selection)
+        assert result.snippet_selection is not None
+        self.assertEqual(result.snippet_selection["candidate_count"], 2)
+        self.assertEqual(result.snippet_selection["verified_count"], 1)
+        self.assertEqual(result.snippet_selection["selected_count"], 1)
+        self.assertIn("compact_length", result.payload["snippets"][0]["score_reasons"])
+        self.assertIn("claim", result.payload["snippets"][0]["score_reasons"])
         self.assertIn("snippet_candidates_unverified", result.warnings)
         self.assertIn("snippet_count_under_requested", result.warnings)
         self.assertIn("## Source Snippets", result.markdown)

@@ -127,11 +127,16 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         timing = job.get("timing") or {}
         chunking = job.get("chunking") or {}
         snippets = job.get("snippets") or {}
-        snippet_text = (
-            f"{snippets.get('verified_count', 0)}/{snippets.get('requested_count', 0)}"
-            if snippets
-            else "0/0"
-        )
+        if snippets:
+            requested = snippets.get("requested_count", 0)
+            verified = snippets.get("verified_count", 0)
+            selected = snippets.get("selected_count", verified)
+            if selected != verified:
+                snippet_text = f"{selected}/{verified}/{requested}"
+            else:
+                snippet_text = f"{verified}/{requested}"
+        else:
+            snippet_text = "0/0"
         if chunking.get("enabled"):
             chunking_text = (
                 f"{chunking.get('chunk_count', 0)} chunks/"

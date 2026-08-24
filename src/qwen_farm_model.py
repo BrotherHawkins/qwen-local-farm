@@ -9,7 +9,7 @@ from typing import Any
 from src.qwen_farm_snippets import (
     apply_snippet_warning_policy,
     parse_snippet_candidates,
-    verify_snippet_candidates,
+    select_snippet_candidates,
 )
 
 SUMMARY_MAX_INPUT_CHARS = 8_000
@@ -24,6 +24,7 @@ class FarmModelResult:
     raw_response: str
     structured_valid: bool
     warnings: list[str]
+    snippet_selection: dict[str, Any] | None = None
 
 
 class OllamaChatClient:
@@ -358,26 +359,30 @@ def process_file_with_model(
             candidates = payload.get("snippets") or []
             if not isinstance(candidates, list):
                 candidates = []
-            snippets, snippet_warnings = verify_snippet_candidates(
+            snippets, snippet_warnings, snippet_selection = select_snippet_candidates(
                 candidates,
                 source_text=summary_content,
                 source_path=file_path,
                 requested_count=int(snippet_request.get("requested_count", 0)),
                 max_chars=int(snippet_request.get("max_chars", 600)),
+                policy=str(snippet_request.get("policy", "off")),
             )
             payload["snippets"] = snippets
             snippet_warnings = apply_snippet_warning_policy(
                 snippet_warnings,
                 snippet_request=snippet_request,
-                verified_count=len(snippets),
+                verified_count=int(snippet_selection.get("selected_count", len(snippets))),
             )
             parse_warnings.extend(snippet_warnings)
+        else:
+            snippet_selection = None
         return FarmModelResult(
             payload=payload,
             markdown=render_summary_markdown(payload),
             raw_response=raw,
             structured_valid=structured_valid,
             warnings=[*warnings, *parse_warnings],
+            snippet_selection=snippet_selection,
         )
 
     if mode == "prompt":

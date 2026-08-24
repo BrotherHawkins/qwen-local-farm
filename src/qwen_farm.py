@@ -55,8 +55,9 @@ from src.qwen_farm_snippets import (
     DEFAULT_CHUNK_CANDIDATE_SNIPPETS,
     apply_snippet_warning_policy,
     compact_snippet_status,
+    empty_snippet_diagnostics,
     resolve_snippet_request,
-    reverify_snippets,
+    reselect_snippets,
 )
 from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now, utc_now, write_timing_summary
 from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
@@ -615,6 +616,16 @@ def run_single_pass_job(
         snippet_request=snippet_request,
     )
     tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
+    fallback_snippet_count = len(result.payload.get("snippets") or [])
+    snippet_selection = result.snippet_selection or {
+        **empty_snippet_diagnostics(
+            policy=str(snippet_request.get("policy", "off")),
+            requested_count=int(snippet_request.get("requested_count", 0)),
+            max_chars=int(snippet_request.get("max_chars", 600)),
+        ),
+        "verified_count": fallback_snippet_count,
+        "selected_count": fallback_snippet_count,
+    }
     return (
         result,
         single_pass_chunking(
@@ -624,7 +635,12 @@ def run_single_pass_job(
             chunk_tokens=chunk_tokens,
             tokenizer=token_counter.tokenizer_id if token_counter is not None else None,
         ),
-        compact_snippet_status(snippet_request, len(result.payload.get("snippets") or [])),
+        compact_snippet_status(
+            snippet_request,
+            int(snippet_selection.get("verified_count", len(result.payload.get("snippets") or []))),
+            selected_count=int(snippet_selection.get("selected_count", len(result.payload.get("snippets") or []))),
+            diagnostics=snippet_selection,
+        ),
     )
 
 
@@ -712,6 +728,15 @@ def run_chunked_summary_job(
         chunk_verified_snippets = chunk_result.payload.get("snippets") or []
         if isinstance(chunk_verified_snippets, list):
             chunk_snippets.extend(item for item in chunk_verified_snippets if isinstance(item, dict))
+        chunk_selection = chunk_result.snippet_selection or {
+            **empty_snippet_diagnostics(
+                policy=str(chunk_snippet_request.get("policy", "off")),
+                requested_count=int(chunk_snippet_request.get("requested_count", 0)),
+                max_chars=int(chunk_snippet_request.get("max_chars", 600)),
+            ),
+            "verified_count": len(chunk_verified_snippets),
+            "selected_count": len(chunk_verified_snippets),
+        }
 
         chunk_dir = chunk_results_dir / chunk.chunk_id
         chunk_dir.mkdir(parents=True, exist_ok=True)
@@ -731,7 +756,12 @@ def run_chunked_summary_job(
             markdown_path=markdown_path,
             raw_path=raw_path,
             agent=agent,
-            snippets=compact_snippet_status(chunk_snippet_request, len(chunk_verified_snippets)),
+            snippets=compact_snippet_status(
+                chunk_snippet_request,
+                int(chunk_selection.get("verified_count", len(chunk_verified_snippets))),
+                selected_count=int(chunk_selection.get("selected_count", len(chunk_verified_snippets))),
+                diagnostics=chunk_selection,
+            ),
             timing=call_timings[-1],
         )
         write_json(json_path, envelope)
@@ -766,17 +796,18 @@ def run_chunked_summary_job(
     warnings.extend(reduce_warnings)
     final_snippets: list[dict[str, Any]] = []
     if int(final_snippet_request.get("requested_count", 0)) > 0:
-        final_snippets, snippet_warnings = reverify_snippets(
+        final_snippets, snippet_warnings, final_snippet_selection = reselect_snippets(
             chunk_snippets,
             source_text=content,
             source_path=job["input_path"],
             requested_count=int(final_snippet_request.get("requested_count", 0)),
             max_chars=int(final_snippet_request.get("max_chars", 600)),
+            policy=str(final_snippet_request.get("policy", "off")),
         )
         snippet_warnings = apply_snippet_warning_policy(
             snippet_warnings,
             snippet_request=final_snippet_request,
-            verified_count=len(final_snippets),
+            verified_count=int(final_snippet_selection.get("selected_count", len(final_snippets))),
         )
         warnings.extend(snippet_warnings)
         reduce_result.payload["snippets"] = final_snippets
@@ -786,6 +817,13 @@ def run_chunked_summary_job(
             raw_response=reduce_result.raw_response,
             structured_valid=reduce_result.structured_valid,
             warnings=reduce_result.warnings,
+            snippet_selection=final_snippet_selection,
+        )
+    else:
+        final_snippet_selection = empty_snippet_diagnostics(
+            policy=str(final_snippet_request.get("policy", "off")),
+            requested_count=int(final_snippet_request.get("requested_count", 0)),
+            max_chars=int(final_snippet_request.get("max_chars", 600)),
         )
     final_result = FarmModelResult(
         payload=reduce_result.payload,
@@ -793,6 +831,7 @@ def run_chunked_summary_job(
         raw_response=reduce_result.raw_response,
         structured_valid=reduce_result.structured_valid,
         warnings=unique_warnings(warnings),
+        snippet_selection=final_snippet_selection,
     )
     chunking = {
         "enabled": True,
@@ -807,7 +846,16 @@ def run_chunked_summary_job(
         "counts_are_estimated": False if token_counter is not None else None,
         "chunks": chunk_records,
     }
-    return final_result, chunking, compact_snippet_status(final_snippet_request, len(final_snippets))
+    return (
+        final_result,
+        chunking,
+        compact_snippet_status(
+            final_snippet_request,
+            int(final_snippet_selection.get("verified_count", len(final_snippets))),
+            selected_count=int(final_snippet_selection.get("selected_count", len(final_snippets))),
+            diagnostics=final_snippet_selection,
+        ),
+    )
 
 
 def run_file_job(

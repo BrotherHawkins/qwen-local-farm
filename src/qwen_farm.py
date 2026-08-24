@@ -34,6 +34,7 @@ from src.qwen_farm_status import (
     write_json,
     write_status,
 )
+from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now, utc_now, write_timing_summary
 
 
 DEFAULT_MAX_ATTEMPTS = 2
@@ -105,6 +106,7 @@ def make_initial_status(
     runtime_config: dict[str, Any],
 ) -> dict[str, Any]:
     created_at = utc_timestamp()
+    timing_created_at = timestamp_now()
     status = {
         "schema_version": FARM_SCHEMA_VERSION,
         "run_id": run_id,
@@ -125,6 +127,12 @@ def make_initial_status(
         "skipped_files": skipped_files,
         "created_at": created_at,
         "updated_at": created_at,
+        "timing": {
+            "created_at": timing_created_at,
+            "started_at": timing_created_at,
+            "completed_at": None,
+            "duration_ms": None,
+        },
     }
     status["counts"] = count_jobs(jobs, skipped=len(skipped_files))
     return status
@@ -140,6 +148,7 @@ def result_envelope(
     raw_path: Path,
     agent: dict[str, Any],
     chunking: dict[str, Any] | None = None,
+    timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     status = "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
     envelope = {
@@ -164,6 +173,8 @@ def result_envelope(
     }
     if chunking is not None:
         envelope["chunking"] = chunking
+    if timing is not None:
+        envelope["timing"] = timing
     return envelope
 
 
@@ -207,8 +218,9 @@ def chunk_result_envelope(
     markdown_path: Path,
     raw_path: Path,
     agent: dict[str, Any],
+    timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    envelope = {
         "schema_version": FARM_SCHEMA_VERSION,
         "job_id": job["job_id"],
         "chunk_id": chunk_id,
@@ -232,6 +244,9 @@ def chunk_result_envelope(
         },
         "warnings": result.warnings,
     }
+    if timing is not None:
+        envelope["timing"] = timing
+    return envelope
 
 
 def write_result_files(
@@ -243,6 +258,7 @@ def write_result_files(
     run_dir: Path,
     agent: dict[str, Any],
     chunking: dict[str, Any],
+    timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw_path = job_dir / "raw-response.txt"
     markdown_path = job_dir / "result.md"
@@ -258,6 +274,7 @@ def write_result_files(
         raw_path=raw_path,
         agent=agent,
         chunking=chunking,
+        timing=timing,
     )
     write_json(json_path, envelope)
     return envelope
@@ -285,6 +302,64 @@ def default_model_processor(
         agent_system_prompt=str(agent.get("system_prompt", "")),
         summary_max_input_chars=summary_max_input_chars,
     )
+
+
+def timed_model_call(
+    *,
+    call_timings: list[dict[str, Any]],
+    kind: str,
+    mode: str,
+    file_path: str,
+    content: str,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    summary_max_input_chars: int,
+    model_processor: ModelProcessor,
+    chunk_id: str | None = None,
+    reduce_generation: int | None = None,
+    reduce_batch_index: int | None = None,
+) -> FarmModelResult:
+    started = utc_now()
+    record: dict[str, Any] = {
+        "kind": kind,
+        "file_path": file_path,
+        "started_at": None,
+        "completed_at": None,
+        "duration_ms": None,
+    }
+    if chunk_id is not None:
+        record["chunk_id"] = chunk_id
+    if reduce_generation is not None:
+        record["reduce_generation"] = reduce_generation
+    if reduce_batch_index is not None:
+        record["reduce_batch_index"] = reduce_batch_index
+
+    try:
+        result = model_processor(
+            mode=mode,
+            file_path=file_path,
+            content=content,
+            instructions=instructions,
+            agent=agent,
+            ollama_base_url=ollama_base_url,
+            timeout=timeout,
+            summary_max_input_chars=summary_max_input_chars,
+        )
+    except Exception as exc:
+        record.update(finish_timing(started))
+        record["status"] = "failed"
+        record["error"] = str(exc)
+        call_timings.append(record)
+        raise
+
+    record.update(finish_timing(started))
+    record["status"] = result_status(result)
+    if result.warnings:
+        record["warnings"] = result.warnings
+    call_timings.append(record)
+    return result
 
 
 def unique_warnings(items: list[str]) -> list[str]:
@@ -338,6 +413,7 @@ def reduce_summary_payloads(
     timeout: int,
     reduce_chars: int,
     model_processor: ModelProcessor,
+    call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, list[str]]:
     warnings: list[str] = []
     pending = payloads
@@ -346,7 +422,9 @@ def reduce_summary_payloads(
     while True:
         reduce_input = render_reduce_input(source_path, pending)
         if len(reduce_input) <= reduce_chars or len(pending) <= 1:
-            result = model_processor(
+            result = timed_model_call(
+                call_timings=call_timings,
+                kind="reduce",
                 mode="summarize",
                 file_path=source_path,
                 content=reduce_input,
@@ -355,13 +433,17 @@ def reduce_summary_payloads(
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
                 summary_max_input_chars=reduce_chars,
+                model_processor=model_processor,
+                reduce_generation=generation,
             )
             warnings.extend(result.warnings)
             return result, warnings
 
         next_pending: list[dict[str, Any]] = []
         for batch_index, batch in enumerate(reduce_payload_batches(source_path, pending, max_chars=reduce_chars), start=1):
-            result = model_processor(
+            result = timed_model_call(
+                call_timings=call_timings,
+                kind="reduce",
                 mode="summarize",
                 file_path=f"{source_path}#reduce-{generation:02d}-{batch_index:04d}",
                 content=render_reduce_input(source_path, batch),
@@ -370,6 +452,9 @@ def reduce_summary_payloads(
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
                 summary_max_input_chars=reduce_chars,
+                model_processor=model_processor,
+                reduce_generation=generation,
+                reduce_batch_index=batch_index,
             )
             warnings.extend(result.warnings)
             next_pending.append(result.payload)
@@ -389,8 +474,11 @@ def run_single_pass_job(
     timeout: int,
     chunk_chars: int,
     model_processor: ModelProcessor,
+    call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    result = model_processor(
+    result = timed_model_call(
+        call_timings=call_timings,
+        kind="single",
         mode=mode,
         file_path=file_path,
         content=content,
@@ -399,6 +487,7 @@ def run_single_pass_job(
         ollama_base_url=ollama_base_url,
         timeout=timeout,
         summary_max_input_chars=chunk_chars,
+        model_processor=model_processor,
     )
     return result, single_pass_chunking()
 
@@ -416,6 +505,7 @@ def run_chunked_summary_job(
     chunk_chars: int,
     reduce_chars: int,
     model_processor: ModelProcessor,
+    call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, dict[str, Any]]:
     chunks = chunk_text(content, max_chars=chunk_body_budget(job["input_path"], chunk_chars))
     chunks_dir = job_dir / "chunks"
@@ -431,7 +521,9 @@ def run_chunked_summary_job(
         chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
         chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
 
-        chunk_result = model_processor(
+        chunk_result = timed_model_call(
+            call_timings=call_timings,
+            kind="chunk_map",
             mode="summarize",
             file_path=f"{job['input_path']}#{chunk.chunk_id}",
             content=chunk_input_path.read_text(encoding="utf-8"),
@@ -440,6 +532,8 @@ def run_chunked_summary_job(
             ollama_base_url=ollama_base_url,
             timeout=timeout,
             summary_max_input_chars=chunk_chars,
+            model_processor=model_processor,
+            chunk_id=chunk.chunk_id,
         )
         warnings.extend(chunk_result.warnings)
 
@@ -461,6 +555,7 @@ def run_chunked_summary_job(
             markdown_path=markdown_path,
             raw_path=raw_path,
             agent=agent,
+            timing=call_timings[-1],
         )
         write_json(json_path, envelope)
         chunk_payloads.append(chunk_result.payload)
@@ -484,6 +579,7 @@ def run_chunked_summary_job(
         timeout=timeout,
         reduce_chars=reduce_chars,
         model_processor=model_processor,
+        call_timings=call_timings,
     )
     warnings.extend(reduce_warnings)
     final_result = FarmModelResult(
@@ -516,6 +612,7 @@ def run_file_job(
     timeout: int,
     runtime_config: dict[str, Any],
     model_processor: ModelProcessor,
+    call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, dict[str, Any]]:
     chunk_chars = int(runtime_config["summarize"]["chunk_chars"])
     reduce_chars = int(runtime_config["summarize"]["reduce_chars"])
@@ -532,6 +629,7 @@ def run_file_job(
             chunk_chars=chunk_chars,
             reduce_chars=reduce_chars,
             model_processor=model_processor,
+            call_timings=call_timings,
         )
     return run_single_pass_job(
         mode=mode,
@@ -543,7 +641,18 @@ def run_file_job(
         timeout=timeout,
         chunk_chars=chunk_chars,
         model_processor=model_processor,
+        call_timings=call_timings,
     )
+
+
+def call_timing_summary(call_timings: list[dict[str, Any]]) -> dict[str, Any]:
+    duration = None
+    if call_timings:
+        duration = duration_between(call_timings[0].get("started_at"), call_timings[-1].get("completed_at"))
+    return {
+        "duration_ms": duration,
+        "calls": call_timings,
+    }
 
 
 def execute_job(
@@ -562,6 +671,7 @@ def execute_job(
     model_processor: ModelProcessor,
 ) -> dict[str, Any]:
     last_error: str | None = None
+    call_timings: list[dict[str, Any]] = []
     for attempt in range(1, max_attempts + 1):
         try:
             content = item.path.read_text(encoding="utf-8", errors="replace")
@@ -577,6 +687,7 @@ def execute_job(
                 timeout=timeout,
                 runtime_config=runtime_config,
                 model_processor=model_processor,
+                call_timings=call_timings,
             )
 
             envelope = write_result_files(
@@ -587,6 +698,7 @@ def execute_job(
                 run_dir=run_dir,
                 agent=agent,
                 chunking=chunking,
+                timing=call_timing_summary(call_timings),
             )
             return {
                 "status": envelope["status"],
@@ -596,6 +708,9 @@ def execute_job(
                 "warnings": result.warnings,
                 "chunking": compact_chunking(chunking),
                 "error": None,
+                "timing": {
+                    "calls": call_timings,
+                },
             }
         except Exception as exc:
             last_error = str(exc)
@@ -610,6 +725,9 @@ def execute_job(
                 "warnings": [],
                 "chunking": job.get("chunking", single_pass_chunking()),
                 "error": last_error,
+                "timing": {
+                    "calls": call_timings,
+                },
             }
 
     raise RuntimeError("Job execution ended without a result.")
@@ -618,6 +736,7 @@ def execute_job(
 def apply_job_update(job: dict[str, Any], update: dict[str, Any]) -> None:
     for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "error"]:
         job[key] = update[key]
+    job.setdefault("timing", {})["calls"] = update.get("timing", {}).get("calls", [])
 
 
 def run_scheduled_jobs(
@@ -645,6 +764,10 @@ def run_scheduled_jobs(
         while queued or in_flight:
             while queued and len(in_flight) < max_workers:
                 job, item = queued.pop(0)
+                started_at = timestamp_now()
+                timing = job.setdefault("timing", {})
+                timing["started_at"] = started_at
+                timing["queue_wait_ms"] = duration_between(timing.get("queued_at"), started_at)
                 job["status"] = "running"
                 status["counts"] = count_jobs(jobs, skipped=skipped_count)
                 write_status(run_dir, status)
@@ -669,6 +792,10 @@ def run_scheduled_jobs(
             for future in done:
                 job = in_flight.pop(future)
                 apply_job_update(job, future.result())
+                completed_at = timestamp_now()
+                timing = job.setdefault("timing", {})
+                timing["completed_at"] = completed_at
+                timing["duration_ms"] = duration_between(timing.get("started_at"), completed_at)
                 status["counts"] = count_jobs(jobs, skipped=skipped_count)
                 write_status(run_dir, status)
 
@@ -781,6 +908,14 @@ def run_farm(
                 "error": None,
                 "warnings": [],
                 "chunking": single_pass_chunking(),
+                "timing": {
+                    "queued_at": timestamp_now(),
+                    "started_at": None,
+                    "completed_at": None,
+                    "queue_wait_ms": None,
+                    "duration_ms": None,
+                    "calls": [],
+                },
             }
         )
 
@@ -815,7 +950,11 @@ def run_farm(
 
     status["status"] = final_run_status(jobs)
     status["counts"] = count_jobs(jobs, skipped=len(discovery.skipped))
+    completed_at = timestamp_now()
+    status["timing"]["completed_at"] = completed_at
+    status["timing"]["duration_ms"] = duration_between(status["timing"].get("started_at"), completed_at)
     write_status(run_dir, status)
+    write_timing_summary(run_dir, status)
     return status
 
 

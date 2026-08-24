@@ -48,7 +48,7 @@ Status values:
 | BL-0033 | Open | 0004 | Multiple Ollama server pools | Advanced manual/managed routing across multiple local servers. |
 | BL-0034 | Open | 0004 | Per-agent or per-model routing across loaded models | Resource-aware model selection and scheduling. |
 | BL-0035 | Open | 0002 | Chunk overlap | Add overlap between adjacent chunks where useful without bloating context. |
-| BL-0036 | Open | 0004 | Farm timing metrics in run/job/chunk artifacts | Record created/started/completed timestamps plus durations for runs, jobs, chunk map calls, and reduce calls. |
+| BL-0036 | Implemented | 0004, 0005 | Farm timing metrics in run/job/chunk artifacts | Implemented by 0005 for runs, jobs, chunk map calls, reduce calls, and timing summary artifacts. |
 | BL-0037 | Open | 0004 | Dogfood benchmark history for timing regressions | Save comparable dogfood run summaries so slower runs can be spotted across implementation changes. |
 
 ## Notes

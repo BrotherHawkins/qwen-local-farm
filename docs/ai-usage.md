@@ -277,9 +277,13 @@ Every farm run produces:
 FARM_STATUS.md
 farm-status.json
 farm-config.resolved.json
+TIMING_SUMMARY.md
+timing-summary.json
 ```
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.
+
+When a run feels slow, inspect `timing-summary.json` first. It summarizes total run duration, job durations, queue wait, aggregate time by call kind, slowest jobs, and slowest model calls. Per-job `result.json` files include the model-call timing records for successful jobs, and failed jobs keep call timing in `farm-status.json`.
 
 ## Filesystem State
 

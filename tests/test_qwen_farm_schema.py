@@ -161,6 +161,124 @@ class FarmSchemaTests(unittest.TestCase):
 
             self.assertEqual(qwen_farm_schema.validate_file(instance, schema), [])
 
+    def test_resolve_schema_reference_accepts_index_id_and_path(self) -> None:
+        schema_id = "https://qwen-local-farm.local/schemas/farm-doctor.schema.json"
+
+        by_id = qwen_farm_schema.resolve_schema_reference(ROOT, schema_id)
+        by_path = qwen_farm_schema.resolve_schema_reference(ROOT, "schemas/farm-doctor.schema.json")
+
+        self.assertEqual(by_id["path"], "schemas/farm-doctor.schema.json")
+        self.assertEqual(by_path["id"], schema_id)
+        self.assertFalse(by_id["detected"])
+        self.assertFalse(by_path["detected"])
+
+    def test_detect_schema_for_known_surfaces(self) -> None:
+        cases = [
+            (
+                {"schema_version": 1, "scope": "overview"},
+                "schemas/farm-status-overview.schema.json",
+            ),
+            (
+                {"schema_version": 1, "scope": "run"},
+                "schemas/farm-status-run.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "environment": {},
+                    "ollama": {},
+                    "checks": [],
+                    "recommendations": [],
+                    "report_paths": {},
+                },
+                "schemas/farm-doctor.schema.json",
+            ),
+            (
+                {
+                    "schema_version": "0.1",
+                    "run_id": "run-1",
+                    "jobs": [],
+                    "counts": {},
+                    "skipped_files": [],
+                },
+                "schemas/farm-status.schema.json",
+            ),
+            (
+                {
+                    "schema_version": "0.1",
+                    "job_id": "job-0001",
+                    "structured_valid": True,
+                    "result": {},
+                    "artifacts": {},
+                },
+                "schemas/farm-job-result.schema.json",
+            ),
+        ]
+
+        for artifact, expected_path in cases:
+            with self.subTest(expected_path=expected_path):
+                detected = qwen_farm_schema.detect_schema(ROOT, artifact)
+                self.assertEqual(detected["path"], expected_path)
+                self.assertTrue(detected["detected"])
+
+    def test_detect_schema_rejects_unknown_shape(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Could not infer"):
+            qwen_farm_schema.detect_schema(ROOT, {"schema_version": 1, "hello": "world"})
+
+    def test_validate_artifact_auto_detects_schema_and_returns_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "doctor.json"
+            report = qwen_farm_doctor.build_doctor_report(
+                root=Path(temp_dir),
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                generated_at="2026-08-24T00:00:00Z",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=lambda *_args, **_kwargs: {"models": [{"name": "qwen3.5:4b"}]},
+                tokenizer_status_fn=ready_tokenizers,
+            )
+            artifact.write_text(json.dumps(report), encoding="utf-8")
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_VALID)
+            self.assertEqual(result["schema"]["path"], "schemas/farm-doctor.schema.json")
+            self.assertTrue(result["schema"]["detected"])
+
+    def test_validate_artifact_reports_schema_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "overview.json"
+            artifact.write_text(json.dumps({"schema_version": 1, "scope": "overview", "counts": {}, "runs": []}), encoding="utf-8")
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertIn("$.counts: missing required field 'runs'", result["errors"])
+
+    def test_validate_artifact_reports_input_errors_as_exit_error(self) -> None:
+        result = qwen_farm_schema.validate_artifact(ROOT, Path("missing.json"))
+
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_ERROR)
+        self.assertIn("missing.json", result["errors"][0])
+
+    def test_render_validation_result(self) -> None:
+        rendered = qwen_farm_schema.render_validation_result(
+            {
+                "valid": False,
+                "artifact_path": "artifact.json",
+                "schema": {"path": "schemas/farm-status.schema.json"},
+                "errors": ["$.run_id: missing required field 'run_id'"],
+            }
+        )
+
+        self.assertIn("Invalid: artifact.json", rendered)
+        self.assertIn("Schema: schemas/farm-status.schema.json", rendered)
+        self.assertIn("Errors: 1", rendered)
+        self.assertIn("- $.run_id: missing required field 'run_id'", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

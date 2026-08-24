@@ -25,3 +25,13 @@ Schemas describe the current emitted shape for each surface. They are not a migr
 ## Validation Notes
 
 The test suite validates representative generated artifacts against these schemas with a dependency-free helper in `src/qwen_farm_schema.py`. The helper supports the subset of JSON Schema used here and keeps validation model-free and CI-friendly.
+
+Use the public CLI when validating local artifacts:
+
+```bash
+python qwen.py farm schema validate .run/reports/setup-doctor.json
+python qwen.py farm schema validate .run/reports/setup-doctor.json --json
+python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+```
+
+Without `--schema`, the command auto-detects the current core farm JSON artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means command/input/schema resolution failed.

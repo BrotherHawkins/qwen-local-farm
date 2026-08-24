@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 17 |
+| Implemented | 18 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -67,6 +67,7 @@ None.
 | 0014 | Implemented | Add | [0014-add-synthesis-bundle-budget-planning.md](changes/0014-add-synthesis-bundle-budget-planning.md) | Adds size estimates and optional character/estimated-token caps for synthesis bundles. |
 | 0015 | Implemented | Add | [0015-add-farm-doctor.md](changes/0015-add-farm-doctor.md) | Adds a read-only farm doctor report for setup, model, runtime, tokenizer, and recent-run inspection. |
 | 0016 | Implemented | Add | [0016-add-artifact-schemas-and-validation.md](changes/0016-add-artifact-schemas-and-validation.md) | Adds tracked schema contracts and model-free validation coverage for key farm JSON artifacts. |
+| 0017 | Implemented | Add | [0017-add-schema-validation-cli.md](changes/0017-add-schema-validation-cli.md) | Adds a public model-free CLI for validating farm JSON artifacts against tracked schemas. |
 
 ## Stale Drafts To Revisit
 

@@ -107,6 +107,8 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 
 Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
+For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
+
 Token-aware chunking can also be configured in `.qwen-farm.json`:
 
 ```json

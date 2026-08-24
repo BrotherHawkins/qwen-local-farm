@@ -23,7 +23,14 @@ from src.qwen_farm_files import (
     relative_to,
     utc_timestamp,
 )
-from src.qwen_farm_model import SUMMARY_MAX_INPUT_CHARS, FarmModelResult, OllamaChatClient, process_file_with_model
+from src.qwen_farm_model import (
+    SUMMARY_MAX_INPUT_CHARS,
+    SUMMARY_NUM_BATCH,
+    SUMMARY_NUM_PREDICT,
+    FarmModelResult,
+    OllamaChatClient,
+    process_file_with_model,
+)
 from src.qwen_farm_profiles import (
     RuntimeOverrides,
     compact_runtime_config,
@@ -326,7 +333,11 @@ def default_model_processor(
     timeout: int,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
 ) -> FarmModelResult:
-    client = OllamaChatClient(ollama_base_url, str(agent["model"]), agent.get("options", {}))
+    options = dict(agent.get("options", {}))
+    if mode == "summarize":
+        options.setdefault("num_predict", SUMMARY_NUM_PREDICT)
+        options.setdefault("num_batch", SUMMARY_NUM_BATCH)
+    client = OllamaChatClient(ollama_base_url, str(agent["model"]), options)
     return process_file_with_model(
         client=client,
         mode=mode,

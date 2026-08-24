@@ -5,6 +5,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src import qwen_farm
 from src.qwen_farm_model import FarmModelResult
@@ -103,6 +104,42 @@ class FarmRunTests(unittest.TestCase):
             timing_summary = qwen_farm.read_json(run_dir / "timing-summary.json")
             self.assertEqual(timing_summary["run_id"], status["run_id"])
             self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
+
+    def test_default_summarize_processor_sets_fast_model_options(self) -> None:
+        seen: dict[str, object] = {}
+
+        class CapturingClient:
+            def __init__(self, base_url: str, model: str, options: dict[str, object]) -> None:
+                seen["base_url"] = base_url
+                seen["model"] = model
+                seen["options"] = options
+
+        def fake_process(**kwargs: object) -> FarmModelResult:
+            return fake_processor(**kwargs)
+
+        with patch.object(qwen_farm, "OllamaChatClient", CapturingClient), patch.object(
+            qwen_farm, "process_file_with_model", fake_process
+        ):
+            qwen_farm.default_model_processor(
+                mode="summarize",
+                file_path="a.txt",
+                content="A",
+                instructions=None,
+                agent={
+                    "id": "default",
+                    "model": "qwen-test:1b",
+                    "system_prompt": "",
+                    "options": {"num_ctx": 8192, "num_predict": 256},
+                },
+                ollama_base_url="http://127.0.0.1:11434",
+                timeout=1,
+            )
+
+        options = seen["options"]
+        assert isinstance(options, dict)
+        self.assertEqual(options["num_ctx"], 8192)
+        self.assertEqual(options["num_predict"], 256)
+        self.assertEqual(options["num_batch"], qwen_farm.SUMMARY_NUM_BATCH)
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

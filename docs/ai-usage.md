@@ -144,6 +144,8 @@ python qwen.py farm run input-folder --output results --mode summarize
 
 In `summarize` mode, oversized text files are chunked automatically. Each chunk gets its own input and result artifacts under the job folder, then the farm reduces chunk summaries into the normal file-level `result.md` and `result.json`.
 
+For speed, summarize calls use a compact labeled-text contract from the local model and deterministic Python parsing into the result JSON envelope. Do not assume the model itself was called in strict JSON mode; the farm owns the outer JSON artifacts. The default summarize call also disables Qwen thinking and bounds output length unless an agent explicitly supplies those Ollama options.
+
 Runtime profile invocation:
 
 ```bash

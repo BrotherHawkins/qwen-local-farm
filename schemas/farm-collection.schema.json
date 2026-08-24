@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-collection.schema.json",
+  "title": "Qwen Local Farm Collection",
+  "description": "Post-run flattened result artifact collection written by farm collect.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "created_at",
+    "label",
+    "run_id",
+    "run_path",
+    "mode",
+    "agent",
+    "model",
+    "counts",
+    "artifacts",
+    "items",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": ["string", "null"]
+    },
+    "run_path": {
+      "type": "string"
+    },
+    "mode": {
+      "type": ["string", "null"]
+    },
+    "agent": {
+      "type": ["string", "null"]
+    },
+    "model": {
+      "type": ["string", "null"]
+    },
+    "counts": {
+      "type": "object",
+      "required": ["jobs_seen", "items_collected", "markdown_files", "json_files", "jobs_skipped"],
+      "properties": {
+        "jobs_seen": {
+          "type": "integer"
+        },
+        "items_collected": {
+          "type": "integer"
+        },
+        "markdown_files": {
+          "type": "integer"
+        },
+        "json_files": {
+          "type": "integer"
+        },
+        "jobs_skipped": {
+          "type": "integer"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["markdown_index", "manifest", "items_dir"],
+      "properties": {
+        "markdown_index": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "items_dir": {
+          "type": "string"
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "input_path",
+          "status",
+          "warnings",
+          "source_artifacts",
+          "collected_artifacts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_artifacts": {
+            "type": "object"
+          },
+          "collected_artifacts": {
+            "type": "object"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "abstract": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "string"
+              }
+            }
+          },
+          "diagnostics": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["skipped_jobs", "warnings"],
+      "properties": {
+        "skipped_jobs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

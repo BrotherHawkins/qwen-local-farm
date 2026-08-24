@@ -26,6 +26,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 - Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
 - Opt-in verified source snippets for summarize results, including deterministic ranking and compact diagnostics.
+- Post-run farm collections that flatten ordinary job result artifacts into one inspectable folder.
 - Post-run cross-file snippet packs for downstream synthesis.
 - Post-run synthesis bundles that combine compact summaries with verified snippets.
 - Local dogfood timing records and comparisons for spotting performance regressions.

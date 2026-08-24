@@ -8,6 +8,7 @@ from typing import Any
 
 from src import (
     qwen_farm,
+    qwen_farm_collect,
     qwen_farm_dogfood,
     qwen_farm_doctor,
     qwen_farm_recommend,
@@ -348,11 +349,17 @@ class FarmSchemaTests(unittest.TestCase):
                 created_at="2026-08-24T00:00:04Z",
                 max_estimated_tokens=2000,
             )
+            collection = qwen_farm_collect.build_collection(
+                run_dir=run_dir,
+                output_dir=root / "collections",
+                label="schema-collection",
+                created_at="2026-08-24T00:00:05Z",
+            )
             dogfood_record = qwen_farm_dogfood.build_quality_record(
                 root=root,
                 run_dir=run_dir,
                 label="schema-record",
-                recorded_at="2026-08-24T00:00:05Z",
+                recorded_at="2026-08-24T00:00:06Z",
             )
             candidate_record = json.loads(json.dumps(dogfood_record))
             candidate_record["label"] = "schema-candidate"
@@ -362,6 +369,7 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertValid(timing_summary, "farm-timing-summary.schema.json")
             self.assertValid(snippet_pack, "farm-snippet-pack.schema.json")
             self.assertValid(synthesis_bundle, "farm-synthesis-bundle.schema.json")
+            self.assertValid(collection, "farm-collection.schema.json")
             self.assertValid(dogfood_record, "farm-dogfood-record.schema.json")
             self.assertValid(dogfood_comparison, "farm-dogfood-comparison.schema.json")
 
@@ -505,6 +513,16 @@ class FarmSchemaTests(unittest.TestCase):
                     "counts": {},
                 },
                 "schemas/farm-synthesis-bundle.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "artifacts": {"manifest": "farm-collection.json"},
+                    "items": [],
+                    "diagnostics": {},
+                    "counts": {},
+                },
+                "schemas/farm-collection.schema.json",
             ),
             (
                 {

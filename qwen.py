@@ -422,6 +422,21 @@ def handle_farm(args: argparse.Namespace) -> None:
 
         raise RuntimeError(f"Unknown farm schema command: {args.schema_command}")
 
+    if args.farm_command == "collect":
+        from src import qwen_farm_collect
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "farm_collections"
+        collection = qwen_farm_collect.build_collection(
+            run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+            output_dir=output_dir,
+            label=args.label,
+        )
+        json_path, markdown_path = qwen_farm_collect.write_collection(collection, output_dir)
+        print(f"Farm collection written: {json_path}")
+        print(f"Markdown: {markdown_path}")
+        print(f"Items collected: {collection['counts']['items_collected']}")
+        return
+
     if args.farm_command == "dogfood":
         from src import qwen_farm_dogfood
 
@@ -632,6 +647,11 @@ def parse_args() -> argparse.Namespace:
     schema_validate.add_argument("json_path")
     schema_validate.add_argument("--schema")
     schema_validate.add_argument("--json", action="store_true")
+
+    farm_collect = farm_subparsers.add_parser("collect")
+    farm_collect.add_argument("run_dir", metavar="run-ref")
+    farm_collect.add_argument("--output")
+    farm_collect.add_argument("--label")
 
     farm_run = farm_subparsers.add_parser("run")
     farm_run.add_argument("input_folder")

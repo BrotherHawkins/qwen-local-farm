@@ -222,6 +222,14 @@ If token budgets are omitted, the farm derives a conservative budget from the se
 
 If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
 
+To gather ordinary per-job results from an existing run into one easier-to-inspect folder:
+
+```bash
+python qwen.py farm collect <run-ref> --label review-pack
+```
+
+`farm collect` writes `.run/farm_collections/<label>/FARM_COLLECTION.md`, `.run/farm_collections/<label>/farm-collection.json`, and copied `result.md` / `result.json` files under `items/`. It makes no model calls and does not copy source inputs, raw model responses, logs, or chunk artifacts by default. Use it when you want a flat review pack of existing results. Use snippet packs for evidence-only synthesis inputs, and synthesis bundles when you want compact summaries plus selected snippets.
+
 Apply custom instructions to every readable text file:
 
 ```bash

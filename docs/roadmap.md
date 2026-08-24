@@ -155,7 +155,7 @@ Future fields may include:
 }
 ```
 
-Timing is part of the normal status contract, not a separate benchmark-only path. Runs, jobs, chunk map calls, and reduce calls record start/finish timestamps and durations so dogfood runs can be compared over time and performance regressions can be investigated.
+Timing is part of the normal status contract, not a separate benchmark-only path. Runs, jobs, chunk map calls, and reduce calls record start/finish timestamps and durations so dogfood runs can be compared over time and performance regressions can be investigated. Dogfood quality history also records compact local run comparisons and optional 1-5 quality scores so snippet and summary changes can be judged against prior runs without tracking article text.
 
 ## 3. Structured Output
 

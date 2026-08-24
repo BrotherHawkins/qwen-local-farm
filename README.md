@@ -124,6 +124,8 @@ python qwen.py farm run notes --mode summarize --snippets off
 
 `--snippets auto` calculates a per-file snippet count from token count, chunk count, or file size. Fixed counts are useful for reproducible runs. Snippets are copied into `result.json` and `result.md` only after the farm verifies that the passage appears exactly in the source text. The farm ranks verified candidates before final selection, keeps score metadata in JSON, and filters obvious scaffolding such as front matter, source URLs, conversion headers, bibliography lines, and generic pointer text. Auto counts are best effort: status artifacts show selected/verified/requested counts and compact drop diagnostics.
 
+To compare dogfood runs over time, record compact local quality history with `python qwen.py farm dogfood record <run-dir>` and compare records with `python qwen.py farm dogfood compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and privacy rules.
+
 Token-aware chunking can also be configured in `.qwen-farm.json`:
 
 ```json

@@ -340,6 +340,35 @@ def stop_all() -> None:
 def handle_farm(args: argparse.Namespace) -> None:
     from src import qwen_farm
 
+    if args.farm_command == "dogfood":
+        from src import qwen_farm_dogfood
+
+        if args.dogfood_command == "record":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "runs"
+            record = qwen_farm_dogfood.build_quality_record(
+                root=ROOT,
+                run_dir=Path(args.run_dir),
+                label=args.label,
+                notes_path=Path(args.notes) if args.notes else None,
+            )
+            path = qwen_farm_dogfood.write_quality_record(record, output_dir)
+            print(f"Dogfood record written: {path}")
+            print(f"Label: {record['label']}")
+            print(f"Run: {record['run_id']}")
+            return
+
+        if args.dogfood_command == "compare":
+            baseline = qwen_farm_dogfood.read_json_object(Path(args.baseline_record))
+            candidate = qwen_farm_dogfood.read_json_object(Path(args.candidate_record))
+            output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "comparisons"
+            comparison = qwen_farm_dogfood.compare_records(baseline, candidate)
+            json_path, md_path = qwen_farm_dogfood.write_comparison(comparison, output_dir)
+            print(f"Dogfood comparison written: {json_path}")
+            print(f"Markdown: {md_path}")
+            return
+
+        raise RuntimeError(f"Unknown farm dogfood command: {args.dogfood_command}")
+
     if args.farm_command == "run":
         agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
             root=ROOT,
@@ -447,6 +476,20 @@ def parse_args() -> argparse.Namespace:
 
     farm_status = farm_subparsers.add_parser("status")
     farm_status.add_argument("run_id", nargs="?")
+
+    farm_dogfood = farm_subparsers.add_parser("dogfood")
+    farm_dogfood_subparsers = farm_dogfood.add_subparsers(dest="dogfood_command", required=True)
+
+    dogfood_record = farm_dogfood_subparsers.add_parser("record")
+    dogfood_record.add_argument("run_dir")
+    dogfood_record.add_argument("--label")
+    dogfood_record.add_argument("--notes")
+    dogfood_record.add_argument("--output")
+
+    dogfood_compare = farm_dogfood_subparsers.add_parser("compare")
+    dogfood_compare.add_argument("baseline_record")
+    dogfood_compare.add_argument("candidate_record")
+    dogfood_compare.add_argument("--output")
 
     args = parser.parse_args()
     if not args.command:

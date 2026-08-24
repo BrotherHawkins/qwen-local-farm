@@ -25,6 +25,7 @@ CONCURRENCY_FIELDS = {"jobs", "chunks"}
 DEFAULT_CHUNK_STRATEGY = "character"
 DEFAULT_TOKEN_SAFETY_MARGIN = 0.10
 DEFAULT_TOKEN_PROMPT_RESERVE = 1_024
+DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP = 4_096
 
 
 @dataclass(frozen=True)
@@ -370,7 +371,7 @@ def agent_context_tokens(agent: dict[str, Any]) -> int | None:
 
 def derive_token_budget(num_ctx: int, safety_margin: float) -> int:
     after_margin = int(num_ctx * (1 - safety_margin))
-    return max(1, after_margin - DEFAULT_TOKEN_PROMPT_RESERVE)
+    return max(1, min(DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP, after_margin - DEFAULT_TOKEN_PROMPT_RESERVE))
 
 
 def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:

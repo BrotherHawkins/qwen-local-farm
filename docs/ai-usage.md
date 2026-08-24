@@ -171,6 +171,8 @@ Use token-aware chunking when:
 - large article-like inputs are being over-split by character budgets
 - the primary AI wants fewer local worker calls before frontier synthesis
 
+When token budgets are omitted, the farm uses conservative derived budgets and caps summarize chunks at 4096 tokens. A primary AI should only raise `chunk_tokens`/`reduce_tokens` after checking warnings and summary quality on the user's machine.
+
 For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
 
 Example `.qwen-farm.json`:

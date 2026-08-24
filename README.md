@@ -120,6 +120,8 @@ Token-aware chunking can also be configured in `.qwen-farm.json`:
 }
 ```
 
+If token budgets are omitted, the farm derives a conservative budget from the selected agent's `num_ctx` and caps summarize chunks at 4096 tokens for local-worker summary quality. Power users can raise `chunk_tokens` and `reduce_tokens` explicitly after dogfooding their hardware/model combination.
+
 If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
 
 Apply custom instructions to every readable text file:

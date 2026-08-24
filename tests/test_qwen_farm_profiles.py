@@ -8,6 +8,7 @@ from pathlib import Path
 from src.qwen_farm_profiles import (
     PROFILE_NAMES,
     RuntimeOverrides,
+    derive_token_budget,
     resolve_runtime_config,
 )
 
@@ -184,6 +185,10 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     default_model="qwen-test:1b",
                     overrides=RuntimeOverrides(chunk_tokens=0),
                 )
+
+    def test_derived_token_budget_is_capped_for_summary_quality(self) -> None:
+        self.assertEqual(derive_token_budget(8192, 0.10), 4096)
+        self.assertEqual(derive_token_budget(4096, 0.10), 2662)
 
 
 if __name__ == "__main__":

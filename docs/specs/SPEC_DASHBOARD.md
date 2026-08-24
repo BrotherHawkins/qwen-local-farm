@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 10 |
+| Implemented | 11 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -60,6 +60,7 @@ None.
 | 0007 | Implemented | Add | [0007-add-source-snippets-for-summarize.md](changes/0007-add-source-snippets-for-summarize.md) | Adds opt-in verified verbatim source snippets to summarize results. |
 | 0008 | Implemented | Add | [0008-add-snippet-ranking-and-quality-metrics.md](changes/0008-add-snippet-ranking-and-quality-metrics.md) | Improves verified snippet usefulness with deterministic ranking, diversity, and quality diagnostics. |
 | 0009 | Implemented | Add | [0009-add-dogfood-quality-history.md](changes/0009-add-dogfood-quality-history.md) | Adds a local dogfood quality history workflow to record and compare summarize/snippet run quality over time. |
+| 0010 | Implemented | Add | [0010-add-cross-file-snippet-packs.md](changes/0010-add-cross-file-snippet-packs.md) | Adds deterministic cross-file snippet packs from existing summarize run artifacts for downstream synthesis. |
 
 ## Stale Drafts To Revisit
 

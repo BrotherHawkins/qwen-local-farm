@@ -369,6 +369,25 @@ def handle_farm(args: argparse.Namespace) -> None:
 
         raise RuntimeError(f"Unknown farm dogfood command: {args.dogfood_command}")
 
+    if args.farm_command == "snippets":
+        from src import qwen_farm_snippet_packs
+
+        if args.snippets_command == "pack":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "snippet_packs"
+            pack = qwen_farm_snippet_packs.build_snippet_pack(
+                run_dir=Path(args.run_dir),
+                label=args.label,
+                max_snippets=args.max_snippets,
+                per_file=args.per_file,
+            )
+            json_path, markdown_path = qwen_farm_snippet_packs.write_snippet_pack(pack, output_dir)
+            print(f"Snippet pack written: {json_path}")
+            print(f"Markdown: {markdown_path}")
+            print(f"Selected snippets: {pack['counts']['selected']}")
+            return
+
+        raise RuntimeError(f"Unknown farm snippets command: {args.snippets_command}")
+
     if args.farm_command == "run":
         agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
             root=ROOT,
@@ -490,6 +509,16 @@ def parse_args() -> argparse.Namespace:
     dogfood_compare.add_argument("baseline_record")
     dogfood_compare.add_argument("candidate_record")
     dogfood_compare.add_argument("--output")
+
+    farm_snippets = farm_subparsers.add_parser("snippets")
+    farm_snippets_subparsers = farm_snippets.add_subparsers(dest="snippets_command", required=True)
+
+    snippets_pack = farm_snippets_subparsers.add_parser("pack")
+    snippets_pack.add_argument("run_dir")
+    snippets_pack.add_argument("--output")
+    snippets_pack.add_argument("--label")
+    snippets_pack.add_argument("--max-snippets", type=int, default=24)
+    snippets_pack.add_argument("--per-file", type=int, default=4)
 
     args = parser.parse_args()
     if not args.command:

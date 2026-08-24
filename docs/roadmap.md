@@ -20,6 +20,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
   - `python qwen.py farm status`
   - `python qwen.py farm status <run-id>`
   - Markdown, JSON, raw response, and run status artifacts.
+- Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
 
 ## North Star
 
@@ -403,9 +404,12 @@ Current state:
 
 - Model choice is explicit through agent configs.
 - Hybrid and CPU/RAM modes are manually selected.
+- Runtime profiles now make model, summarize chunk sizing, and concurrency assumptions explicit for each run.
+- Every run writes `farm-config.resolved.json`.
 
 Roadmap:
 
+- Use runtime profiles as the stable configuration layer for both power users and AI-assisted setup.
 - Add model routing rules that consider speed, VRAM pressure, job type, and expected quality.
 - Add a simple worker scheduler:
   - max concurrent jobs
@@ -502,6 +506,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ### Milestone 4: Worker Farm
 
+- Implemented: runtime profiles and resolved run config artifacts.
 - Worker configuration.
 - Resource-aware routing.
 - Multiple processing modes.

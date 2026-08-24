@@ -67,11 +67,14 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["counts"]["total"], 2)
             self.assertTrue((run_dir / "farm-status.json").exists())
             self.assertTrue((run_dir / "FARM_STATUS.md").exists())
+            self.assertTrue((run_dir / "farm-config.resolved.json").exists())
             self.assertTrue((run_dir / "jobs/job-0001/result.md").exists())
             self.assertTrue((run_dir / "jobs/job-0001/result.json").exists())
             self.assertTrue((run_dir / "jobs/job-0001/raw-response.txt").exists())
             self.assertEqual(status["jobs"][0]["result_json"], "jobs/job-0001/result.json")
             self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
+            self.assertEqual(status["runtime"]["profile"], "local-8gb")
+            self.assertEqual(status["runtime"]["model"], "qwen-test:1b")
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -149,6 +152,8 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn(status["run_id"], listing)
             self.assertIn("# Farm Overview", overview)
             self.assertIn(f"# Farm Run {status['run_id']}", one_run)
+            self.assertIn("## Runtime", one_run)
+            self.assertIn("Profile: `local-8gb`", one_run)
 
     def test_list_finds_runs_written_to_custom_output_folder(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -250,6 +255,95 @@ class FarmRunTests(unittest.TestCase):
             self.assertTrue(result["chunking"]["enabled"])
             self.assertEqual(result["chunking"]["coverage"], "full")
             self.assertEqual(result["result"]["title"], "long.txt")
+
+    def test_summarize_uses_resolved_chunk_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "medium.txt").write_text("x" * 1200, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_chars=500,
+                reduce_chars=700,
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
+
+            self.assertTrue(status["jobs"][0]["chunking"]["enabled"])
+            self.assertEqual(status["jobs"][0]["chunking"]["chunk_count"], 3)
+            self.assertEqual(status["runtime"]["summarize"]["chunk_chars"], 500)
+            self.assertEqual(resolved["summarize"]["chunk_chars"], 500)
+
+    def test_invalid_config_fails_before_run_folder_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            (root / ".qwen-farm.json").write_text('{"unknown": true}', encoding="utf-8")
+            output = root / "results"
+
+            with self.assertRaisesRegex(ValueError, "Unknown config field"):
+                qwen_farm.run_farm(
+                    root=root,
+                    input_folder=root / "input",
+                    output_dir=output,
+                    mode="summarize",
+                    instructions=None,
+                    agent_id="default",
+                    default_model="qwen-test:1b",
+                    ollama_base_url="http://127.0.0.1:11434",
+                    model_processor=fake_processor,
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_config_model_overrides_agent_model(self) -> None:
+        seen_models: list[str] = []
+
+        def recording_processor(**kwargs: object) -> FarmModelResult:
+            agent = kwargs["agent"]
+            assert isinstance(agent, dict)
+            seen_models.append(str(agent["model"]))
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "agents" / "custom.json").write_text(
+                json.dumps({"model": "agent-model:1b"}),
+                encoding="utf-8",
+            )
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            (root / ".qwen-farm.json").write_text(json.dumps({"model": "config-model:1b"}), encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="custom",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=recording_processor,
+            )
+
+            self.assertEqual(seen_models, ["config-model:1b"])
+            self.assertEqual(status["model"], "config-model:1b")
+            self.assertEqual(status["runtime"]["model"], "config-model:1b")
 
     def test_chunk_warnings_mark_run_complete_with_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

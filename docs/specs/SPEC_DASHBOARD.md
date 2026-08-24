@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 3 |
+| Implemented | 4 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -49,6 +49,7 @@ None.
 | 0000 | Implemented | Add | [0000-add-minimal-pr-gate.md](changes/0000-add-minimal-pr-gate.md) | Adds the first lightweight GitHub Actions PR gate for compile and unit test checks. |
 | 0001 | Implemented | Add | [0001-add-worker-farm-mvp.md](changes/0001-add-worker-farm-mvp.md) | Adds the first filesystem-backed worker-farm MVP. |
 | 0002 | Implemented | Add | [0002-add-summarize-chunking.md](changes/0002-add-summarize-chunking.md) | Adds chunked map/reduce summarization for oversized summarize inputs. |
+| 0003 | Implemented | Add | [0003-add-farm-runtime-profiles.md](changes/0003-add-farm-runtime-profiles.md) | Adds explicit runtime profiles, config resolution, and resolved config artifacts for different local machine capacities. |
 
 ## Stale Drafts To Revisit
 

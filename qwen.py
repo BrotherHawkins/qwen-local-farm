@@ -341,7 +341,18 @@ def handle_farm(args: argparse.Namespace) -> None:
     from src import qwen_farm
 
     if args.farm_command == "run":
-        agent = qwen_farm.load_agent(ROOT, args.agent, MODEL)
+        agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
+            root=ROOT,
+            agent_id=args.agent,
+            default_model=MODEL,
+            config_path=Path(args.config) if args.config else None,
+            profile=args.profile,
+            model=args.model,
+            chunk_chars=args.chunk_chars,
+            reduce_chars=args.reduce_chars,
+            parallel_jobs=args.parallel_jobs,
+            parallel_chunks=args.parallel_chunks,
+        )
         ensure_model(str(agent["model"]))
         status = qwen_farm.run_farm(
             root=ROOT,
@@ -352,6 +363,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             agent_id=args.agent,
             default_model=MODEL,
             ollama_base_url=OLLAMA_BASE_URL,
+            runtime_config=runtime_config,
         )
         print(f"Farm run complete: {status['run_id']}")
         print(f"Status: {status['status']}")
@@ -389,6 +401,13 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--mode", choices=["summarize", "prompt"], default="summarize")
     farm_run.add_argument("--instructions")
     farm_run.add_argument("--agent", default="default")
+    farm_run.add_argument("--config")
+    farm_run.add_argument("--profile")
+    farm_run.add_argument("--model")
+    farm_run.add_argument("--chunk-chars", type=int)
+    farm_run.add_argument("--reduce-chars", type=int)
+    farm_run.add_argument("--parallel-jobs", type=int)
+    farm_run.add_argument("--parallel-chunks", type=int)
 
     farm_subparsers.add_parser("list")
 

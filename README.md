@@ -61,6 +61,34 @@ python qwen.py farm run notes --output results --mode summarize
 
 Summarize mode automatically chunks oversized text files and reduces the chunk summaries into one file-level result. Chunk inputs and chunk summaries are written under each job folder so a caller can inspect the intermediate work.
 
+Farm runs use a runtime profile so chunk sizes and capacity assumptions are explicit. If no profile is configured, the farm uses `local-8gb`, which preserves the original 8GB GPU dogfood default.
+
+Use a named profile or override specific values:
+
+```bash
+python qwen.py farm run notes --mode summarize --profile local-12gb
+python qwen.py farm run notes --mode summarize --profile local-24gb --chunk-chars 20000 --parallel-jobs 2
+```
+
+Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
+
+```json
+{
+  "profile": "local-12gb",
+  "model": "qwen3.5:4b",
+  "summarize": {
+    "chunk_chars": 12000,
+    "reduce_chars": 12000
+  },
+  "concurrency": {
+    "jobs": 1,
+    "chunks": 1
+  }
+}
+```
+
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings.
+
 Apply custom instructions to every readable text file:
 
 ```bash
@@ -86,6 +114,7 @@ Each run writes:
 
 ```text
 farm-status.json
+farm-config.resolved.json
 FARM_STATUS.md
 jobs/job-0001/input.json
 jobs/job-0001/result.md

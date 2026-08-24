@@ -199,9 +199,10 @@ def process_file_with_model(
     instructions: str | None,
     timeout: int,
     agent_system_prompt: str | None = None,
+    summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
 ) -> FarmModelResult:
     if mode == "summarize":
-        summary_content, warnings = prepare_summary_content(content)
+        summary_content, warnings = prepare_summary_content(content, max_chars=summary_max_input_chars)
         raw = client.chat(
             summarize_messages(file_path, summary_content, instructions),
             response_format="json",

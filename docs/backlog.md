@@ -15,12 +15,10 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0015, BL-0035 | Markdown heading ancestry plus optional chunk overlap | Improves summarize quality on long Markdown/article inputs before adding new modes. |
-| 2 | BL-0038 | In-progress chunk and reduce status visibility | Makes long dogfood runs easier for a primary AI or human to inspect while they are still running. |
-| 3 | BL-0087 | Retry failed files from a previous run | Builds directly on configurable failure policy and reduces wasted reruns after partial failures. |
-| 4 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
-| 5 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
-| 6 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 1 | BL-0087 | Retry failed files from a previous run | Builds directly on configurable failure policy and reduces wasted reruns after partial failures. |
+| 2 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
+| 3 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
+| 4 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
 
 ## Spec-Deferred Items
 
@@ -57,16 +55,16 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0029 | Open | 0004, 0015 | CLI helpers for starting Ollama with recommended concurrency env vars | Keep separate from scheduler behavior; 0015 does not start services or set environment variables. |
 | BL-0030 | Open | 0004, 0025 | Dynamic scheduler backoff after memory or timeout failures | Related to BL-0025, but scheduler-specific; 0025 keeps dynamic backoff deferred. |
 | BL-0031 | Open | 0004 | Cross-run scheduling and background workers | Coordinate work across multiple submitted runs. |
-| BL-0032 | Open | 0004 | Chunk-level parallelism using `concurrency.chunks` | Run chunks concurrently after file-level concurrency is stable. |
+| BL-0032 | Open | 0004, 0027 | Chunk-level parallelism using `concurrency.chunks` | Run chunks concurrently after file-level concurrency and in-progress chunk status are stable. |
 | BL-0033 | Open | 0004 | Multiple Ollama server pools | Advanced manual/managed routing across multiple local servers. |
 | BL-0034 | Open | 0004 | Per-agent or per-model routing across loaded models | Resource-aware model selection and scheduling. |
 | BL-0035 | Implemented | 0002, 0026 | Chunk overlap | 0026 added opt-in character and token overlap with explicit chunk metadata. |
 | BL-0036 | Implemented | 0004, 0005 | Farm timing metrics in run/job/chunk artifacts | Implemented by 0005 for runs, jobs, chunk map calls, reduce calls, and timing summary artifacts. |
 | BL-0037 | Implemented | 0004, 0006, 0019 | Dogfood benchmark history for timing regressions | 0019 implemented local timing history records and comparisons so slower runs can be spotted across implementation changes. |
-| BL-0038 | Open | 0005 | In-progress chunk and reduce timing/status visibility | Dogfood showed chunk artifacts appear while jobs run, but `farm-status.json` does not yet surface active chunk/reduce progress until job completion. |
+| BL-0038 | Implemented | 0005, 0027 | In-progress chunk and reduce timing/status visibility | 0027 implemented additive progress metadata for active chunk planning, chunk map, reduce work, and in-flight model calls in normal status artifacts. |
 | BL-0039 | Open | 0006 | Additional tokenizer adapters | Add exact tokenizer support for model families beyond the supported Qwen/Ollama aliases. |
 | BL-0040 | Open | 0006 | Estimated token fallback | Provide clearly labeled estimated token counting when exact local tokenization is unavailable. |
-| BL-0041 | Open | 0005, 0006 | Token-per-second metrics | Capture backend eval/generation token metrics when available. |
+| BL-0041 | Open | 0005, 0006, 0027 | Token-per-second metrics | Capture backend eval/generation token metrics when available. |
 | BL-0042 | Open | 0006 | Progressive reduce quality tuning | Improve multi-batch reduce quality after first-pass token budget safety exists. |
 | BL-0043 | Open | 0006, 0026 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
 | BL-0044 | Implemented | 0007, 0008 | Advanced snippet ranking | 0008 implemented deterministic scoring, diversity, and diagnostics; semantic ranking remains separate in BL-0047. |
@@ -109,8 +107,8 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0081 | Open | 0024 | Explicit raw/source artifact collection | Add opt-in flags for raw model responses, logs, source input files, or chunk artifacts once privacy and size tradeoffs are clear. |
 | BL-0082 | Open | 0024 | Collection filters and templates | Let callers choose artifact types or manifest fields after the first fixed collection shape is stable. |
 | BL-0083 | Open | 0024 | Cross-run collections | Merge collected outputs across multiple farm runs after single-run collection behavior is stable. |
-| BL-0084 | Open | 0025 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy is stable. |
-| BL-0085 | Open | 0025 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
+| BL-0084 | Open | 0025, 0027 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy and in-progress visibility are stable. |
+| BL-0085 | Open | 0025, 0027 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
 | BL-0086 | Open | 0025 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
 | BL-0087 | Open | 0025, 0026 | Retry failed files from a previous run | Add a post-run or run command path for rerunning failed jobs without rebuilding the whole input set. |
 | BL-0088 | Open | 0025, 0026 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
@@ -118,9 +116,11 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0090 | Open | 0026 | Semantic chunking | Use semantic boundaries or retrieval-style grouping only after deterministic heading/overlap chunking is stable. |
 | BL-0091 | Open | 0026 | Code-aware chunking | Split code by symbols, functions, classes, or language-aware units rather than generic paragraphs. |
 | BL-0092 | Open | 0026 | Frontmatter-aware note splitting | Treat note metadata/frontmatter as structured context when chunking Markdown-like notes. |
-| BL-0093 | Open | 0026 | Chunk visualization UI or dashboard | Make chunk boundaries, heading ancestry, overlap, and reduce flow easier to inspect visually if artifacts are not enough. |
+| BL-0093 | Open | 0026, 0027 | Chunk visualization UI or dashboard | Make chunk boundaries, heading ancestry, overlap, live progress, and reduce flow easier to inspect visually if artifacts are not enough. |
 | BL-0094 | Open | 0026 | Automatic overlap tuning | Adjust overlap from quality/timing evidence only after fixed overlap settings prove useful. |
 | BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
+| BL-0096 | Open | 0027 | `farm status --watch` or live polling helpers | Add a user-friendly watch/polling surface after stable in-progress status fields exist. |
+| BL-0097 | Open | 0027 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
 
 ## Notes
 

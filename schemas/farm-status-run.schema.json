@@ -33,7 +33,36 @@
           "type": "string"
         },
         "jobs": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "progress": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "enum": ["queued", "starting", "single", "planning_chunks", "chunk_map", "reduce", "complete", "failed", "skipped"]
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "updated_at": {
+                    "type": "string"
+                  },
+                  "chunks": {
+                    "type": "object"
+                  },
+                  "reduce": {
+                    "type": "object"
+                  },
+                  "current_call": {
+                    "type": ["object", "null"]
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

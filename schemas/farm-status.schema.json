@@ -185,6 +185,55 @@
           },
           "timing": {
             "type": "object"
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "phase": {
+                "type": "string",
+                "enum": ["queued", "starting", "single", "planning_chunks", "chunk_map", "reduce", "complete", "failed", "skipped"]
+              },
+              "message": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string"
+              },
+              "chunks": {
+                "type": "object",
+                "properties": {
+                  "total": {"type": "integer"},
+                  "queued": {"type": "integer"},
+                  "running": {"type": "integer"},
+                  "complete": {"type": "integer"},
+                  "failed": {"type": "integer"},
+                  "current": {"type": ["string", "null"]}
+                }
+              },
+              "reduce": {
+                "type": "object",
+                "properties": {
+                  "generation": {"type": ["integer", "null"]},
+                  "batch_index": {"type": ["integer", "null"]},
+                  "batch_total": {"type": ["integer", "null"]},
+                  "complete": {"type": "integer"}
+                }
+              },
+              "current_call": {
+                "type": ["object", "null"],
+                "properties": {
+                  "kind": {"type": "string"},
+                  "file_path": {"type": "string"},
+                  "chunk_id": {"type": "string"},
+                  "attempt": {"type": "integer"},
+                  "max_attempts": {"type": "integer"},
+                  "started_at": {"type": "string"},
+                  "completed_at": {"type": ["string", "null"]},
+                  "duration_ms": {"type": ["integer", "null"]},
+                  "status": {"type": "string"}
+                }
+              }
+            }
           }
         }
       }

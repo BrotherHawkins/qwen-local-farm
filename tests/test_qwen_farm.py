@@ -114,6 +114,11 @@ class FarmRunTests(unittest.TestCase):
         self.assertIsInstance(timing.get("duration_ms"), int)
         self.assertGreaterEqual(int(timing["duration_ms"]), 0)
 
+    def latest_status(self, root: Path) -> dict[str, object]:
+        status_paths = list((root / ".run" / "farm").glob("farm-run-*/farm-status.json"))
+        self.assertTrue(status_paths)
+        return qwen_farm.read_json(max(status_paths, key=lambda path: path.stat().st_mtime))
+
     def test_run_farm_happy_path_creates_status_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -682,6 +687,140 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("Heading context:", chunk_input)
             self.assertIn("Overlap context from previous source text", chunk_input)
             self.assertIn("Chunk text:", chunk_input)
+
+    def test_running_chunk_status_is_visible_during_chunk_map_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "long.txt").write_text(" ".join(f"word{index}" for index in range(80)), encoding="utf-8")
+            snapshots: list[dict[str, object]] = []
+
+            def observing_processor(**kwargs: object) -> FarmModelResult:
+                if str(kwargs["file_path"]).endswith("#chunk-0001"):
+                    snapshots.append(self.latest_status(root))
+                return fake_processor(**kwargs)
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                model_processor=observing_processor,
+            )
+
+            self.assertEqual(status["status"], "complete")
+            self.assertTrue(snapshots)
+            job = snapshots[0]["jobs"][0]  # type: ignore[index]
+            progress = job["progress"]  # type: ignore[index]
+            current_call = progress["current_call"]
+            self.assertEqual(job["status"], "running")  # type: ignore[index]
+            self.assertTrue(job["chunking"]["enabled"])  # type: ignore[index]
+            self.assertGreater(job["chunking"]["chunk_count"], 1)  # type: ignore[index]
+            self.assertEqual(progress["phase"], "chunk_map")
+            self.assertEqual(progress["chunks"]["current"], "chunk-0001")
+            self.assertEqual(current_call["kind"], "chunk_map")
+            self.assertEqual(current_call["status"], "running")
+            self.assertEqual(job["timing"]["calls"][-1]["status"], "running")  # type: ignore[index]
+
+    def test_running_reduce_status_is_visible_during_reduce_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "long.txt").write_text(" ".join(f"word{index}" for index in range(80)), encoding="utf-8")
+            snapshots: list[dict[str, object]] = []
+
+            def observing_processor(**kwargs: object) -> FarmModelResult:
+                if str(kwargs["file_path"]) == "long.txt":
+                    snapshots.append(self.latest_status(root))
+                return fake_processor(**kwargs)
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                model_processor=observing_processor,
+            )
+
+            self.assertEqual(status["status"], "complete")
+            self.assertTrue(snapshots)
+            job = snapshots[0]["jobs"][0]  # type: ignore[index]
+            progress = job["progress"]  # type: ignore[index]
+            current_call = progress["current_call"]
+            self.assertEqual(progress["phase"], "reduce")
+            self.assertEqual(progress["chunks"]["complete"], progress["chunks"]["total"])
+            self.assertEqual(progress["reduce"]["generation"], 1)
+            self.assertEqual(progress["reduce"]["batch_index"], 1)
+            self.assertEqual(current_call["kind"], "reduce")
+            self.assertEqual(current_call["status"], "running")
+
+    def test_retried_chunk_attempts_are_visible_while_retry_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "long.txt").write_text(" ".join(f"word{index}" for index in range(80)), encoding="utf-8")
+            snapshots: list[dict[str, object]] = []
+            calls: dict[str, int] = {}
+
+            def flaky_processor(**kwargs: object) -> FarmModelResult:
+                file_path = str(kwargs["file_path"])
+                calls[file_path] = calls.get(file_path, 0) + 1
+                if file_path.endswith("#chunk-0002") and calls[file_path] == 1:
+                    raise RuntimeError("transient chunk failure")
+                if file_path.endswith("#chunk-0002") and calls[file_path] == 2:
+                    snapshots.append(self.latest_status(root))
+                return fake_processor(**kwargs)
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                chunk_max_attempts=2,
+                reduce_max_attempts=1,
+                model_processor=flaky_processor,
+            )
+
+            self.assertEqual(status["status"], "complete")
+            self.assertTrue(snapshots)
+            job = snapshots[0]["jobs"][0]  # type: ignore[index]
+            chunk_two_calls = [
+                call
+                for call in job["timing"]["calls"]  # type: ignore[index]
+                if call.get("chunk_id") == "chunk-0002"
+            ]
+            self.assertEqual([call["status"] for call in chunk_two_calls], ["failed", "running"])
+            self.assertEqual([call["attempt"] for call in chunk_two_calls], [1, 2])
 
     def test_token_strategy_can_single_pass_long_character_input(self) -> None:
         observed_inputs: list[tuple[int, int]] = []

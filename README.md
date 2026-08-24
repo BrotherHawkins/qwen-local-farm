@@ -176,7 +176,7 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 
 Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, heading/overlap policy, concurrency settings, and failure policy. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
-For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
+For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown. While chunked summarize jobs are active, status artifacts include `job.progress` with the current phase, chunk counts, reduce batch counts, and current running model call, plus in-flight entries in `timing.calls`.
 
 Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, recommendation reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
 
@@ -279,6 +279,7 @@ Inspect runs:
 python qwen.py farm list
 python qwen.py farm status
 python qwen.py farm status farm-run-2026-08-23-143022-a7f3
+python qwen.py farm status farm-run-2026-08-23-143022-a7f3 --json
 ```
 
 Each run writes:
@@ -296,6 +297,8 @@ jobs/job-0001/raw-response.txt
 ```
 
 If `--output` is omitted, runs are written under `.run/farm/`. If `--output` is provided, the farm creates a run folder inside that destination and records it in `.run/farm/runs.json` so `farm list` and `farm status` can still find it.
+
+During a long chunked summarize run, `FARM_STATUS.md` includes an `Active Jobs` section and `farm-status.json` includes active `progress` metadata. Use this to tell whether a job is planning chunks, mapping a specific chunk, reducing chunk summaries, or retrying a failed model call.
 
 ## What Gets Started
 

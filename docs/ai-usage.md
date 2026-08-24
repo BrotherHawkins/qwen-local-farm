@@ -329,6 +329,8 @@ python qwen.py farm status <run-id> --json
 
 Use `farm status --json` when a script or primary AI needs a machine-readable overview of known runs. Use `farm status <run-id> --json` when it needs the full loaded status for one run without parsing Markdown.
 
+For active chunked summarize runs, inspect each running job's `progress` object before deciding a run is stuck. It reports the current phase (`planning_chunks`, `chunk_map`, or `reduce`), chunk totals and completed counts, reduce generation/batch counters, and the current running model call. The same running call appears in `timing.calls` with `status: "running"` until it completes or fails, so a primary AI can distinguish local preprocessing, chunk mapping, reduce work, and retries.
+
 If `--output` is omitted, the farm writes outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm creates a structured run folder inside that destination and records it in `.run/farm/runs.json` so later status commands can find it.
 
 The first implementation processes immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
@@ -424,7 +426,7 @@ python qwen.py farm schema validate .run/synthesis_bundles/<label>.json
 
 Auto-detection covers the current core farm JSON artifacts and post-run package JSON artifacts. Pass `--schema <schema-path-or-id>` when validating a less obvious file or when a workflow wants an explicit contract.
 
-When a run feels slow, inspect `timing-summary.json` first. It summarizes total run duration, job durations, queue wait, aggregate time by call kind, slowest jobs, and slowest model calls. Per-job `result.json` files include the model-call timing records for successful jobs, and failed jobs keep call timing in `farm-status.json`.
+When a run feels slow, inspect `timing-summary.json` first after completion. It summarizes total run duration, job durations, queue wait, aggregate time by call kind, slowest jobs, and slowest model calls. While a run is still active, inspect `farm-status.json` or `farm status <run-id> --json`; active jobs include in-progress chunk/reduce counters and the current model call. Per-job `result.json` files include the model-call timing records for successful jobs, and failed jobs keep call timing in `farm-status.json`.
 
 ## Filesystem State
 

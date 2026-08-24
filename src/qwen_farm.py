@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from copy import deepcopy
 import json
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable
 
 from src.qwen_farm_chunks import (
@@ -66,7 +68,7 @@ from src.qwen_farm_snippets import (
     resolve_snippet_request,
     reselect_snippets,
 )
-from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now, utc_now, write_timing_summary
+from src.qwen_farm_timing import duration_between, finish_timing, format_timestamp, timestamp_now, utc_now, write_timing_summary
 from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
 
 
@@ -74,6 +76,7 @@ SUPPORTED_MODES = {"summarize", "prompt"}
 
 ModelProcessor = Callable[..., FarmModelResult]
 TokenCounterLoader = Callable[..., ExactTokenCounter]
+ProgressCallback = Callable[[dict[str, Any]], None]
 
 
 def run_index_path(root: Path) -> Path:
@@ -265,6 +268,73 @@ def compact_chunking(chunking: dict[str, Any]) -> dict[str, Any]:
     return compact
 
 
+def chunk_progress_counts(
+    *,
+    total: int,
+    complete: int = 0,
+    running: int = 0,
+    failed: int = 0,
+    current: str | None = None,
+) -> dict[str, Any]:
+    queued = max(0, total - complete - running - failed)
+    return {
+        "total": total,
+        "queued": queued,
+        "running": running,
+        "complete": complete,
+        "failed": failed,
+        "current": current,
+    }
+
+
+def reduce_progress_counts(
+    *,
+    generation: int | None = None,
+    batch_index: int | None = None,
+    batch_total: int | None = None,
+    complete: int = 0,
+) -> dict[str, Any]:
+    return {
+        "generation": generation,
+        "batch_index": batch_index,
+        "batch_total": batch_total,
+        "complete": complete,
+    }
+
+
+def progress_snapshot(
+    *,
+    phase: str,
+    message: str,
+    chunks: dict[str, Any] | None = None,
+    reduce: dict[str, Any] | None = None,
+    current_call: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "phase": phase,
+        "message": message,
+        "updated_at": timestamp_now(),
+        "chunks": chunks or chunk_progress_counts(total=0),
+        "reduce": reduce or reduce_progress_counts(),
+        "current_call": current_call,
+    }
+
+
+def terminal_progress(job: dict[str, Any]) -> dict[str, Any]:
+    status = str(job.get("status", ""))
+    phase = "complete" if status in {"complete", "complete_with_warnings"} else status
+    previous = job.get("progress") if isinstance(job.get("progress"), dict) else {}
+    chunks = previous.get("chunks") if isinstance(previous.get("chunks"), dict) else chunk_progress_counts(total=0)
+    reduce = previous.get("reduce") if isinstance(previous.get("reduce"), dict) else reduce_progress_counts()
+    return progress_snapshot(
+        phase=phase,
+        message=f"Job {phase}.",
+        chunks=chunks,
+        reduce=reduce,
+        current_call=None,
+    )
+
+
 def chunk_result_envelope(
     *,
     job: dict[str, Any],
@@ -398,14 +468,17 @@ def timed_model_call(
     reduce_batch_index: int | None = None,
     attempt: int = 1,
     max_attempts: int = 1,
+    progress_callback: ProgressCallback | None = None,
+    progress_context: dict[str, Any] | None = None,
 ) -> FarmModelResult:
     started = utc_now()
     record: dict[str, Any] = {
         "kind": kind,
         "file_path": file_path,
-        "started_at": None,
+        "started_at": format_timestamp(started),
         "completed_at": None,
         "duration_ms": None,
+        "status": "running",
     }
     if chunk_id is not None:
         record["chunk_id"] = chunk_id
@@ -415,6 +488,15 @@ def timed_model_call(
         record["reduce_batch_index"] = reduce_batch_index
     record["attempt"] = attempt
     record["max_attempts"] = max_attempts
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "event": "call_started",
+                "calls": [*call_timings, dict(record)],
+                "current_call": dict(record),
+                **(progress_context or {}),
+            }
+        )
 
     try:
         result = model_processor(
@@ -433,6 +515,15 @@ def timed_model_call(
         record["status"] = "failed"
         record["error"] = str(exc)
         call_timings.append(record)
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "event": "call_finished",
+                    "calls": [dict(call) for call in call_timings],
+                    "current_call": dict(record),
+                    **(progress_context or {}),
+                }
+            )
         raise
 
     record.update(finish_timing(started))
@@ -440,6 +531,15 @@ def timed_model_call(
     if result.warnings:
         record["warnings"] = result.warnings
     call_timings.append(record)
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "event": "call_finished",
+                "calls": [dict(call) for call in call_timings],
+                "current_call": dict(record),
+                **(progress_context or {}),
+            }
+        )
     return result
 
 
@@ -550,6 +650,8 @@ def reduce_summary_payloads(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     reduce_max_attempts: int,
+    progress_callback: ProgressCallback | None = None,
+    chunk_total: int = 0,
 ) -> tuple[FarmModelResult, list[str]]:
     warnings: list[str] = []
     pending = payloads
@@ -583,7 +685,38 @@ def reduce_summary_payloads(
                 model_processor=model_processor,
                 reduce_generation=generation,
                 max_attempts=reduce_max_attempts,
+                progress_callback=progress_callback,
+                progress_context={
+                    "progress": progress_snapshot(
+                        phase="reduce",
+                        message="Reducing chunk summaries.",
+                        chunks=chunk_progress_counts(total=chunk_total, complete=chunk_total),
+                        reduce=reduce_progress_counts(
+                            generation=generation,
+                            batch_index=1,
+                            batch_total=1,
+                            complete=0,
+                        ),
+                    )
+                },
             )
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "progress": progress_snapshot(
+                            phase="reduce",
+                            message="Completed reduce.",
+                            chunks=chunk_progress_counts(total=chunk_total, complete=chunk_total),
+                            reduce=reduce_progress_counts(
+                                generation=generation,
+                                batch_index=1,
+                                batch_total=1,
+                                complete=1,
+                            ),
+                        ),
+                        "calls": [dict(call) for call in call_timings],
+                    }
+                )
             warnings.extend(result.warnings)
             return result, warnings
 
@@ -612,7 +745,38 @@ def reduce_summary_payloads(
                 reduce_generation=generation,
                 reduce_batch_index=batch_index,
                 max_attempts=reduce_max_attempts,
+                progress_callback=progress_callback,
+                progress_context={
+                    "progress": progress_snapshot(
+                        phase="reduce",
+                        message=f"Reducing batch {batch_index} of {len(batches)}.",
+                        chunks=chunk_progress_counts(total=chunk_total, complete=chunk_total),
+                        reduce=reduce_progress_counts(
+                            generation=generation,
+                            batch_index=batch_index,
+                            batch_total=len(batches),
+                            complete=batch_index - 1,
+                        ),
+                    )
+                },
             )
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "progress": progress_snapshot(
+                            phase="reduce",
+                            message=f"Completed reduce batch {batch_index} of {len(batches)}.",
+                            chunks=chunk_progress_counts(total=chunk_total, complete=chunk_total),
+                            reduce=reduce_progress_counts(
+                                generation=generation,
+                                batch_index=batch_index,
+                                batch_total=len(batches),
+                                complete=batch_index,
+                            ),
+                        ),
+                        "calls": [dict(call) for call in call_timings],
+                    }
+                )
             warnings.extend(result.warnings)
             next_pending.append(result.payload)
 
@@ -636,6 +800,7 @@ def run_single_pass_job(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     snippet_request: dict[str, Any],
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     result = timed_model_call(
         call_timings=call_timings,
@@ -650,6 +815,14 @@ def run_single_pass_job(
         summary_max_input_chars=len(content) if chunk_strategy == "token" else chunk_chars,
         model_processor=model_processor,
         snippet_request=snippet_request,
+        progress_callback=progress_callback,
+        progress_context={
+            "progress": progress_snapshot(
+                phase="single",
+                message="Running single-pass model call.",
+                chunks=chunk_progress_counts(total=1, running=1, current="single"),
+            )
+        },
     )
     tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
     fallback_snippet_count = len(result.payload.get("snippets") or [])
@@ -700,12 +873,22 @@ def run_chunked_summary_job(
     call_timings: list[dict[str, Any]],
     runtime_summarize: dict[str, Any],
     failure_policy: dict[str, Any],
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     chunk_max_attempts = int(failure_policy.get("chunk_max_attempts", DEFAULT_MAX_ATTEMPTS))
     reduce_max_attempts = int(failure_policy.get("reduce_max_attempts", DEFAULT_MAX_ATTEMPTS))
     preserve_heading_ancestry = bool(runtime_summarize.get("preserve_heading_ancestry", True))
     chunk_overlap_chars = int(runtime_summarize.get("chunk_overlap_chars", 0))
     chunk_overlap_tokens = int(runtime_summarize.get("chunk_overlap_tokens", 0))
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "progress": progress_snapshot(
+                    phase="planning_chunks",
+                    message="Planning chunks.",
+                )
+            }
+        )
     if chunk_strategy == "token":
         if token_counter is None or chunk_tokens is None:
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
@@ -730,6 +913,27 @@ def run_chunked_summary_job(
     chunk_results_dir = job_dir / "chunk-results"
     chunks_dir.mkdir(parents=True, exist_ok=True)
     chunk_results_dir.mkdir(parents=True, exist_ok=True)
+    planned_chunking = compact_chunking(
+        {
+            "enabled": True,
+            "strategy": strategy_name,
+            "chunk_count": len(chunks),
+            "coverage": "full",
+            "tokenizer": token_counter.tokenizer_id if token_counter is not None else None,
+            "counts_are_estimated": False if token_counter is not None else None,
+        }
+    )
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "chunking": planned_chunking,
+                "progress": progress_snapshot(
+                    phase="chunk_map",
+                    message=f"Planned {len(chunks)} chunks.",
+                    chunks=chunk_progress_counts(total=len(chunks), complete=0, running=0),
+                ),
+            }
+        )
 
     chunk_records: list[dict[str, Any]] = []
     chunk_payloads: list[dict[str, Any]] = []
@@ -757,6 +961,18 @@ def run_chunked_summary_job(
         chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
         chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
         chunk_input = chunk_input_path.read_text(encoding="utf-8")
+        chunk_call_context = {
+            "progress": progress_snapshot(
+                phase="chunk_map",
+                message=f"Summarizing chunk {chunk.index} of {chunk.total}.",
+                chunks=chunk_progress_counts(
+                    total=len(chunks),
+                    complete=len(chunk_records),
+                    running=1,
+                    current=chunk.chunk_id,
+                ),
+            )
+        }
 
         chunk_result = retry_model_call(
             call_timings=call_timings,
@@ -773,6 +989,8 @@ def run_chunked_summary_job(
             snippet_request=chunk_snippet_request,
             chunk_id=chunk.chunk_id,
             max_attempts=chunk_max_attempts,
+            progress_callback=progress_callback,
+            progress_context=chunk_call_context,
         )
         warnings.extend(warning for warning in chunk_result.warnings if not warning.startswith("snippet_"))
         chunk_verified_snippets = chunk_result.payload.get("snippets") or []
@@ -832,6 +1050,22 @@ def run_chunked_summary_job(
                 "warnings": chunk_result.warnings,
             }
         )
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "chunking": planned_chunking,
+                    "progress": progress_snapshot(
+                        phase="chunk_map",
+                        message=f"Completed chunk {chunk.index} of {chunk.total}.",
+                        chunks=chunk_progress_counts(
+                            total=len(chunks),
+                            complete=len(chunk_records),
+                            running=0,
+                        ),
+                    ),
+                    "calls": [dict(call) for call in call_timings],
+                }
+            )
 
     reduce_result, reduce_warnings = reduce_summary_payloads(
         source_path=job["input_path"],
@@ -847,6 +1081,8 @@ def run_chunked_summary_job(
         model_processor=model_processor,
         call_timings=call_timings,
         reduce_max_attempts=reduce_max_attempts,
+        progress_callback=progress_callback,
+        chunk_total=len(chunks),
     )
     warnings.extend(reduce_warnings)
     final_snippets: list[dict[str, Any]] = []
@@ -931,6 +1167,7 @@ def run_file_job(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     token_counter: ExactTokenCounter | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     summarize = runtime_config["summarize"]
     chunk_strategy = str(summarize.get("chunk_strategy", "character"))
@@ -966,6 +1203,7 @@ def run_file_job(
             call_timings=call_timings,
             runtime_summarize=summarize,
             failure_policy=runtime_config["failure_policy"],
+            progress_callback=progress_callback,
         )
     snippet_request = resolve_snippet_request(
         summarize,
@@ -988,6 +1226,7 @@ def run_file_job(
         model_processor=model_processor,
         call_timings=call_timings,
         snippet_request=snippet_request,
+        progress_callback=progress_callback,
     )
 
 
@@ -1016,6 +1255,7 @@ def execute_job(
     max_attempts: int,
     model_processor: ModelProcessor,
     token_counter: ExactTokenCounter | None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     last_error: str | None = None
     call_timings: list[dict[str, Any]] = []
@@ -1036,6 +1276,7 @@ def execute_job(
                 model_processor=model_processor,
                 call_timings=call_timings,
                 token_counter=token_counter,
+                progress_callback=progress_callback,
             )
 
             envelope = write_result_files(
@@ -1088,6 +1329,7 @@ def apply_job_update(job: dict[str, Any], update: dict[str, Any]) -> None:
     for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "snippets", "error"]:
         job[key] = update[key]
     job.setdefault("timing", {})["calls"] = update.get("timing", {}).get("calls", [])
+    job["progress"] = terminal_progress(job)
 
 
 def run_scheduled_jobs(
@@ -1111,6 +1353,25 @@ def run_scheduled_jobs(
     max_workers = max(1, int(runtime_config["concurrency"]["jobs"]))
     queued = list(zip(jobs, items))
     in_flight: dict[Future[dict[str, Any]], dict[str, Any]] = {}
+    status_lock = Lock()
+
+    def make_progress_callback(job: dict[str, Any]) -> ProgressCallback:
+        def progress_callback(update: dict[str, Any]) -> None:
+            with status_lock:
+                if "calls" in update:
+                    job.setdefault("timing", {})["calls"] = deepcopy(update["calls"])
+                if "chunking" in update:
+                    job["chunking"] = deepcopy(update["chunking"])
+                progress = deepcopy(update["progress"]) if isinstance(update.get("progress"), dict) else {}
+                if progress:
+                    current_call = update.get("current_call")
+                    if current_call is not None:
+                        progress["current_call"] = deepcopy(current_call)
+                    job["progress"] = progress
+                status["counts"] = count_jobs(jobs, skipped=skipped_count)
+                write_status(run_dir, status)
+
+        return progress_callback
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         while queued or in_flight:
@@ -1121,8 +1382,13 @@ def run_scheduled_jobs(
                 timing["started_at"] = started_at
                 timing["queue_wait_ms"] = duration_between(timing.get("queued_at"), started_at)
                 job["status"] = "running"
-                status["counts"] = count_jobs(jobs, skipped=skipped_count)
-                write_status(run_dir, status)
+                job["progress"] = progress_snapshot(
+                    phase="starting",
+                    message="Starting job.",
+                )
+                with status_lock:
+                    status["counts"] = count_jobs(jobs, skipped=skipped_count)
+                    write_status(run_dir, status)
                 future = executor.submit(
                     execute_job,
                     mode=mode,
@@ -1138,19 +1404,21 @@ def run_scheduled_jobs(
                     max_attempts=max_attempts,
                     model_processor=model_processor,
                     token_counter=token_counter,
+                    progress_callback=make_progress_callback(job),
                 )
                 in_flight[future] = job
 
             done, _pending = wait(in_flight, return_when=FIRST_COMPLETED)
             for future in done:
                 job = in_flight.pop(future)
-                apply_job_update(job, future.result())
-                completed_at = timestamp_now()
-                timing = job.setdefault("timing", {})
-                timing["completed_at"] = completed_at
-                timing["duration_ms"] = duration_between(timing.get("started_at"), completed_at)
-                status["counts"] = count_jobs(jobs, skipped=skipped_count)
-                write_status(run_dir, status)
+                with status_lock:
+                    apply_job_update(job, future.result())
+                    completed_at = timestamp_now()
+                    timing = job.setdefault("timing", {})
+                    timing["completed_at"] = completed_at
+                    timing["duration_ms"] = duration_between(timing.get("started_at"), completed_at)
+                    status["counts"] = count_jobs(jobs, skipped=skipped_count)
+                    write_status(run_dir, status)
 
 
 def resolve_run_agent_and_config(

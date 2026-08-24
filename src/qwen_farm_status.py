@@ -74,6 +74,7 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
     summarize = runtime.get("summarize") or {}
     concurrency = runtime.get("concurrency") or {}
+    failure_policy = runtime.get("failure_policy") or {}
     lines = [
         f"# Farm Run {status.get('run_id', '')}",
         "",
@@ -106,6 +107,10 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Snippet max chars: `{summarize.get('snippet_max_chars', '')}`",
         f"Parallel jobs: `{concurrency.get('jobs', '')}`",
         f"Parallel chunks: `{concurrency.get('chunks', '')}`",
+        f"Max attempts: `{failure_policy.get('max_attempts', '')}`",
+        f"Per-file timeout seconds: `{failure_policy.get('per_file_timeout_seconds', '')}`",
+        f"Chunk max attempts: `{failure_policy.get('chunk_max_attempts', '')}`",
+        f"Reduce max attempts: `{failure_policy.get('reduce_max_attempts', '')}`",
         "",
         "## Counts",
         "",

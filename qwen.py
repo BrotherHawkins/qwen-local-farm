@@ -556,6 +556,10 @@ def handle_farm(args: argparse.Namespace) -> None:
             snippet_max_chars=args.snippet_max_chars,
             parallel_jobs=args.parallel_jobs,
             parallel_chunks=args.parallel_chunks,
+            max_attempts=args.max_attempts,
+            per_file_timeout_seconds=args.per_file_timeout_seconds,
+            chunk_max_attempts=args.chunk_max_attempts,
+            reduce_max_attempts=args.reduce_max_attempts,
         )
         ensure_model(str(agent["model"]))
         status = qwen_farm.run_farm(
@@ -673,6 +677,10 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--snippet-max-chars", type=int)
     farm_run.add_argument("--parallel-jobs", type=int)
     farm_run.add_argument("--parallel-chunks", type=int)
+    farm_run.add_argument("--max-attempts", type=int)
+    farm_run.add_argument("--per-file-timeout-seconds", type=int)
+    farm_run.add_argument("--chunk-max-attempts", type=int)
+    farm_run.add_argument("--reduce-max-attempts", type=int)
 
     farm_tokenizer = farm_subparsers.add_parser("tokenizer")
     farm_tokenizer_subparsers = farm_tokenizer.add_subparsers(dest="tokenizer_command", required=True)

@@ -131,6 +131,15 @@ Resource mode does not silently change the selected model or switch agents. Pick
 
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
 
+Failure policy can be configured per run when you want stricter or more patient behavior:
+
+```bash
+python qwen.py farm run notes --mode summarize --max-attempts 1 --chunk-max-attempts 1 --reduce-max-attempts 2
+python qwen.py farm run notes --mode summarize --per-file-timeout-seconds 900
+```
+
+`--max-attempts` retries the whole file job. `--chunk-max-attempts` and `--reduce-max-attempts` retry individual chunk-map and reduce model calls during chunked summarize jobs. `--per-file-timeout-seconds` preserves the public timeout knob and currently applies to each local model call.
+
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 
 ```json
@@ -152,11 +161,17 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
   "concurrency": {
     "jobs": 1,
     "chunks": 1
+  },
+  "failure_policy": {
+    "max_attempts": 2,
+    "per_file_timeout_seconds": 600,
+    "chunk_max_attempts": 2,
+    "reduce_max_attempts": 2
   }
 }
 ```
 
-Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, concurrency settings, and failure policy. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 

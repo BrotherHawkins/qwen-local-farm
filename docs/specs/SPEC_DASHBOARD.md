@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 25 |
+| Implemented | 26 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -75,6 +75,7 @@ None.
 | 0022 | Implemented | Add | [0022-add-resource-aware-runtime-modes.md](changes/0022-add-resource-aware-runtime-modes.md) | Adds first-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes to config, CLI, resolved artifacts, and recommendation apply. |
 | 0023 | Implemented | Add | [0023-add-spec-dashboard-consistency-checks.md](changes/0023-add-spec-dashboard-consistency-checks.md) | Adds a model-free CI guard for spec dashboard counts, change-spec rows, status/type values, and plan links. |
 | 0024 | Implemented | Add | [0024-add-farm-collect.md](changes/0024-add-farm-collect.md) | Adds a post-run `farm collect` helper for flattening and indexing existing job result artifacts. |
+| 0025 | Implemented | Add | [0025-add-configurable-farm-failure-policy.md](changes/0025-add-configurable-farm-failure-policy.md) | Adds caller-configurable farm retry/timeout policy and independent chunk/reduce retries. |
 
 ## Stale Drafts To Revisit
 

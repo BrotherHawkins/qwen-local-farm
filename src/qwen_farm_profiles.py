@@ -21,7 +21,7 @@ DEFAULT_PROFILE = "local-8gb"
 RESOURCE_MODES = {"auto", "gpu", "hybrid", "cpu"}
 EFFECTIVE_RESOURCE_MODES = {"gpu", "hybrid", "cpu"}
 
-TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency"}
+TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency", "failure_policy"}
 CHUNK_STRATEGIES = {"character", "token"}
 SUMMARIZE_FIELDS = {
     "chunk_strategy",
@@ -37,10 +37,20 @@ SUMMARIZE_FIELDS = {
     "snippet_max_chars",
 }
 CONCURRENCY_FIELDS = {"jobs", "chunks"}
+FAILURE_POLICY_FIELDS = {
+    "max_attempts",
+    "per_file_timeout_seconds",
+    "chunk_max_attempts",
+    "reduce_max_attempts",
+}
 DEFAULT_CHUNK_STRATEGY = "character"
 DEFAULT_TOKEN_SAFETY_MARGIN = 0.10
 DEFAULT_TOKEN_PROMPT_RESERVE = 1_024
 DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP = 4_096
+DEFAULT_MAX_ATTEMPTS = 2
+DEFAULT_PER_FILE_TIMEOUT_SECONDS = 600
+DEFAULT_CHUNK_MAX_ATTEMPTS = 2
+DEFAULT_REDUCE_MAX_ATTEMPTS = 2
 
 
 @dataclass(frozen=True)
@@ -62,6 +72,19 @@ class RuntimeOverrides:
     snippet_max_chars: int | None = None
     parallel_jobs: int | None = None
     parallel_chunks: int | None = None
+    max_attempts: int | None = None
+    per_file_timeout_seconds: int | None = None
+    chunk_max_attempts: int | None = None
+    reduce_max_attempts: int | None = None
+
+
+def default_failure_policy() -> dict[str, int]:
+    return {
+        "max_attempts": DEFAULT_MAX_ATTEMPTS,
+        "per_file_timeout_seconds": DEFAULT_PER_FILE_TIMEOUT_SECONDS,
+        "chunk_max_attempts": DEFAULT_CHUNK_MAX_ATTEMPTS,
+        "reduce_max_attempts": DEFAULT_REDUCE_MAX_ATTEMPTS,
+    }
 
 
 def default_snippet_fields() -> dict[str, Any]:
@@ -95,6 +118,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
+            "failure_policy": default_failure_policy(),
         },
         "local-4gb": {
             "profile": "local-4gb",
@@ -112,6 +136,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
+            "failure_policy": default_failure_policy(),
         },
         "local-8gb": {
             "profile": "local-8gb",
@@ -129,6 +154,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
+            "failure_policy": default_failure_policy(),
         },
         "local-12gb": {
             "profile": "local-12gb",
@@ -146,6 +172,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
+            "failure_policy": default_failure_policy(),
         },
         "local-24gb": {
             "profile": "local-24gb",
@@ -163,6 +190,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 2, "chunks": 2},
+            "failure_policy": default_failure_policy(),
         },
         "custom": {
             "profile": "custom",
@@ -180,6 +208,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
+            "failure_policy": default_failure_policy(),
         },
     }
     return deepcopy(profiles[profile])
@@ -364,6 +393,18 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
             normalized["concurrency"]["jobs"] = validate_positive_int(concurrency["jobs"], "concurrency.jobs")
         if "chunks" in concurrency:
             normalized["concurrency"]["chunks"] = validate_positive_int(concurrency["chunks"], "concurrency.chunks")
+    if "failure_policy" in data:
+        failure_policy = data["failure_policy"]
+        if not isinstance(failure_policy, dict):
+            raise ValueError("failure_policy must be an object.")
+        reject_unknown_fields(failure_policy, FAILURE_POLICY_FIELDS, "failure_policy")
+        normalized["failure_policy"] = {}
+        for field in sorted(FAILURE_POLICY_FIELDS):
+            if field in failure_policy:
+                normalized["failure_policy"][field] = validate_positive_int(
+                    failure_policy[field],
+                    f"failure_policy.{field}",
+                )
     return normalized
 
 
@@ -388,6 +429,8 @@ def merge_config(target: dict[str, Any], update: dict[str, Any]) -> None:
         target["summarize"].update(update["summarize"])
     if "concurrency" in update:
         target["concurrency"].update(update["concurrency"])
+    if "failure_policy" in update:
+        target["failure_policy"].update(update["failure_policy"])
 
 
 def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
@@ -440,6 +483,27 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
         concurrency["chunks"] = validate_positive_int(overrides.parallel_chunks, "--parallel-chunks")
     if concurrency:
         data["concurrency"] = concurrency
+
+    failure_policy: dict[str, Any] = {}
+    if overrides.max_attempts is not None:
+        failure_policy["max_attempts"] = validate_positive_int(overrides.max_attempts, "--max-attempts")
+    if overrides.per_file_timeout_seconds is not None:
+        failure_policy["per_file_timeout_seconds"] = validate_positive_int(
+            overrides.per_file_timeout_seconds,
+            "--per-file-timeout-seconds",
+        )
+    if overrides.chunk_max_attempts is not None:
+        failure_policy["chunk_max_attempts"] = validate_positive_int(
+            overrides.chunk_max_attempts,
+            "--chunk-max-attempts",
+        )
+    if overrides.reduce_max_attempts is not None:
+        failure_policy["reduce_max_attempts"] = validate_positive_int(
+            overrides.reduce_max_attempts,
+            "--reduce-max-attempts",
+        )
+    if failure_policy:
+        data["failure_policy"] = failure_policy
     return data
 
 
@@ -534,6 +598,12 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
         raise ValueError("resolved concurrency config must be an object.")
     validate_positive_int(concurrency.get("jobs"), "concurrency.jobs")
     validate_positive_int(concurrency.get("chunks"), "concurrency.chunks")
+    failure_policy = config.get("failure_policy")
+    if not isinstance(failure_policy, dict):
+        raise ValueError("resolved failure_policy config must be an object.")
+    reject_unknown_fields(failure_policy, FAILURE_POLICY_FIELDS, "failure_policy")
+    for field in sorted(FAILURE_POLICY_FIELDS):
+        validate_positive_int(failure_policy.get(field), f"failure_policy.{field}")
 
 
 def model_is_explicit(runtime_config: dict[str, Any]) -> bool:
@@ -692,5 +762,11 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
         "concurrency": {
             "jobs": runtime_config["concurrency"]["jobs"],
             "chunks": runtime_config["concurrency"]["chunks"],
+        },
+        "failure_policy": {
+            "max_attempts": runtime_config["failure_policy"]["max_attempts"],
+            "per_file_timeout_seconds": runtime_config["failure_policy"]["per_file_timeout_seconds"],
+            "chunk_max_attempts": runtime_config["failure_policy"]["chunk_max_attempts"],
+            "reduce_max_attempts": runtime_config["failure_policy"]["reduce_max_attempts"],
         },
     }

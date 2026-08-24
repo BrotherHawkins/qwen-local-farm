@@ -22,7 +22,7 @@ Status values:
 | BL-0007 | Implemented | 0001, 0016 | Full schema files for status/result validation | 0016 implemented tracked schemas and model-free validation coverage for key farm JSON artifacts. |
 | BL-0008 | Open | 0001 | Skip-list overrides | Include/exclude controls for farm file discovery. |
 | BL-0009 | Open | 0001 | Caller-provided retry/timeout behavior | Make failure policy configurable per run/request. |
-| BL-0010 | Open | 0001 | `farm collect` | Helper for gathering results after a run. |
+| BL-0010 | Implemented | 0001, 0024 | `farm collect` | 0024 implemented a general post-run helper for flattening and indexing existing job result artifacts. |
 | BL-0011 | Open | 0001 | Queue-only execution | Submit work without processing immediately. |
 | BL-0012 | Open | 0001 | Drop-folder scanning | Manual `farm scan` first, watcher later. |
 | BL-0013 | Implemented | 0001 | Chunking | Implemented first for summarize mode by 0002; broader chunking remains tracked separately. |
@@ -92,6 +92,10 @@ Status values:
 | BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
 | BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
 | BL-0079 | Open | 0023 | Cross-file documentation link checking | Check broader docs links outside the spec/plans/dashboard surface. |
+| BL-0080 | Open | 0024 | Farm collection archive export | Add zip or archive output after folder-based collections prove useful. |
+| BL-0081 | Open | 0024 | Explicit raw/source artifact collection | Add opt-in flags for raw model responses, logs, source input files, or chunk artifacts once privacy and size tradeoffs are clear. |
+| BL-0082 | Open | 0024 | Collection filters and templates | Let callers choose artifact types or manifest fields after the first fixed collection shape is stable. |
+| BL-0083 | Open | 0024 | Cross-run collections | Merge collected outputs across multiple farm runs after single-run collection behavior is stable. |
 
 ## Notes
 

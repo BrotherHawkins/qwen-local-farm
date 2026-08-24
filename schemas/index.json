@@ -62,6 +62,12 @@
       "status": "current"
     },
     {
+      "id": "https://qwen-local-farm.local/schemas/farm-collection.schema.json",
+      "path": "schemas/farm-collection.schema.json",
+      "surface": "python qwen.py farm collect",
+      "status": "current"
+    },
+    {
       "id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
       "path": "schemas/farm-dogfood-record.schema.json",
       "surface": "python qwen.py farm dogfood record",

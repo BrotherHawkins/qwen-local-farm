@@ -16,6 +16,7 @@ The schemas are JSON Schema-compatible and intentionally permissive around optio
 | `farm-recommendation.schema.json` | Benchmark-based profile/concurrency/chunking recommendation JSON from `python qwen.py farm recommend`. |
 | `farm-config-apply.schema.json` | Preview/write report from `python qwen.py farm recommend apply`. |
 | `farm-timing-summary.schema.json` | Persisted timing summary files named `timing-summary.json`. |
+| `farm-collection.schema.json` | Farm collection manifest JSON from `python qwen.py farm collect`. |
 | `farm-snippet-pack.schema.json` | Snippet pack JSON from `python qwen.py farm snippets pack`. |
 | `farm-synthesis-bundle.schema.json` | Synthesis bundle JSON from `python qwen.py farm synthesis bundle`, including budget metadata. |
 | `farm-dogfood-record.schema.json` | Dogfood quality record JSON from `python qwen.py farm dogfood record`. |

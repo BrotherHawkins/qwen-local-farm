@@ -231,6 +231,29 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.schema, "schemas/farm-doctor.schema.json")
         self.assertTrue(args.json)
 
+    def test_parse_args_accepts_farm_collect(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "collect",
+                "farm-run-test",
+                "--output",
+                ".run/collections",
+                "--label",
+                "review",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "collect")
+        self.assertEqual(args.run_dir, "farm-run-test")
+        self.assertEqual(args.output, ".run/collections")
+        self.assertEqual(args.label, "review")
+
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
             args = qwen.parse_args()

@@ -216,7 +216,9 @@ Synthesis bundles read the same existing job `result.json` files, make no model 
 
 Every synthesis bundle records character count and estimated tokens in its JSON `budget` object and Markdown header. Use `--max-chars` when a downstream prompt has a hard character budget. Use `--max-estimated-tokens` for rough frontier-model planning; it uses a deterministic character/token estimate, not an exact downstream tokenizer. When capped, the bundle drops optional whole snippets, open questions, bullets, and summary-only items in a stable order rather than truncating text mid-snippet.
 
-For dogfood comparisons, use `python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
+For dogfood quality comparisons, use `python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
+
+For dogfood timing comparisons, use `python qwen.py farm dogfood timing record <run-ref> --label <label>` after comparable runs, then `python qwen.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>`. Timing records live under `.run/dogfood_timing/` by default and highlight total, per-job, queue, chunk, call, and call-kind deltas plus comparability notes. Use `docs/dogfood-timing.md` when deciding why a run got faster or slower.
 
 Example `.qwen-farm.json`:
 

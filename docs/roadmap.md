@@ -8,6 +8,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 
 - [AI usage and delegation](ai-usage.md): how GPT, Claude, Codex, scripts, and other callers should decide when to use the farm.
 - [Chunking roadmap](chunking-roadmap.md): how the farm should eventually handle files or folders that exceed a model's context window.
+- [Dogfood timing history](dogfood-timing.md): how to record and compare local timing regressions across farm runs.
 - [Backlog](backlog.md): durable follow-up items deferred from specs and roadmap discussions.
 
 ## Implemented Baseline
@@ -27,6 +28,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - Opt-in verified source snippets for summarize results, including deterministic ranking and compact diagnostics.
 - Post-run cross-file snippet packs for downstream synthesis.
 - Post-run synthesis bundles that combine compact summaries with verified snippets.
+- Local dogfood timing records and comparisons for spotting performance regressions.
 
 ## North Star
 

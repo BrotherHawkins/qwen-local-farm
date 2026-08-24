@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -159,3 +160,47 @@ class FarmRunTests(unittest.TestCase):
 
             self.assertIn(status["run_id"], qwen_farm.list_runs_text(root))
             self.assertIn(status["run_id"], qwen_farm.status_text(root, status["run_id"]))
+
+    def test_list_runs_orders_by_updated_at_across_output_folders(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+
+            older = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+            newer = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "custom-results",
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            older_path = Path(older["output"]["path"]) / "farm-status.json"
+            newer_path = Path(newer["output"]["path"]) / "farm-status.json"
+            older_data = qwen_farm.read_json(older_path)
+            newer_data = qwen_farm.read_json(newer_path)
+            older_data["updated_at"] = "2026-08-23T10:00:00Z"
+            newer_data["updated_at"] = "2026-08-23T11:00:00Z"
+            older_path.write_text(json.dumps(older_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            newer_path.write_text(json.dumps(newer_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+            listing = qwen_farm.list_runs_text(root).splitlines()
+
+            self.assertTrue(listing[1].startswith(newer["run_id"]))
+            self.assertTrue(listing[2].startswith(older["run_id"]))

@@ -57,3 +57,10 @@ class DiscoveryTests(unittest.TestCase):
         run_id = qwen_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22))
 
         self.assertTrue(re.match(r"^farm-run-2026-08-23-143022-[0-9a-f]{4}$", run_id))
+
+    def test_text_detection_accepts_sample_ending_inside_utf8_character(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "box.txt"
+            path.write_bytes(("a" * 8191).encode("utf-8") + "│ text".encode("utf-8"))
+
+            self.assertTrue(qwen_farm_files.is_probably_text_file(path))

@@ -325,7 +325,7 @@ def load_runs(root: Path) -> list[dict[str, Any]]:
             runs.append(load_run_status(run_dir))
         except (OSError, json.JSONDecodeError):
             continue
-    return runs
+    return sorted(runs, key=lambda run: str(run.get("updated_at", "")), reverse=True)
 
 
 def find_run_dir(root: Path, run_id: str) -> Path:

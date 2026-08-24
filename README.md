@@ -70,6 +70,8 @@ python qwen.py farm run notes --mode summarize --profile local-12gb
 python qwen.py farm run notes --mode summarize --profile local-24gb --chunk-chars 20000 --parallel-jobs 2
 ```
 
+`--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
+
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 
 ```json

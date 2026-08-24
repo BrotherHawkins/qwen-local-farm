@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 4 |
+| Implemented | 5 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -50,6 +50,7 @@ None.
 | 0001 | Implemented | Add | [0001-add-worker-farm-mvp.md](changes/0001-add-worker-farm-mvp.md) | Adds the first filesystem-backed worker-farm MVP. |
 | 0002 | Implemented | Add | [0002-add-summarize-chunking.md](changes/0002-add-summarize-chunking.md) | Adds chunked map/reduce summarization for oversized summarize inputs. |
 | 0003 | Implemented | Add | [0003-add-farm-runtime-profiles.md](changes/0003-add-farm-runtime-profiles.md) | Adds explicit runtime profiles, config resolution, and resolved config artifacts for different local machine capacities. |
+| 0004 | Implemented | Add | [0004-add-farm-scheduler-concurrency.md](changes/0004-add-farm-scheduler-concurrency.md) | Adds bounded file-job concurrency using resolved runtime profile settings. |
 
 ## Stale Drafts To Revisit
 

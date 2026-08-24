@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -257,6 +258,15 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(result["result"]["title"], "long.txt")
 
     def test_summarize_uses_resolved_chunk_budget(self) -> None:
+        observed_inputs: list[tuple[int, int]] = []
+
+        def budget_asserting_processor(**kwargs: object) -> FarmModelResult:
+            content = str(kwargs["content"])
+            summary_max_input_chars = int(kwargs["summary_max_input_chars"])
+            observed_inputs.append((len(content), summary_max_input_chars))
+            self.assertLessEqual(len(content), summary_max_input_chars)
+            return fake_processor(**kwargs)
+
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             (root / "agents").mkdir()
@@ -274,7 +284,7 @@ class FarmRunTests(unittest.TestCase):
                 ollama_base_url="http://127.0.0.1:11434",
                 chunk_chars=500,
                 reduce_chars=700,
-                model_processor=fake_processor,
+                model_processor=budget_asserting_processor,
             )
 
             run_dir = Path(status["output"]["path"])
@@ -284,6 +294,7 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["jobs"][0]["chunking"]["chunk_count"], 3)
             self.assertEqual(status["runtime"]["summarize"]["chunk_chars"], 500)
             self.assertEqual(resolved["summarize"]["chunk_chars"], 500)
+            self.assertTrue(observed_inputs)
 
     def test_invalid_config_fails_before_run_folder_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -410,3 +421,106 @@ class FarmRunTests(unittest.TestCase):
         self.assertGreater(len(batches), 1)
         for batch in batches:
             self.assertLessEqual(len(qwen_farm.render_reduce_input("source.txt", batch)), 700)
+
+    def test_parallel_jobs_limit_and_status_running_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            for name in ["a.md", "b.md", "c.md"]:
+                (root / "input" / name).write_text(name, encoding="utf-8")
+            output = root / "results"
+
+            lock = threading.Lock()
+            release = threading.Event()
+            two_running = threading.Event()
+            active = 0
+            max_active = 0
+            run_status: dict[str, object] = {}
+            run_error: list[BaseException] = []
+
+            def blocking_processor(**kwargs: object) -> FarmModelResult:
+                nonlocal active, max_active
+                with lock:
+                    active += 1
+                    max_active = max(max_active, active)
+                    if active == 2:
+                        two_running.set()
+                try:
+                    self.assertTrue(release.wait(5), "Timed out waiting to release worker")
+                    return fake_processor(**kwargs)
+                finally:
+                    with lock:
+                        active -= 1
+
+            def run() -> None:
+                try:
+                    run_status.update(
+                        qwen_farm.run_farm(
+                            root=root,
+                            input_folder=root / "input",
+                            output_dir=output,
+                            mode="summarize",
+                            instructions=None,
+                            agent_id="default",
+                            default_model="qwen-test:1b",
+                            ollama_base_url="http://127.0.0.1:11434",
+                            parallel_jobs=2,
+                            model_processor=blocking_processor,
+                        )
+                    )
+                except BaseException as exc:
+                    run_error.append(exc)
+
+            thread = threading.Thread(target=run)
+            thread.start()
+            try:
+                self.assertTrue(two_running.wait(5), "Expected two concurrent jobs to start")
+                run_dirs = [path for path in output.iterdir() if path.is_dir()]
+                self.assertEqual(len(run_dirs), 1)
+                status = qwen_farm.read_json(run_dirs[0] / "farm-status.json")
+
+                self.assertEqual(status["counts"]["running"], 2)
+                self.assertEqual(status["counts"]["queued"], 1)
+                self.assertEqual(max_active, 2)
+            finally:
+                release.set()
+                thread.join(5)
+
+            self.assertFalse(thread.is_alive())
+            if run_error:
+                raise run_error[0]
+            self.assertEqual(run_status["status"], "complete")
+            self.assertEqual(max_active, 2)
+
+    def test_parallel_job_failure_does_not_stop_queued_jobs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            (root / "input" / "fail.txt").write_text("fail", encoding="utf-8")
+            (root / "input" / "z.md").write_text("Z", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                parallel_jobs=2,
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+
+            self.assertEqual(status["status"], "partial")
+            self.assertEqual(status["counts"]["complete"], 2)
+            self.assertEqual(status["counts"]["failed"], 1)
+            self.assertEqual([job["job_id"] for job in status["jobs"]], ["job-0001", "job-0002", "job-0003"])
+            self.assertTrue((run_dir / "jobs/job-0001/result.json").exists())
+            self.assertTrue((run_dir / "jobs/job-0002/log.md").exists())
+            self.assertTrue((run_dir / "jobs/job-0003/result.json").exists())

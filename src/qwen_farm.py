@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 import json
 from pathlib import Path
 from typing import Any, Callable
 
-from src.qwen_farm_chunks import CHUNK_STRATEGY, chunk_text, render_chunk_input, render_reduce_input
+from src.qwen_farm_chunks import CHUNK_STRATEGY, TextChunk, chunk_text, render_chunk_input, render_reduce_input
 from src.qwen_farm_files import (
     FARM_SCHEMA_VERSION,
     create_run_dir,
@@ -177,6 +178,12 @@ def single_pass_chunking() -> dict[str, Any]:
         "chunk_count": 1,
         "coverage": "full",
     }
+
+
+def chunk_body_budget(source_path: str, max_input_chars: int) -> int:
+    sample = TextChunk(chunk_id="chunk-9999", index=9999, total=9999, text="")
+    overhead = len(render_chunk_input(source_path, sample))
+    return max(1, max_input_chars - overhead)
 
 
 def compact_chunking(chunking: dict[str, Any]) -> dict[str, Any]:
@@ -410,7 +417,7 @@ def run_chunked_summary_job(
     reduce_chars: int,
     model_processor: ModelProcessor,
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    chunks = chunk_text(content, max_chars=chunk_chars)
+    chunks = chunk_text(content, max_chars=chunk_body_budget(job["input_path"], chunk_chars))
     chunks_dir = job_dir / "chunks"
     chunk_results_dir = job_dir / "chunk-results"
     chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -539,6 +546,133 @@ def run_file_job(
     )
 
 
+def execute_job(
+    *,
+    mode: str,
+    job: dict[str, Any],
+    item: Any,
+    job_dir: Path,
+    run_dir: Path,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    runtime_config: dict[str, Any],
+    max_attempts: int,
+    model_processor: ModelProcessor,
+) -> dict[str, Any]:
+    last_error: str | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            content = item.path.read_text(encoding="utf-8", errors="replace")
+            result, chunking = run_file_job(
+                mode=mode,
+                job=job,
+                job_dir=job_dir,
+                run_dir=run_dir,
+                content=content,
+                instructions=instructions,
+                agent=agent,
+                ollama_base_url=ollama_base_url,
+                timeout=timeout,
+                runtime_config=runtime_config,
+                model_processor=model_processor,
+            )
+
+            envelope = write_result_files(
+                result=result,
+                job_dir=job_dir,
+                job=job,
+                mode=mode,
+                run_dir=run_dir,
+                agent=agent,
+                chunking=chunking,
+            )
+            return {
+                "status": envelope["status"],
+                "result_json": f"jobs/{job['job_id']}/result.json",
+                "result_md": f"jobs/{job['job_id']}/result.md",
+                "raw_response": f"jobs/{job['job_id']}/raw-response.txt",
+                "warnings": result.warnings,
+                "chunking": compact_chunking(chunking),
+                "error": None,
+            }
+        except Exception as exc:
+            last_error = str(exc)
+            if attempt < max_attempts:
+                continue
+            (job_dir / "log.md").write_text(f"# Failure\n\n{last_error}\n", encoding="utf-8")
+            return {
+                "status": "failed",
+                "result_json": None,
+                "result_md": None,
+                "raw_response": None,
+                "warnings": [],
+                "chunking": job.get("chunking", single_pass_chunking()),
+                "error": last_error,
+            }
+
+    raise RuntimeError("Job execution ended without a result.")
+
+
+def apply_job_update(job: dict[str, Any], update: dict[str, Any]) -> None:
+    for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "error"]:
+        job[key] = update[key]
+
+
+def run_scheduled_jobs(
+    *,
+    jobs: list[dict[str, Any]],
+    items: list[Any],
+    jobs_dir: Path,
+    run_dir: Path,
+    status: dict[str, Any],
+    skipped_count: int,
+    mode: str,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    runtime_config: dict[str, Any],
+    max_attempts: int,
+    model_processor: ModelProcessor,
+) -> None:
+    max_workers = max(1, int(runtime_config["concurrency"]["jobs"]))
+    queued = list(zip(jobs, items))
+    in_flight: dict[Future[dict[str, Any]], dict[str, Any]] = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        while queued or in_flight:
+            while queued and len(in_flight) < max_workers:
+                job, item = queued.pop(0)
+                job["status"] = "running"
+                status["counts"] = count_jobs(jobs, skipped=skipped_count)
+                write_status(run_dir, status)
+                future = executor.submit(
+                    execute_job,
+                    mode=mode,
+                    job=job,
+                    item=item,
+                    job_dir=jobs_dir / job["job_id"],
+                    run_dir=run_dir,
+                    instructions=instructions,
+                    agent=agent,
+                    ollama_base_url=ollama_base_url,
+                    timeout=timeout,
+                    runtime_config=runtime_config,
+                    max_attempts=max_attempts,
+                    model_processor=model_processor,
+                )
+                in_flight[future] = job
+
+            done, _pending = wait(in_flight, return_when=FIRST_COMPLETED)
+            for future in done:
+                job = in_flight.pop(future)
+                apply_job_update(job, future.result())
+                status["counts"] = count_jobs(jobs, skipped=skipped_count)
+                write_status(run_dir, status)
+
+
 def resolve_run_agent_and_config(
     *,
     root: Path,
@@ -662,58 +796,22 @@ def run_farm(
     )
     write_status(run_dir, status)
 
-    for job, item in zip(jobs, discovery.files):
-        job_dir = jobs_dir / job["job_id"]
-        job["status"] = "running"
-        status["counts"] = count_jobs(jobs, skipped=len(discovery.skipped))
-        write_status(run_dir, status)
-
-        last_error: str | None = None
-        for attempt in range(1, max_attempts + 1):
-            try:
-                content = item.path.read_text(encoding="utf-8", errors="replace")
-                result, chunking = run_file_job(
-                    mode=mode,
-                    job=job,
-                    job_dir=job_dir,
-                    run_dir=run_dir,
-                    content=content,
-                    instructions=instructions,
-                    agent=agent,
-                    ollama_base_url=ollama_base_url,
-                    timeout=per_file_timeout_seconds,
-                    runtime_config=runtime_config,
-                    model_processor=model_processor,
-                )
-
-                envelope = write_result_files(
-                    result=result,
-                    job_dir=job_dir,
-                    job=job,
-                    mode=mode,
-                    run_dir=run_dir,
-                    agent=agent,
-                    chunking=chunking,
-                )
-
-                job["status"] = envelope["status"]
-                job["result_json"] = f"jobs/{job['job_id']}/result.json"
-                job["result_md"] = f"jobs/{job['job_id']}/result.md"
-                job["raw_response"] = f"jobs/{job['job_id']}/raw-response.txt"
-                job["warnings"] = result.warnings
-                job["chunking"] = compact_chunking(chunking)
-                job["error"] = None
-                break
-            except Exception as exc:
-                last_error = str(exc)
-                if attempt < max_attempts:
-                    continue
-                job["status"] = "failed"
-                job["error"] = last_error
-                (job_dir / "log.md").write_text(f"# Failure\n\n{last_error}\n", encoding="utf-8")
-
-        status["counts"] = count_jobs(jobs, skipped=len(discovery.skipped))
-        write_status(run_dir, status)
+    run_scheduled_jobs(
+        jobs=jobs,
+        items=discovery.files,
+        jobs_dir=jobs_dir,
+        run_dir=run_dir,
+        status=status,
+        skipped_count=len(discovery.skipped),
+        mode=mode,
+        instructions=instructions,
+        agent=agent,
+        ollama_base_url=ollama_base_url,
+        timeout=per_file_timeout_seconds,
+        runtime_config=runtime_config,
+        max_attempts=max_attempts,
+        model_processor=model_processor,
+    )
 
     status["status"] = final_run_status(jobs)
     status["counts"] = count_jobs(jobs, skipped=len(discovery.skipped))

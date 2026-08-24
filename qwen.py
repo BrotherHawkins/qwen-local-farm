@@ -347,7 +347,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "runs"
             record = qwen_farm_dogfood.build_quality_record(
                 root=ROOT,
-                run_dir=Path(args.run_dir),
+                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 notes_path=Path(args.notes) if args.notes else None,
             )
@@ -375,7 +375,7 @@ def handle_farm(args: argparse.Namespace) -> None:
         if args.snippets_command == "pack":
             output_dir = Path(args.output) if args.output else RUN_DIR / "snippet_packs"
             pack = qwen_farm_snippet_packs.build_snippet_pack(
-                run_dir=Path(args.run_dir),
+                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 max_snippets=args.max_snippets,
                 per_file=args.per_file,
@@ -394,7 +394,7 @@ def handle_farm(args: argparse.Namespace) -> None:
         if args.synthesis_command == "bundle":
             output_dir = Path(args.output) if args.output else RUN_DIR / "synthesis_bundles"
             bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
-                run_dir=Path(args.run_dir),
+                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 max_snippets=args.max_snippets,
                 per_file=args.per_file,
@@ -520,7 +520,7 @@ def parse_args() -> argparse.Namespace:
     farm_dogfood_subparsers = farm_dogfood.add_subparsers(dest="dogfood_command", required=True)
 
     dogfood_record = farm_dogfood_subparsers.add_parser("record")
-    dogfood_record.add_argument("run_dir")
+    dogfood_record.add_argument("run_dir", metavar="run-ref")
     dogfood_record.add_argument("--label")
     dogfood_record.add_argument("--notes")
     dogfood_record.add_argument("--output")
@@ -534,7 +534,7 @@ def parse_args() -> argparse.Namespace:
     farm_snippets_subparsers = farm_snippets.add_subparsers(dest="snippets_command", required=True)
 
     snippets_pack = farm_snippets_subparsers.add_parser("pack")
-    snippets_pack.add_argument("run_dir")
+    snippets_pack.add_argument("run_dir", metavar="run-ref")
     snippets_pack.add_argument("--output")
     snippets_pack.add_argument("--label")
     snippets_pack.add_argument("--max-snippets", type=int, default=24)
@@ -544,7 +544,7 @@ def parse_args() -> argparse.Namespace:
     farm_synthesis_subparsers = farm_synthesis.add_subparsers(dest="synthesis_command", required=True)
 
     synthesis_bundle = farm_synthesis_subparsers.add_parser("bundle")
-    synthesis_bundle.add_argument("run_dir")
+    synthesis_bundle.add_argument("run_dir", metavar="run-ref")
     synthesis_bundle.add_argument("--output")
     synthesis_bundle.add_argument("--label")
     synthesis_bundle.add_argument("--max-snippets", type=int, default=24)

@@ -301,6 +301,72 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn(status["run_id"], qwen_farm.list_runs_text(root))
             self.assertIn(status["run_id"], qwen_farm.status_text(root, status["run_id"]))
 
+    def test_resolve_run_reference_accepts_existing_run_directory_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir = root / "runs" / "farm-run-path"
+            run_dir.mkdir(parents=True)
+            qwen_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-path"})
+
+            self.assertEqual(qwen_farm.resolve_run_reference(root, str(run_dir)), run_dir)
+
+    def test_resolve_run_reference_accepts_indexed_run_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir = root / "runs" / "farm-run-indexed"
+            run_dir.mkdir(parents=True)
+            qwen_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-indexed"})
+            qwen_farm.remember_run(root, "farm-run-indexed", run_dir)
+
+            self.assertEqual(qwen_farm.resolve_run_reference(root, "farm-run-indexed"), run_dir)
+
+    def test_resolve_run_reference_prefers_existing_path_before_run_id_lookup(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            path_run = root / "runs" / "path-run"
+            indexed_run = root / "runs" / "indexed-run"
+            path_run.mkdir(parents=True)
+            indexed_run.mkdir(parents=True)
+            qwen_farm.write_json(path_run / "farm-status.json", {"run_id": "path-run"})
+            qwen_farm.write_json(indexed_run / "farm-status.json", {"run_id": "indexed-run"})
+            qwen_farm.remember_run(root, str(path_run), indexed_run)
+
+            self.assertEqual(qwen_farm.resolve_run_reference(root, str(path_run)), path_run)
+
+    def test_resolve_run_reference_rejects_stale_index_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            missing_run = root / "runs" / "missing"
+            qwen_farm.remember_run(root, "farm-run-stale", missing_run)
+
+            with self.assertRaisesRegex(FileNotFoundError, "farm-run-stale"):
+                qwen_farm.resolve_run_reference(root, "farm-run-stale")
+
+    def test_resolve_run_reference_rejects_directory_without_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir = root / "runs" / "farm-run-no-status"
+            run_dir.mkdir(parents=True)
+
+            with self.assertRaisesRegex(FileNotFoundError, "missing farm-status.json"):
+                qwen_farm.resolve_run_reference(root, str(run_dir))
+
+    def test_resolve_run_reference_rejects_file_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_file = root / "not-a-run.txt"
+            run_file.write_text("not a directory", encoding="utf-8")
+
+            with self.assertRaisesRegex(FileNotFoundError, "not a directory"):
+                qwen_farm.resolve_run_reference(root, str(run_file))
+
+    def test_resolve_run_reference_rejects_unknown_reference_with_list_hint(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            with self.assertRaisesRegex(FileNotFoundError, "farm list"):
+                qwen_farm.resolve_run_reference(root, "farm-run-missing")
+
     def test_list_runs_orders_by_updated_at_across_output_folders(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

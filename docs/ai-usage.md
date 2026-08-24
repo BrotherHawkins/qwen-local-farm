@@ -199,15 +199,15 @@ The farm ranks verified candidates before final selection. `result.md` stays cle
 When a downstream synthesis model needs source-backed evidence across a whole run, create a post-run snippet pack:
 
 ```bash
-python qwen.py farm snippets pack <run-dir> --label research-pack --max-snippets 24 --per-file 4
+python qwen.py farm snippets pack <run-ref> --label research-pack --max-snippets 24 --per-file 4
 ```
 
-Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, and skipped-job diagnostics.
+`<run-ref>` can be either a run directory path or a known run ID from `python qwen.py farm list`. Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, and skipped-job diagnostics.
 
 When the downstream synthesis model needs both orientation and evidence, prefer a synthesis bundle:
 
 ```bash
-python qwen.py farm synthesis bundle <run-dir> --label research-bundle --max-snippets 24 --per-file 4
+python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
 ```
 
 Synthesis bundles read the same existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/synthesis_bundles/` by default. Use them when summaries alone are too thin and snippet-only packs lack enough article context. They include summary-only jobs when no snippets were selected, so the downstream model can still see every successful summarize result.

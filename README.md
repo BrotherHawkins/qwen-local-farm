@@ -123,6 +123,8 @@ Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 
+Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, and doctor reports. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
+
 For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
 
 When a later synthesis step needs a little more source evidence, ask summarize mode for verified verbatim snippets:

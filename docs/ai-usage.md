@@ -354,6 +354,8 @@ timing-summary.json
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.
 
+Tracked JSON Schema-compatible contracts for the core JSON artifacts live in `schemas/`. Use `schemas/index.json` to discover the current contracts for persisted run status, job results, `farm status --json` envelopes, and doctor reports. Validation is model-free and does not require Ollama.
+
 When a run feels slow, inspect `timing-summary.json` first. It summarizes total run duration, job durations, queue wait, aggregate time by call kind, slowest jobs, and slowest model calls. Per-job `result.json` files include the model-call timing records for successful jobs, and failed jobs keep call timing in `farm-status.json`.
 
 ## Filesystem State

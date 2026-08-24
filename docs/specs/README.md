@@ -41,7 +41,7 @@ Change specs stay in one chronological folder and use an internal `Status` field
 | --- | --- |
 | `Draft` | Useful thinking, not binding yet. |
 | `Accepted` | Human-approved behavior target. |
-| `Implemented` | Behavior has landed in code/docs/tests. |
+| `Implemented` | Behavior is implemented by merged code, or by the implementation PR that will introduce the behavior when merged. |
 | `Deprecated` | Behavior is no longer the preferred contract. |
 
 Merging a draft spec does not make it accepted. A human controls progression from `Draft` to `Accepted`.
@@ -66,6 +66,8 @@ Plan files should tie an accepted spec to:
 
 The plan should name when the canonical spec can move from `accepted/` to `implemented/` and when any related change spec can move to `Implemented`.
 
+An implementation PR may update its accepted change spec and plan to `Implemented` in the same PR that introduces the code. If review changes or rejects the behavior, update the spec, plan, and dashboard in that PR before merge.
+
 Planning-only PRs can still use `NO-SPEC`, but once an accepted behavior spec is being implemented, the implementation PR should cite the relevant plan.
 
 ## AI Process Gate
@@ -77,10 +79,10 @@ For behavior-changing work, AI assistants should follow this order:
 3. Draft or update the implementation plan.
 4. Stop for human acceptance of the plan.
 5. Implement only after both gates are satisfied.
-6. Update spec/dashboard status only when the corresponding human-controlled lifecycle step has happened.
+6. In the implementation PR, update spec/dashboard status to the lifecycle state that should be true after merge.
 
 Do not mark a change spec `Accepted` without explicit human acceptance.
-Do not mark a change spec `Implemented` while it is only local WIP.
+Do not mark a change spec `Implemented` before the accepted implementation plan exists.
 Do not open an implementation PR for behavior-changing work unless it cites an accepted spec and plan, or explicitly uses `NO-SPEC`.
 
 ## Change Types

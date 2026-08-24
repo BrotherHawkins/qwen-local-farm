@@ -1,6 +1,6 @@
 # 0002 Add Summarize Chunking
 
-Status: Accepted
+Status: Implemented
 Type: Add
 
 ## WHY

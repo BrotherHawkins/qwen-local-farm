@@ -1,6 +1,6 @@
 # 0002 Implement Summarize Chunking
 
-Status: Accepted
+Status: Implemented
 Change Spec: [0002 Add Summarize Chunking](../changes/0002-add-summarize-chunking.md)
 
 ## WHY

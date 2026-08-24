@@ -51,6 +51,7 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertEqual(report["runtime"]["profile"], "local-8gb")
             self.assertTrue(report["tokenizers"]["ready"])
             self.assertEqual(report["runs"], {"known_count": 0, "latest": []})
+            self.assertEqual(report["profile_recommendation"]["status"], "missing")
             self.assertIn("setup-doctor.md", report["report_paths"]["markdown"])
 
     def test_missing_ollama_is_needs_setup_without_crashing(self) -> None:
@@ -138,7 +139,44 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertIn("# Farm Doctor", markdown)
             self.assertIn("## Ollama", markdown)
             self.assertIn("## Agent And Runtime", markdown)
+            self.assertIn("## Profile Recommendation", markdown)
             self.assertIn("## Recommendations", markdown)
+
+    def test_doctor_reports_latest_profile_recommendation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            recommendation_dir = root / ".run" / "recommendations"
+            recommendation_dir.mkdir(parents=True)
+            (recommendation_dir / "farm-recommendation.json").write_text(
+                json.dumps(
+                    {
+                        "status": "ready",
+                        "generated_at": "2026-08-24T00:00:00Z",
+                        "agent": "default",
+                        "model": "qwen3.5:4b",
+                        "resource_mode": {"recommended": "hybrid"},
+                        "profile": {"recommended": "local-8gb"},
+                        "concurrency": {
+                            "parallel_jobs": {"recommended": 1},
+                            "ollama_num_parallel": {"recommended": 1},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = qwen_farm_doctor.build_doctor_report(
+                root=root,
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=lambda *_args, **_kwargs: {"models": [{"name": "qwen3.5:4b"}]},
+                tokenizer_status_fn=ready_tokenizers,
+            )
+
+            self.assertTrue(report["profile_recommendation"]["exists"])
+            self.assertEqual(report["profile_recommendation"]["profile"], "local-8gb")
+            self.assertEqual(report["profile_recommendation"]["resource_mode"], "hybrid")
 
     def test_write_doctor_report_writes_markdown_and_json(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

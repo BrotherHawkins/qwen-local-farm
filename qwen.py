@@ -361,6 +361,29 @@ def handle_farm(args: argparse.Namespace) -> None:
             print(qwen_farm_doctor.render_doctor_markdown(report))
         return
 
+    if args.farm_command == "recommend":
+        from src import qwen_farm_recommend
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "recommendations"
+        report = qwen_farm_recommend.build_recommendation_report(
+            root=ROOT,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+            agent_id=args.agent,
+            profile=args.profile,
+            output_dir=output_dir,
+            find_ollama_fn=find_ollama,
+            request_json_fn=request_json,
+        )
+        json_path, markdown_path = qwen_farm_recommend.write_recommendation_report(report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(qwen_farm_recommend.render_recommendation_markdown(report))
+            print(f"Recommendation JSON: {json_path}")
+            print(f"Recommendation Markdown: {markdown_path}")
+        return
+
     if args.farm_command == "schema":
         from src import qwen_farm_schema
 
@@ -565,6 +588,12 @@ def parse_args() -> argparse.Namespace:
     farm_doctor.add_argument("--output")
     farm_doctor.add_argument("--agent", default="default")
     farm_doctor.add_argument("--profile")
+
+    farm_recommend = farm_subparsers.add_parser("recommend")
+    farm_recommend.add_argument("--json", action="store_true")
+    farm_recommend.add_argument("--output")
+    farm_recommend.add_argument("--agent", default="default")
+    farm_recommend.add_argument("--profile")
 
     farm_schema = farm_subparsers.add_parser("schema")
     farm_schema_subparsers = farm_schema.add_subparsers(dest="schema_command", required=True)

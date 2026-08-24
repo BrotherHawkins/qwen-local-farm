@@ -93,6 +93,24 @@ python qwen.py farm doctor --json
 
 Doctor writes `.run/reports/setup-doctor.md` and `.run/reports/setup-doctor.json` for humans, scripts, and primary AIs. It inspects Python, Ollama, models, runtime config, tokenizer readiness, and recent runs without installing packages, downloading tokenizers, pulling models, starting services, or changing config.
 
+For measured local settings guidance, run:
+
+```bash
+python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+```
+
+`farm recommend` writes `.run/recommendations/farm-recommendation.json` and `.run/recommendations/FARM_RECOMMENDATION.md`. It performs a tiny user-invoked Ollama probe when the selected model is ready, then recommends a conservative profile, resource mode, `parallel_jobs`, `OLLAMA_NUM_PARALLEL`, and summarize chunk settings. It does not edit `.qwen-farm.json`, start services, pull models, or change Ollama environment variables.
+
+Resource mode recommendations use this vocabulary:
+
+| Mode | Meaning |
+| --- | --- |
+| `gpu` | Prefer speed through GPU placement. |
+| `hybrid` | Use GPU when available, while allowing CPU/RAM fallback or partial offload. |
+| `cpu` | Avoid VRAM pressure and accept slower runs. |
+| `auto` | More local evidence is needed before choosing a concrete mode. |
+
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
 
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
@@ -123,7 +141,7 @@ Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 
-Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
+Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, recommendation reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
 
 Validate a JSON artifact before handing it to a script or downstream AI workflow:
 
@@ -131,6 +149,7 @@ Validate a JSON artifact before handing it to a script or downstream AI workflow
 python qwen.py farm schema validate .run/reports/setup-doctor.json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
 python qwen.py farm schema validate <run-dir>/timing-summary.json
 ```
 

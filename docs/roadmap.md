@@ -24,6 +24,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 - Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
+- Opt-in verified source snippets for summarize results.
 
 ## North Star
 
@@ -48,7 +49,7 @@ The human should be able to enable or disable farm availability, but should not 
 
 1. Harden the worker-farm MVP after real use.
 2. Add chunking and map/reduce workflows for large inputs.
-3. Add stricter structured output conventions and schema helpers.
+3. Add source-grounded evidence snippets and stricter structured output conventions.
 4. Add AI-facing usage docs and skills.
 5. Explore processing modes beyond plain chat/summarization.
 6. Add observability for job status, model routing, failures, and output review.
@@ -495,6 +496,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: Markdown plus JSON sidecar outputs.
 - Implemented: `summarize` result contract first.
 - Implemented: generic custom-prompt support.
+- Implemented: verified verbatim source snippets for `summarize`.
 - Implemented: first AI-facing usage doc.
 - Next: output schema folder.
 - Next: stricter validation helpers.

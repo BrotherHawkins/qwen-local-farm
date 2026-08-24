@@ -77,6 +77,27 @@ class JsonParsingTests(unittest.TestCase):
         self.assertEqual(payload["open_questions"], [])
         self.assertEqual(payload["confidence"], "high")
 
+    def test_parse_labeled_summary_reads_snippet_candidates(self) -> None:
+        raw = "\n".join(
+            [
+                "TITLE: Example",
+                "ABSTRACT: A compact article summary.",
+                "KEY POINTS:",
+                "- first point",
+                "OPEN QUESTIONS:",
+                "- None",
+                "SOURCE SNIPPETS:",
+                "- TEXT: Exact source passage.",
+                "  REASON: Captures the thesis.",
+                "CONFIDENCE: high",
+            ]
+        )
+
+        payload, valid = qwen_farm_model.parse_summary_response(raw)
+
+        self.assertTrue(valid)
+        self.assertEqual(payload["snippets"], [{"text": "Exact source passage.", "reason": "Captures the thesis."}])
+
     def test_apply_agent_guidance_appends_to_system_message(self) -> None:
         messages = [{"role": "system", "content": "Base"}, {"role": "user", "content": "Hi"}]
 
@@ -94,6 +115,18 @@ class JsonParsingTests(unittest.TestCase):
         self.assertIn("Use only facts present in the file content", system)
         self.assertNotIn("worker farm", system.lower())
         self.assertNotIn("qwen", system.lower())
+
+    def test_summarize_prompt_guides_snippet_selection(self) -> None:
+        messages = qwen_farm_model.summarize_messages(
+            "article.txt",
+            "Article body",
+            snippet_request={"policy": "auto", "requested_count": 2, "max_chars": 600},
+        )
+
+        combined = "\n".join(message["content"] for message in messages)
+        self.assertIn("SOURCE SNIPPETS", combined)
+        self.assertIn("Choose passages that capture the thesis", combined)
+        self.assertIn("Avoid titles, URLs, tags, front matter", combined)
 
     def test_prepare_summary_content_truncates_large_inputs_with_warning(self) -> None:
         content, warnings = qwen_farm_model.prepare_summary_content("a" * 25, max_chars=10)
@@ -151,3 +184,38 @@ class JsonParsingTests(unittest.TestCase):
         self.assertTrue(result.structured_valid)
         self.assertEqual(client.calls[0]["response_format"], None)
         self.assertEqual(client.calls[0]["think"], False)
+
+    def test_summarize_mode_verifies_requested_snippets(self) -> None:
+        client = FakeClient(
+            "\n".join(
+                [
+                    "TITLE: T",
+                    "ABSTRACT: A",
+                    "KEY POINTS:",
+                    "- B",
+                    "OPEN QUESTIONS:",
+                    "- None",
+                    "SOURCE SNIPPETS:",
+                    "- TEXT: Exact source passage.",
+                    "  REASON: Useful.",
+                    "- TEXT: Made up passage.",
+                    "  REASON: Bad.",
+                    "CONFIDENCE: high",
+                ]
+            )
+        )
+
+        result = qwen_farm_model.process_file_with_model(
+            client=client,  # type: ignore[arg-type]
+            mode="summarize",
+            file_path="article.txt",
+            content="Intro.\nExact source passage.\nOutro.",
+            instructions=None,
+            timeout=1,
+            snippet_request={"policy": "fixed", "requested_count": 2, "max_chars": 100},
+        )
+
+        self.assertEqual([item["text"] for item in result.payload["snippets"]], ["Exact source passage."])
+        self.assertIn("snippet_candidates_unverified", result.warnings)
+        self.assertIn("snippet_count_under_requested", result.warnings)
+        self.assertIn("## Source Snippets", result.markdown)

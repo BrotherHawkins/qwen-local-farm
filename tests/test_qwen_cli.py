@@ -84,6 +84,26 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.reduce_tokens, 6400)
         self.assertEqual(args.token_safety_margin, 0.15)
 
+    def test_parse_args_accepts_snippet_overrides(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "run",
+                "notes",
+                "--snippets",
+                "auto",
+                "--snippet-max-chars",
+                "800",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.snippets, "auto")
+        self.assertEqual(args.snippet_max_chars, 800)
+
     def test_parse_args_accepts_farm_tokenizer_status(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "tokenizer", "status", "--model", "qwen3:4b"]):
             args = qwen.parse_args()

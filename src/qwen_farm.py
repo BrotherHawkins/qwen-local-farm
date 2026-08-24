@@ -30,6 +30,7 @@ from src.qwen_farm_model import (
     FarmModelResult,
     OllamaChatClient,
     process_file_with_model,
+    render_summary_markdown,
 )
 from src.qwen_farm_profiles import (
     RuntimeOverrides,
@@ -49,6 +50,13 @@ from src.qwen_farm_status import (
     run_status_path,
     write_json,
     write_status,
+)
+from src.qwen_farm_snippets import (
+    DEFAULT_CHUNK_CANDIDATE_SNIPPETS,
+    apply_snippet_warning_policy,
+    compact_snippet_status,
+    resolve_snippet_request,
+    reverify_snippets,
 )
 from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now, utc_now, write_timing_summary
 from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
@@ -166,6 +174,7 @@ def result_envelope(
     raw_path: Path,
     agent: dict[str, Any],
     chunking: dict[str, Any] | None = None,
+    snippets: dict[str, Any] | None = None,
     timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     status = "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
@@ -191,6 +200,8 @@ def result_envelope(
     }
     if chunking is not None:
         envelope["chunking"] = chunking
+    if snippets is not None:
+        envelope["snippets"] = snippets
     if timing is not None:
         envelope["timing"] = timing
     return envelope
@@ -260,6 +271,7 @@ def chunk_result_envelope(
     markdown_path: Path,
     raw_path: Path,
     agent: dict[str, Any],
+    snippets: dict[str, Any] | None = None,
     timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     envelope = {
@@ -288,6 +300,8 @@ def chunk_result_envelope(
     }
     if timing is not None:
         envelope["timing"] = timing
+    if snippets is not None:
+        envelope["snippets"] = snippets
     return envelope
 
 
@@ -300,6 +314,7 @@ def write_result_files(
     run_dir: Path,
     agent: dict[str, Any],
     chunking: dict[str, Any],
+    snippets: dict[str, Any],
     timing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw_path = job_dir / "raw-response.txt"
@@ -316,6 +331,7 @@ def write_result_files(
         raw_path=raw_path,
         agent=agent,
         chunking=chunking,
+        snippets=snippets,
         timing=timing,
     )
     write_json(json_path, envelope)
@@ -332,10 +348,12 @@ def default_model_processor(
     ollama_base_url: str,
     timeout: int,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
+    snippet_request: dict[str, Any] | None = None,
 ) -> FarmModelResult:
     options = dict(agent.get("options", {}))
     if mode == "summarize":
-        options.setdefault("num_predict", SUMMARY_NUM_PREDICT)
+        requested_snippets = int((snippet_request or {}).get("requested_count", 0))
+        options.setdefault("num_predict", SUMMARY_NUM_PREDICT + min(512, requested_snippets * 128))
         options.setdefault("num_batch", SUMMARY_NUM_BATCH)
     client = OllamaChatClient(ollama_base_url, str(agent["model"]), options)
     return process_file_with_model(
@@ -347,6 +365,7 @@ def default_model_processor(
         timeout=timeout,
         agent_system_prompt=str(agent.get("system_prompt", "")),
         summary_max_input_chars=summary_max_input_chars,
+        snippet_request=snippet_request,
     )
 
 
@@ -363,6 +382,7 @@ def timed_model_call(
     timeout: int,
     summary_max_input_chars: int,
     model_processor: ModelProcessor,
+    snippet_request: dict[str, Any] | None = None,
     chunk_id: str | None = None,
     reduce_generation: int | None = None,
     reduce_batch_index: int | None = None,
@@ -392,6 +412,7 @@ def timed_model_call(
             ollama_base_url=ollama_base_url,
             timeout=timeout,
             summary_max_input_chars=summary_max_input_chars,
+            snippet_request=snippet_request,
         )
     except Exception as exc:
         record.update(finish_timing(started))
@@ -577,7 +598,8 @@ def run_single_pass_job(
     token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
-) -> tuple[FarmModelResult, dict[str, Any]]:
+    snippet_request: dict[str, Any],
+) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     result = timed_model_call(
         call_timings=call_timings,
         kind="single",
@@ -590,14 +612,19 @@ def run_single_pass_job(
         timeout=timeout,
         summary_max_input_chars=len(content) if chunk_strategy == "token" else chunk_chars,
         model_processor=model_processor,
+        snippet_request=snippet_request,
     )
     tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
-    return result, single_pass_chunking(
-        chunk_strategy=chunk_strategy,
-        chars=len(content),
-        tokens=tokens,
-        chunk_tokens=chunk_tokens,
-        tokenizer=token_counter.tokenizer_id if token_counter is not None else None,
+    return (
+        result,
+        single_pass_chunking(
+            chunk_strategy=chunk_strategy,
+            chars=len(content),
+            tokens=tokens,
+            chunk_tokens=chunk_tokens,
+            tokenizer=token_counter.tokenizer_id if token_counter is not None else None,
+        ),
+        compact_snippet_status(snippet_request, len(result.payload.get("snippets") or [])),
     )
 
 
@@ -619,7 +646,8 @@ def run_chunked_summary_job(
     token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
-) -> tuple[FarmModelResult, dict[str, Any]]:
+    runtime_summarize: dict[str, Any],
+) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     if chunk_strategy == "token":
         if token_counter is None or chunk_tokens is None:
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
@@ -640,7 +668,25 @@ def run_chunked_summary_job(
 
     chunk_records: list[dict[str, Any]] = []
     chunk_payloads: list[dict[str, Any]] = []
+    chunk_snippets: list[dict[str, Any]] = []
     warnings: list[str] = []
+    source_tokens = token_counter.count_tokens(content) if token_counter is not None else None
+    final_snippet_request = resolve_snippet_request(
+        runtime_summarize,
+        source_chars=len(content),
+        source_tokens=source_tokens,
+        chunk_count=len(chunks),
+    )
+    if int(final_snippet_request.get("requested_count", 0)) > 0:
+        chunk_snippet_request = resolve_snippet_request(
+            runtime_summarize,
+            source_chars=len(content),
+            source_tokens=source_tokens,
+            chunk_count=len(chunks),
+            candidate_count=DEFAULT_CHUNK_CANDIDATE_SNIPPETS,
+        )
+    else:
+        chunk_snippet_request = {"policy": "off", "requested_count": 0, "max_chars": runtime_summarize["snippet_max_chars"]}
 
     for chunk in chunks:
         chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
@@ -659,9 +705,13 @@ def run_chunked_summary_job(
             timeout=timeout,
             summary_max_input_chars=len(chunk_input) if chunk_strategy == "token" else chunk_chars,
             model_processor=model_processor,
+            snippet_request=chunk_snippet_request,
             chunk_id=chunk.chunk_id,
         )
-        warnings.extend(chunk_result.warnings)
+        warnings.extend(warning for warning in chunk_result.warnings if not warning.startswith("snippet_"))
+        chunk_verified_snippets = chunk_result.payload.get("snippets") or []
+        if isinstance(chunk_verified_snippets, list):
+            chunk_snippets.extend(item for item in chunk_verified_snippets if isinstance(item, dict))
 
         chunk_dir = chunk_results_dir / chunk.chunk_id
         chunk_dir.mkdir(parents=True, exist_ok=True)
@@ -681,6 +731,7 @@ def run_chunked_summary_job(
             markdown_path=markdown_path,
             raw_path=raw_path,
             agent=agent,
+            snippets=compact_snippet_status(chunk_snippet_request, len(chunk_verified_snippets)),
             timing=call_timings[-1],
         )
         write_json(json_path, envelope)
@@ -713,6 +764,29 @@ def run_chunked_summary_job(
         call_timings=call_timings,
     )
     warnings.extend(reduce_warnings)
+    final_snippets: list[dict[str, Any]] = []
+    if int(final_snippet_request.get("requested_count", 0)) > 0:
+        final_snippets, snippet_warnings = reverify_snippets(
+            chunk_snippets,
+            source_text=content,
+            source_path=job["input_path"],
+            requested_count=int(final_snippet_request.get("requested_count", 0)),
+            max_chars=int(final_snippet_request.get("max_chars", 600)),
+        )
+        snippet_warnings = apply_snippet_warning_policy(
+            snippet_warnings,
+            snippet_request=final_snippet_request,
+            verified_count=len(final_snippets),
+        )
+        warnings.extend(snippet_warnings)
+        reduce_result.payload["snippets"] = final_snippets
+        reduce_result = FarmModelResult(
+            payload=reduce_result.payload,
+            markdown=render_summary_markdown(reduce_result.payload),
+            raw_response=reduce_result.raw_response,
+            structured_valid=reduce_result.structured_valid,
+            warnings=reduce_result.warnings,
+        )
     final_result = FarmModelResult(
         payload=reduce_result.payload,
         markdown=reduce_result.markdown,
@@ -733,7 +807,7 @@ def run_chunked_summary_job(
         "counts_are_estimated": False if token_counter is not None else None,
         "chunks": chunk_records,
     }
-    return final_result, chunking
+    return final_result, chunking, compact_snippet_status(final_snippet_request, len(final_snippets))
 
 
 def run_file_job(
@@ -751,18 +825,20 @@ def run_file_job(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     token_counter: ExactTokenCounter | None = None,
-) -> tuple[FarmModelResult, dict[str, Any]]:
+) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     summarize = runtime_config["summarize"]
     chunk_strategy = str(summarize.get("chunk_strategy", "character"))
     chunk_chars = int(summarize["chunk_chars"])
     reduce_chars = int(summarize["reduce_chars"])
     chunk_tokens = summarize.get("chunk_tokens")
     reduce_tokens = summarize.get("reduce_tokens")
+    source_tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
     should_chunk = mode == "summarize" and len(content) > chunk_chars
     if mode == "summarize" and chunk_strategy == "token":
         if token_counter is None or chunk_tokens is None:
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
-        should_chunk = token_counter.count_tokens(content) > int(chunk_tokens)
+        source_tokens = token_counter.count_tokens(content)
+        should_chunk = source_tokens > int(chunk_tokens)
 
     if should_chunk:
         return run_chunked_summary_job(
@@ -782,7 +858,14 @@ def run_file_job(
             token_counter=token_counter,
             model_processor=model_processor,
             call_timings=call_timings,
+            runtime_summarize=summarize,
         )
+    snippet_request = resolve_snippet_request(
+        summarize,
+        source_chars=len(content),
+        source_tokens=source_tokens,
+        chunk_count=1,
+    )
     return run_single_pass_job(
         mode=mode,
         file_path=job["input_path"],
@@ -797,6 +880,7 @@ def run_file_job(
         token_counter=token_counter,
         model_processor=model_processor,
         call_timings=call_timings,
+        snippet_request=snippet_request,
     )
 
 
@@ -831,7 +915,7 @@ def execute_job(
     for attempt in range(1, max_attempts + 1):
         try:
             content = item.path.read_text(encoding="utf-8", errors="replace")
-            result, chunking = run_file_job(
+            result, chunking, snippets = run_file_job(
                 mode=mode,
                 job=job,
                 job_dir=job_dir,
@@ -855,6 +939,7 @@ def execute_job(
                 run_dir=run_dir,
                 agent=agent,
                 chunking=chunking,
+                snippets=snippets,
                 timing=call_timing_summary(call_timings),
             )
             return {
@@ -864,6 +949,7 @@ def execute_job(
                 "raw_response": f"jobs/{job['job_id']}/raw-response.txt",
                 "warnings": result.warnings,
                 "chunking": compact_chunking(chunking),
+                "snippets": snippets,
                 "error": None,
                 "timing": {
                     "calls": call_timings,
@@ -881,6 +967,7 @@ def execute_job(
                 "raw_response": None,
                 "warnings": [],
                 "chunking": job.get("chunking", single_pass_chunking()),
+                "snippets": job.get("snippets", compact_snippet_status({"policy": "off", "requested_count": 0})),
                 "error": last_error,
                 "timing": {
                     "calls": call_timings,
@@ -891,7 +978,7 @@ def execute_job(
 
 
 def apply_job_update(job: dict[str, Any], update: dict[str, Any]) -> None:
-    for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "error"]:
+    for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "snippets", "error"]:
         job[key] = update[key]
     job.setdefault("timing", {})["calls"] = update.get("timing", {}).get("calls", [])
 
@@ -973,6 +1060,8 @@ def resolve_run_agent_and_config(
     chunk_tokens: int | None = None,
     reduce_tokens: int | None = None,
     token_safety_margin: float | None = None,
+    snippets: str | None = None,
+    snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -989,6 +1078,8 @@ def resolve_run_agent_and_config(
             chunk_tokens=chunk_tokens,
             reduce_tokens=reduce_tokens,
             token_safety_margin=token_safety_margin,
+            snippets=snippets,
+            snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
         ),
@@ -1020,6 +1111,8 @@ def run_farm(
     chunk_tokens: int | None = None,
     reduce_tokens: int | None = None,
     token_safety_margin: float | None = None,
+    snippets: str | None = None,
+    snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
     runtime_config: dict[str, Any] | None = None,
@@ -1048,6 +1141,8 @@ def run_farm(
             chunk_tokens=chunk_tokens,
             reduce_tokens=reduce_tokens,
             token_safety_margin=token_safety_margin,
+            snippets=snippets,
+            snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
         )
@@ -1090,6 +1185,7 @@ def run_farm(
                 "error": None,
                 "warnings": [],
                 "chunking": single_pass_chunking(),
+                "snippets": compact_snippet_status({"policy": "off", "requested_count": 0}),
                 "timing": {
                     "queued_at": timestamp_now(),
                     "started_at": None,

@@ -50,6 +50,63 @@ def warning_processor(**kwargs: object) -> FarmModelResult:
     )
 
 
+def snippet_processor(**kwargs: object) -> FarmModelResult:
+    file_path = str(kwargs["file_path"])
+    content = str(kwargs["content"])
+    snippet_request = kwargs.get("snippet_request")
+    requested = int(snippet_request.get("requested_count", 0)) if isinstance(snippet_request, dict) else 0
+    snippets = []
+    if requested and "alpha exact evidence" in content:
+        snippets.append(
+            {
+                "text": "alpha exact evidence",
+                "reason": "Shows the alpha claim.",
+                "source_path": file_path,
+                "start_line": 1,
+                "end_line": 1,
+                "char_start": 0,
+                "char_end": 20,
+            }
+        )
+    if requested and "beta exact evidence" in content:
+        snippets.append(
+            {
+                "text": "beta exact evidence",
+                "reason": "Shows the beta claim.",
+                "source_path": file_path,
+                "start_line": 1,
+                "end_line": 1,
+                "char_start": 0,
+                "char_end": 19,
+            }
+        )
+    if file_path == "long.txt":
+        snippets.append(
+            {
+                "text": "invented reduce quote",
+                "reason": "This must not survive final selection.",
+                "source_path": file_path,
+            }
+        )
+
+    payload = {
+        "title": file_path,
+        "abstract": f"Summary for {file_path}",
+        "bullets": ["one", "two"],
+        "open_questions": [],
+        "confidence": "high",
+    }
+    if snippets:
+        payload["snippets"] = snippets
+    return FarmModelResult(
+        payload=payload,
+        markdown=f"# {file_path}\n\nSummary.",
+        raw_response="raw",
+        structured_valid=True,
+        warnings=[],
+    )
+
+
 class FarmRunTests(unittest.TestCase):
     def assertTimingComplete(self, timing: dict[str, object]) -> None:
         self.assertIsInstance(timing.get("started_at"), str)
@@ -515,6 +572,46 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("exceeds reduce token budget", status["jobs"][0]["error"])
             self.assertTrue(any("#chunk-" in call for call in calls))
             self.assertFalse(any("#reduce" in call for call in calls))
+
+    def test_chunked_snippets_are_selected_from_verified_chunk_snippets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "\n\n".join(
+                [
+                    "alpha exact evidence " + ("alpha " * 80),
+                    "beta exact evidence " + ("beta " * 80),
+                ]
+            )
+            (root / "input" / "long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_chars=180,
+                reduce_chars=1000,
+                snippets="3",
+                model_processor=snippet_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            snippet_texts = [snippet["text"] for snippet in result["result"]["snippets"]]
+
+            self.assertEqual(status["status"], "complete_with_warnings")
+            self.assertIn("alpha exact evidence", snippet_texts)
+            self.assertIn("beta exact evidence", snippet_texts)
+            self.assertNotIn("invented reduce quote", snippet_texts)
+            self.assertEqual(result["snippets"]["requested_count"], 3)
+            self.assertEqual(result["snippets"]["verified_count"], 2)
+            self.assertIn("snippet_count_under_requested", result["warnings"])
 
     def test_invalid_config_fails_before_run_folder_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

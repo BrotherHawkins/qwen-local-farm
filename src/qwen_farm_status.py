@@ -97,6 +97,9 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Reduce chars: `{summarize.get('reduce_chars', '')}`",
         f"Chunk tokens: `{summarize.get('chunk_tokens') or ''}`",
         f"Reduce tokens: `{summarize.get('reduce_tokens') or ''}`",
+        f"Snippet policy: `{summarize.get('snippet_policy', 'off')}`",
+        f"Snippet count: `{summarize.get('snippet_count') if summarize.get('snippet_count') is not None else ''}`",
+        f"Snippet max chars: `{summarize.get('snippet_max_chars', '')}`",
         f"Parallel jobs: `{concurrency.get('jobs', '')}`",
         f"Parallel chunks: `{concurrency.get('chunks', '')}`",
         "",
@@ -113,8 +116,8 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             "",
             "## Jobs",
             "",
-            "| Job | Status | Input | Chunking | Queue Wait | Duration | Result | Error |",
-            "| --- | --- | --- | --- | ---: | ---: | --- | --- |",
+            "| Job | Status | Input | Chunking | Snippets | Queue Wait | Duration | Result | Error |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |",
         ]
     )
 
@@ -123,6 +126,12 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         error = (job.get("error") or "").replace("\n", " ")
         timing = job.get("timing") or {}
         chunking = job.get("chunking") or {}
+        snippets = job.get("snippets") or {}
+        snippet_text = (
+            f"{snippets.get('verified_count', 0)}/{snippets.get('requested_count', 0)}"
+            if snippets
+            else "0/0"
+        )
         if chunking.get("enabled"):
             chunking_text = (
                 f"{chunking.get('chunk_count', 0)} chunks/"
@@ -133,6 +142,7 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         lines.append(
             f"| `{job.get('job_id', '')}` | `{job.get('status', '')}` | "
             f"`{job.get('input_path', '')}` | `{chunking_text}` | "
+            f"`{snippet_text}` | "
             f"`{duration_label(timing.get('queue_wait_ms'))}` | `{duration_label(timing.get('duration_ms'))}` | "
             f"`{result}` | {error} |"
         )

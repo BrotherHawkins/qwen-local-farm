@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 7 |
+| Implemented | 8 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -53,6 +53,7 @@ None.
 | 0004 | Implemented | Add | [0004-add-farm-scheduler-concurrency.md](changes/0004-add-farm-scheduler-concurrency.md) | Adds bounded file-job concurrency using resolved runtime profile settings. |
 | 0005 | Implemented | Add | [0005-add-farm-timing-metrics.md](changes/0005-add-farm-timing-metrics.md) | Adds run, job, model-call, chunk, reduce, and dogfood timing summary artifacts. |
 | 0006 | Implemented | Add | [0006-add-tokenizer-aware-chunk-sizing.md](changes/0006-add-tokenizer-aware-chunk-sizing.md) | Adds opt-in tokenizer-aware summarize chunk sizing and dogfood_lite baseline comparison. |
+| 0007 | Implemented | Add | [0007-add-source-snippets-for-summarize.md](changes/0007-add-source-snippets-for-summarize.md) | Adds opt-in verified verbatim source snippets to summarize results. |
 
 ## Stale Drafts To Revisit
 

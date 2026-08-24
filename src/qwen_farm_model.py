@@ -6,6 +6,12 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from src.qwen_farm_snippets import (
+    apply_snippet_warning_policy,
+    parse_snippet_candidates,
+    verify_snippet_candidates,
+)
+
 SUMMARY_MAX_INPUT_CHARS = 8_000
 SUMMARY_NUM_PREDICT = 384
 SUMMARY_NUM_BATCH = 128
@@ -94,13 +100,22 @@ def normalize_summary_payload(data: dict[str, Any]) -> dict[str, Any]:
     if confidence not in {"low", "medium", "high"}:
         confidence = "medium"
 
-    return {
+    snippets = data.get("snippets", [])
+    if not isinstance(snippets, list):
+        snippets = []
+
+    payload = {
         "title": str(data.get("title") or "Untitled"),
         "abstract": str(data.get("abstract") or ""),
         "bullets": [str(item) for item in bullets],
         "open_questions": [str(item) for item in open_questions],
         "confidence": confidence,
     }
+    if snippets:
+        payload["snippets"] = [
+            item for item in snippets if isinstance(item, dict) and str(item.get("text") or "").strip()
+        ]
+    return payload
 
 
 def strip_bullet_marker(line: str) -> str:
@@ -122,6 +137,9 @@ def parse_labeled_summary(raw: str) -> dict[str, Any]:
         "bullets": "bullets",
         "open questions": "open_questions",
         "open_questions": "open_questions",
+        "source snippets": "snippets",
+        "source_snippets": "snippets",
+        "snippets": "snippets",
         "confidence": "confidence",
     }
     sections: dict[str, list[str]] = {}
@@ -157,6 +175,7 @@ def parse_labeled_summary(raw: str) -> dict[str, Any]:
             "bullets": bullets,
             "open_questions": open_questions,
             "confidence": confidence,
+            "snippets": parse_snippet_candidates(sections.get("snippets", [])),
         }
     )
 
@@ -204,6 +223,23 @@ def render_summary_markdown(payload: dict[str, Any]) -> str:
         lines.extend(["", "## Open Questions", ""])
         lines.extend(f"- {item}" for item in questions)
 
+    snippets = payload.get("snippets") or []
+    if snippets:
+        lines.extend(["", "## Source Snippets", ""])
+        for index, snippet in enumerate(snippets, start=1):
+            text = str(snippet.get("text", ""))
+            reason = str(snippet.get("reason", ""))
+            source = str(snippet.get("source_path", ""))
+            start_line = snippet.get("start_line")
+            end_line = snippet.get("end_line")
+            if start_line and end_line:
+                source = f"{source}:{start_line}-{end_line}"
+            lines.extend([f"{index}. \"{text}\""])
+            if reason:
+                lines.append(f"   Why it matters: {reason}")
+            if source:
+                lines.append(f"   Source: `{source}`")
+
     lines.extend(["", f"Confidence: `{payload.get('confidence', 'medium')}`", ""])
     return "\n".join(lines)
 
@@ -217,8 +253,30 @@ def prepare_summary_content(content: str, max_chars: int = SUMMARY_MAX_INPUT_CHA
     return clipped, ["input_truncated"]
 
 
-def summarize_messages(file_path: str, content: str, instructions: str | None = None) -> list[dict[str, str]]:
+def snippet_instructions(snippet_request: dict[str, Any] | None) -> str:
+    if not snippet_request or int(snippet_request.get("requested_count", 0)) <= 0:
+        return ""
+    count = int(snippet_request.get("requested_count", 0))
+    max_chars = int(snippet_request.get("max_chars", 600))
+    return (
+        "SOURCE SNIPPETS:\n"
+        f"- TEXT: <exact source passage, copied verbatim, {max_chars} chars or fewer>\n"
+        "  REASON: <why this passage matters for later synthesis>\n\n"
+        f"Return up to {count} source snippets. If no useful exact source snippet exists, return no snippets. "
+        "Choose passages that capture the thesis, important claims, vivid examples, definitions, or caveats. "
+        "Avoid titles, URLs, tags, front matter, navigation text, citation lists, and boilerplate unless that text "
+        "is itself essential evidence. Do not paraphrase snippets.\n"
+    )
+
+
+def summarize_messages(
+    file_path: str,
+    content: str,
+    instructions: str | None = None,
+    snippet_request: dict[str, Any] | None = None,
+) -> list[dict[str, str]]:
     extra = f"\nCaller instructions: {instructions.strip()}\n" if instructions else ""
+    snippet_shape = snippet_instructions(snippet_request)
     return [
         {
             "role": "system",
@@ -239,6 +297,7 @@ def summarize_messages(file_path: str, content: str, instructions: str | None = 
                 "- <point>\n"
                 "OPEN QUESTIONS:\n"
                 "- <question, or None>\n"
+                f"{snippet_shape}"
                 "CONFIDENCE: low|medium|high\n\n"
                 f"File content:\n{content}"
             ),
@@ -284,16 +343,35 @@ def process_file_with_model(
     timeout: int,
     agent_system_prompt: str | None = None,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
+    snippet_request: dict[str, Any] | None = None,
 ) -> FarmModelResult:
     if mode == "summarize":
         summary_content, warnings = prepare_summary_content(content, max_chars=summary_max_input_chars)
         raw = client.chat(
-            summarize_messages(file_path, summary_content, instructions),
+            summarize_messages(file_path, summary_content, instructions, snippet_request),
             timeout=timeout,
             think=False,
         )
         payload, structured_valid = parse_summary_response(raw)
         parse_warnings = [] if structured_valid else ["summary_text_parse_fallback"]
+        if snippet_request and int(snippet_request.get("requested_count", 0)) > 0:
+            candidates = payload.get("snippets") or []
+            if not isinstance(candidates, list):
+                candidates = []
+            snippets, snippet_warnings = verify_snippet_candidates(
+                candidates,
+                source_text=summary_content,
+                source_path=file_path,
+                requested_count=int(snippet_request.get("requested_count", 0)),
+                max_chars=int(snippet_request.get("max_chars", 600)),
+            )
+            payload["snippets"] = snippets
+            snippet_warnings = apply_snippet_warning_policy(
+                snippet_warnings,
+                snippet_request=snippet_request,
+                verified_count=len(snippets),
+            )
+            parse_warnings.extend(snippet_warnings)
         return FarmModelResult(
             payload=payload,
             markdown=render_summary_markdown(payload),

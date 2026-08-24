@@ -354,6 +354,8 @@ def handle_farm(args: argparse.Namespace) -> None:
             chunk_tokens=args.chunk_tokens,
             reduce_tokens=args.reduce_tokens,
             token_safety_margin=args.token_safety_margin,
+            snippets=args.snippets,
+            snippet_max_chars=args.snippet_max_chars,
             parallel_jobs=args.parallel_jobs,
             parallel_chunks=args.parallel_chunks,
         )
@@ -430,6 +432,8 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--chunk-tokens", type=int)
     farm_run.add_argument("--reduce-tokens", type=int)
     farm_run.add_argument("--token-safety-margin", type=float)
+    farm_run.add_argument("--snippets")
+    farm_run.add_argument("--snippet-max-chars", type=int)
     farm_run.add_argument("--parallel-jobs", type=int)
     farm_run.add_argument("--parallel-chunks", type=int)
 

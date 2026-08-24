@@ -153,6 +153,7 @@ python qwen.py farm run input-folder --mode summarize --profile local-12gb
 python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
 python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
 python qwen.py farm run input-folder --mode summarize --chunk-strategy token
+python qwen.py farm run input-folder --mode summarize --snippets auto
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
@@ -177,6 +178,22 @@ When token budgets are omitted, the farm uses conservative derived budgets and c
 
 For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
 
+Use snippets when:
+
+- a terse summary will be fed to a frontier model for later synthesis
+- the source contains useful examples, caveats, definitions, or memorable claims
+- the user may want evidence without reading the full article
+
+Snippet policy follows normal farm config precedence. Project config can make snippets the default, and a request can override it with:
+
+```bash
+python qwen.py farm run input-folder --mode summarize --snippets off
+python qwen.py farm run input-folder --mode summarize --snippets auto
+python qwen.py farm run input-folder --mode summarize --snippets 3
+```
+
+`--snippets auto` resolves a requested count per file/job from exact token count when available, otherwise from chunk count or file size. Fixed counts are useful for repeatable dogfood comparisons. The model suggests candidate snippets, but the farm only persists snippets that it can verify as exact source text. Auto counts are best effort: inspect the verified/requested count in status artifacts, and expect obvious scaffolding such as front matter, source URLs, conversion headers, and bibliography lines to be filtered out.
+
 Example `.qwen-farm.json`:
 
 ```json
@@ -187,7 +204,12 @@ Example `.qwen-farm.json`:
     "chunk_strategy": "character",
     "chunk_chars": 8000,
     "reduce_chars": 8000,
-    "token_safety_margin": 0.1
+    "token_safety_margin": 0.1,
+    "snippet_policy": "off",
+    "snippet_count": null,
+    "snippet_min_count": 2,
+    "snippet_max_count": 8,
+    "snippet_max_chars": 600
   },
   "concurrency": {
     "jobs": 1,

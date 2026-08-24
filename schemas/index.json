@@ -30,6 +30,36 @@
       "path": "schemas/farm-doctor.schema.json",
       "surface": "python qwen.py farm doctor --json",
       "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-timing-summary.schema.json",
+      "path": "schemas/farm-timing-summary.schema.json",
+      "surface": "persisted timing-summary.json",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
+      "path": "schemas/farm-snippet-pack.schema.json",
+      "surface": "python qwen.py farm snippets pack",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-synthesis-bundle.schema.json",
+      "path": "schemas/farm-synthesis-bundle.schema.json",
+      "surface": "python qwen.py farm synthesis bundle",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
+      "path": "schemas/farm-dogfood-record.schema.json",
+      "surface": "python qwen.py farm dogfood record",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-dogfood-comparison.schema.json",
+      "path": "schemas/farm-dogfood-comparison.schema.json",
+      "surface": "python qwen.py farm dogfood compare",
+      "status": "current"
     }
   ]
 }

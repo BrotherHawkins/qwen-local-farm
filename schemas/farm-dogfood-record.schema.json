@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
+  "title": "Qwen Local Farm Dogfood Quality Record",
+  "description": "Post-run quality and timing history record written by farm dogfood record.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "recorded_at",
+    "label",
+    "commit",
+    "run_id",
+    "run_path",
+    "mode",
+    "model",
+    "status",
+    "duration_ms",
+    "runtime",
+    "totals",
+    "quality",
+    "notes",
+    "jobs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "recorded_at": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "commit": {
+      "type": ["string", "null"]
+    },
+    "run_id": {
+      "type": ["string", "null"]
+    },
+    "run_path": {
+      "type": "string"
+    },
+    "mode": {
+      "type": ["string", "null"]
+    },
+    "model": {
+      "type": ["string", "null"]
+    },
+    "status": {
+      "type": ["string", "null"],
+      "enum": ["running", "complete", "complete_with_warnings", "partial", "failed", null]
+    },
+    "duration_ms": {
+      "type": ["integer", "null"]
+    },
+    "runtime": {
+      "type": "object"
+    },
+    "totals": {
+      "type": "object",
+      "required": ["jobs", "chunks", "warnings", "requested_snippets", "verified_snippets", "selected_snippets", "dropped"],
+      "properties": {
+        "jobs": {
+          "type": "integer"
+        },
+        "chunks": {
+          "type": "integer"
+        },
+        "warnings": {
+          "type": "integer"
+        },
+        "requested_snippets": {
+          "type": "integer"
+        },
+        "verified_snippets": {
+          "type": "integer"
+        },
+        "selected_snippets": {
+          "type": "integer"
+        },
+        "dropped": {
+          "type": "object"
+        }
+      }
+    },
+    "quality": {
+      "type": "object"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["job_id", "input_path", "status", "duration_ms", "chunk_count", "warnings", "warning_count", "snippets", "quality", "notes"],
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": ["integer", "null"]
+          },
+          "chunk_count": {
+            "type": "integer"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warning_count": {
+            "type": "integer"
+          },
+          "snippets": {
+            "type": "object"
+          },
+          "quality": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

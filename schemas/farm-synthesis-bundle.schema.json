@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-synthesis-bundle.schema.json",
+  "title": "Qwen Local Farm Synthesis Bundle",
+  "description": "Post-run summary-plus-evidence bundle written by farm synthesis bundle.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "created_at",
+    "label",
+    "run_id",
+    "run_path",
+    "mode",
+    "model",
+    "limits",
+    "counts",
+    "items",
+    "diagnostics",
+    "budget"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": ["string", "null"]
+    },
+    "run_path": {
+      "type": "string"
+    },
+    "mode": {
+      "type": ["string", "null"]
+    },
+    "model": {
+      "type": ["string", "null"]
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_snippets", "per_file", "snippet_source"],
+      "properties": {
+        "max_snippets": {
+          "type": "integer"
+        },
+        "per_file": {
+          "type": "integer"
+        },
+        "snippet_source": {
+          "const": "selected"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "jobs_seen",
+        "items",
+        "items_with_snippets",
+        "snippet_candidates",
+        "snippets_selected",
+        "duplicates_dropped",
+        "jobs_skipped"
+      ],
+      "properties": {
+        "jobs_seen": {
+          "type": "integer"
+        },
+        "items": {
+          "type": "integer"
+        },
+        "items_with_snippets": {
+          "type": "integer"
+        },
+        "snippet_candidates": {
+          "type": "integer"
+        },
+        "snippets_selected": {
+          "type": "integer"
+        },
+        "duplicates_dropped": {
+          "type": "integer"
+        },
+        "jobs_skipped": {
+          "type": "integer"
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "input_path", "job_id", "status", "warnings", "summary", "snippets"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "required": ["title", "abstract", "bullets", "open_questions", "confidence"],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "abstract": {
+                "type": "string"
+              },
+              "bullets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "open_questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "confidence": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              }
+            }
+          },
+          "snippets": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["skipped_jobs", "warnings"],
+      "properties": {
+        "skipped_jobs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "max_chars",
+        "max_estimated_tokens",
+        "chars_per_token",
+        "effective_max_chars",
+        "input",
+        "output",
+        "fit",
+        "was_capped",
+        "dropped",
+        "warnings"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "max_chars": {
+          "type": ["integer", "null"]
+        },
+        "max_estimated_tokens": {
+          "type": ["integer", "null"]
+        },
+        "chars_per_token": {
+          "type": "number"
+        },
+        "effective_max_chars": {
+          "type": ["integer", "null"]
+        },
+        "input": {
+          "type": "object",
+          "required": ["chars", "estimated_tokens"],
+          "properties": {
+            "chars": {
+              "type": "integer"
+            },
+            "estimated_tokens": {
+              "type": "integer"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": ["chars", "estimated_tokens"],
+          "properties": {
+            "chars": {
+              "type": "integer"
+            },
+            "estimated_tokens": {
+              "type": "integer"
+            }
+          }
+        },
+        "fit": {
+          "type": "boolean"
+        },
+        "was_capped": {
+          "type": "boolean"
+        },
+        "dropped": {
+          "type": "object",
+          "required": ["snippets", "open_questions", "bullets", "items"],
+          "properties": {
+            "snippets": {
+              "type": "integer"
+            },
+            "open_questions": {
+              "type": "integer"
+            },
+            "bullets": {
+              "type": "integer"
+            },
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -505,7 +505,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: first AI-facing usage doc.
 - Implemented: first output schema folder and model-free validation helper.
 - Implemented: public schema validation CLI.
-- Next: post-run package schemas.
+- Implemented: post-run package schemas for timing, snippet, synthesis, and dogfood JSON artifacts.
 
 ### Milestone 2a: Early Mode Rollout
 

@@ -6,7 +6,16 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from src import qwen_farm, qwen_farm_doctor, qwen_farm_schema, qwen_farm_status
+from src import (
+    qwen_farm,
+    qwen_farm_dogfood,
+    qwen_farm_doctor,
+    qwen_farm_schema,
+    qwen_farm_snippet_packs,
+    qwen_farm_status,
+    qwen_farm_synthesis_bundles,
+    qwen_farm_timing,
+)
 from src.qwen_farm_model import FarmModelResult
 
 
@@ -42,6 +51,148 @@ def ready_tokenizers(**_kwargs: object) -> dict[str, object]:
 
 def load_schema(name: str) -> dict[str, Any]:
     return qwen_farm_schema.load_json_object(SCHEMAS / name)
+
+
+def write_package_fixture(root: Path) -> tuple[Path, dict[str, Any]]:
+    run_dir = root / "farm-run-schema"
+    result_dir = run_dir / "jobs" / "job-0001"
+    source_path = root / "input" / "article.txt"
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_text("Source text with one important quote.", encoding="utf-8")
+
+    result = {
+        "schema_version": "0.1",
+        "job_id": "job-0001",
+        "mode": "summarize",
+        "status": "complete",
+        "structured_valid": True,
+        "input": {
+            "path": str(source_path),
+        },
+        "result": {
+            "title": "Schema Article",
+            "abstract": "A compact summary for schema validation.",
+            "bullets": ["First claim", "Second claim"],
+            "open_questions": ["What changed later?"],
+            "confidence": "high",
+            "snippets": [
+                {
+                    "text": "Source text with one important quote.",
+                    "reason": "It carries the core evidence.",
+                    "score": 5,
+                    "score_reasons": ["specific"],
+                    "start_line": 1,
+                    "end_line": 1,
+                    "start_char": 0,
+                    "end_char": 37,
+                    "source_path": str(source_path),
+                }
+            ],
+        },
+        "artifacts": {
+            "markdown": "jobs/job-0001/result.md",
+            "raw_response": "jobs/job-0001/raw-response.txt",
+        },
+        "model": {
+            "agent": "default",
+            "model": "qwen-test:1b",
+        },
+        "warnings": [],
+        "chunking": {"enabled": False, "chunk_count": 1},
+        "snippets": {
+            "requested_count": 1,
+            "verified_count": 1,
+            "selected_count": 1,
+            "candidate_count": 1,
+            "dropped": {
+                "unverified": 0,
+                "low_signal": 0,
+                "duplicate": 0,
+                "too_long": 0,
+            },
+        },
+        "timing": {
+            "started_at": "2026-08-24T00:00:00.000Z",
+            "completed_at": "2026-08-24T00:00:02.000Z",
+            "duration_ms": 2000,
+            "calls": [
+                {
+                    "kind": "single",
+                    "mode": "summarize",
+                    "file_path": str(source_path),
+                    "started_at": "2026-08-24T00:00:00.100Z",
+                    "completed_at": "2026-08-24T00:00:01.900Z",
+                    "duration_ms": 1800,
+                    "status": "complete",
+                }
+            ],
+        },
+    }
+
+    status = {
+        "schema_version": "0.1",
+        "run_id": "farm-run-schema",
+        "status": "complete",
+        "mode": "summarize",
+        "agent": "default",
+        "model": "qwen-test:1b",
+        "runtime": {
+            "profile": "test",
+            "model": "qwen-test:1b",
+            "summarize": {
+                "chunk_strategy": "chars",
+                "chunk_chars": 8000,
+                "reduce_chars": 8000,
+                "snippet_policy": "fixed",
+                "snippet_count": 1,
+                "snippet_max_chars": 400,
+            },
+        },
+        "input": {
+            "path": str(source_path.parent),
+            "kind": "folder",
+        },
+        "output": {
+            "path": str(run_dir),
+        },
+        "counts": {
+            "queued": 0,
+            "running": 0,
+            "complete": 1,
+            "complete_with_warnings": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total": 1,
+        },
+        "jobs": [
+            {
+                "job_id": "job-0001",
+                "status": "complete",
+                "input_path": str(source_path),
+                "result_json": "jobs/job-0001/result.json",
+                "result_md": "jobs/job-0001/result.md",
+                "raw_response": "jobs/job-0001/raw-response.txt",
+                "error": None,
+                "warnings": [],
+                "chunking": {"enabled": False, "chunk_count": 1},
+                "snippets": result["snippets"],
+                "timing": result["timing"],
+            }
+        ],
+        "skipped_files": [],
+        "created_at": "2026-08-24T00:00:00Z",
+        "updated_at": "2026-08-24T00:00:02Z",
+        "timing": {
+            "created_at": "2026-08-24T00:00:00Z",
+            "started_at": "2026-08-24T00:00:00.000Z",
+            "completed_at": "2026-08-24T00:00:02.000Z",
+            "duration_ms": 2000,
+        },
+    }
+
+    qwen_farm_status.write_json(result_dir / "result.json", result)
+    qwen_farm_status.write_json(run_dir / "farm-status.json", status)
+    return run_dir, status
 
 
 class FarmSchemaTests(unittest.TestCase):
@@ -126,6 +277,40 @@ class FarmSchemaTests(unittest.TestCase):
             )
 
             self.assertValid(report, "farm-doctor.schema.json")
+
+    def test_generated_post_run_packages_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir, status = write_package_fixture(root)
+
+            timing_summary = qwen_farm_timing.build_timing_summary(status)
+            snippet_pack = qwen_farm_snippet_packs.build_snippet_pack(
+                run_dir=run_dir,
+                label="schema-pack",
+                created_at="2026-08-24T00:00:03Z",
+            )
+            synthesis_bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                label="schema-bundle",
+                created_at="2026-08-24T00:00:04Z",
+                max_estimated_tokens=2000,
+            )
+            dogfood_record = qwen_farm_dogfood.build_quality_record(
+                root=root,
+                run_dir=run_dir,
+                label="schema-record",
+                recorded_at="2026-08-24T00:00:05Z",
+            )
+            candidate_record = json.loads(json.dumps(dogfood_record))
+            candidate_record["label"] = "schema-candidate"
+            candidate_record["duration_ms"] = 2200
+            dogfood_comparison = qwen_farm_dogfood.compare_records(dogfood_record, candidate_record)
+
+            self.assertValid(timing_summary, "farm-timing-summary.schema.json")
+            self.assertValid(snippet_pack, "farm-snippet-pack.schema.json")
+            self.assertValid(synthesis_bundle, "farm-synthesis-bundle.schema.json")
+            self.assertValid(dogfood_record, "farm-dogfood-record.schema.json")
+            self.assertValid(dogfood_comparison, "farm-dogfood-comparison.schema.json")
 
     def test_validation_reports_path_aware_errors(self) -> None:
         schema = load_schema("farm-status-overview.schema.json")
@@ -213,6 +398,58 @@ class FarmSchemaTests(unittest.TestCase):
                 },
                 "schemas/farm-job-result.schema.json",
             ),
+            (
+                {
+                    "schema_version": "0.1",
+                    "run_id": "run-1",
+                    "aggregate_by_call_kind": {},
+                    "slowest_jobs": [],
+                    "slowest_calls": [],
+                },
+                "schemas/farm-timing-summary.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "limits": {"source": "selected"},
+                    "snippets": [],
+                    "diagnostics": {},
+                    "counts": {},
+                },
+                "schemas/farm-snippet-pack.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "limits": {"snippet_source": "selected"},
+                    "items": [],
+                    "budget": {},
+                    "diagnostics": {},
+                    "counts": {},
+                },
+                "schemas/farm-synthesis-bundle.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "recorded_at": "2026-08-24T00:00:00Z",
+                    "totals": {},
+                    "quality": {},
+                    "jobs": [],
+                },
+                "schemas/farm-dogfood-record.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "compared_at": "2026-08-24T00:00:00Z",
+                    "baseline": {},
+                    "candidate": {},
+                    "duration_ms": {},
+                    "jobs": [],
+                },
+                "schemas/farm-dogfood-comparison.schema.json",
+            ),
         ]
 
         for artifact, expected_path in cases:
@@ -246,6 +483,34 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertEqual(result["schema"]["path"], "schemas/farm-doctor.schema.json")
             self.assertTrue(result["schema"]["detected"])
 
+    def test_validate_artifact_accepts_package_schema_path_and_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_dir, _status = write_package_fixture(root)
+            pack = qwen_farm_snippet_packs.build_snippet_pack(
+                run_dir=run_dir,
+                label="schema-pack",
+                created_at="2026-08-24T00:00:03Z",
+            )
+            artifact = root / "schema-pack.json"
+            artifact.write_text(json.dumps(pack), encoding="utf-8")
+
+            by_path = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "schemas/farm-snippet-pack.schema.json",
+            )
+            by_id = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
+            )
+
+            self.assertTrue(by_path["valid"])
+            self.assertTrue(by_id["valid"])
+            self.assertEqual(by_path["schema"]["path"], "schemas/farm-snippet-pack.schema.json")
+            self.assertEqual(by_id["schema"]["path"], "schemas/farm-snippet-pack.schema.json")
+
     def test_validate_artifact_reports_schema_errors(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "overview.json"
@@ -256,6 +521,39 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertFalse(result["valid"])
             self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
             self.assertIn("$.counts: missing required field 'runs'", result["errors"])
+
+    def test_validate_artifact_reports_malformed_package_schema_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "bundle.json"
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "created_at": "2026-08-24T00:00:00Z",
+                        "label": "malformed",
+                        "run_id": "run-1",
+                        "run_path": ".run/farm/run-1",
+                        "mode": "summarize",
+                        "model": "qwen-test:1b",
+                        "limits": {"max_snippets": 1, "per_file": 1, "snippet_source": "selected"},
+                        "counts": {},
+                        "items": [],
+                        "diagnostics": {"skipped_jobs": [], "warnings": []},
+                        "budget": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "schemas/farm-synthesis-bundle.schema.json",
+            )
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertIn("$.budget: missing required field 'input'", result["errors"])
 
     def test_validate_artifact_reports_input_errors_as_exit_error(self) -> None:
         result = qwen_farm_schema.validate_artifact(ROOT, Path("missing.json"))

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-dogfood-comparison.schema.json",
+  "title": "Qwen Local Farm Dogfood Comparison",
+  "description": "Post-run baseline and candidate quality comparison written by farm dogfood compare.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "compared_at",
+    "baseline",
+    "candidate",
+    "duration_ms",
+    "totals",
+    "dropped",
+    "quality",
+    "jobs",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "compared_at": {
+      "type": "string"
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["label", "run_id", "status"],
+      "properties": {
+        "label": {
+          "type": ["string", "null"]
+        },
+        "run_id": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["label", "run_id", "status"],
+      "properties": {
+        "label": {
+          "type": ["string", "null"]
+        },
+        "run_id": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "duration_ms": {
+      "type": "object",
+      "required": ["baseline", "candidate", "delta"],
+      "properties": {
+        "baseline": {
+          "type": ["integer", "null"]
+        },
+        "candidate": {
+          "type": ["integer", "null"]
+        },
+        "delta": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "totals": {
+      "type": "object"
+    },
+    "dropped": {
+      "type": "object"
+    },
+    "quality": {
+      "type": "object"
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["input_path", "baseline_status", "candidate_status", "duration_ms", "warnings", "snippets"],
+        "properties": {
+          "input_path": {
+            "type": "string"
+          },
+          "baseline_status": {
+            "type": ["string", "null"]
+          },
+          "candidate_status": {
+            "type": ["string", "null"]
+          },
+          "duration_ms": {
+            "type": "object"
+          },
+          "warnings": {
+            "type": "object"
+          },
+          "snippets": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "object",
+      "required": ["baseline", "candidate"],
+      "properties": {
+        "baseline": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "candidate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

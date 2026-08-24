@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 18 |
+| Implemented | 19 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -68,6 +68,7 @@ None.
 | 0015 | Implemented | Add | [0015-add-farm-doctor.md](changes/0015-add-farm-doctor.md) | Adds a read-only farm doctor report for setup, model, runtime, tokenizer, and recent-run inspection. |
 | 0016 | Implemented | Add | [0016-add-artifact-schemas-and-validation.md](changes/0016-add-artifact-schemas-and-validation.md) | Adds tracked schema contracts and model-free validation coverage for key farm JSON artifacts. |
 | 0017 | Implemented | Add | [0017-add-schema-validation-cli.md](changes/0017-add-schema-validation-cli.md) | Adds a public model-free CLI for validating farm JSON artifacts against tracked schemas. |
+| 0018 | Implemented | Add | [0018-add-post-run-package-schemas.md](changes/0018-add-post-run-package-schemas.md) | Adds schemas and validator auto-detection for post-run timing, snippet, synthesis, and dogfood package artifacts. |
 
 ## Stale Drafts To Revisit
 

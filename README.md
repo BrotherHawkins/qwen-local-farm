@@ -123,7 +123,7 @@ Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 
-Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, and doctor reports. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
+Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
 
 Validate a JSON artifact before handing it to a script or downstream AI workflow:
 
@@ -131,9 +131,10 @@ Validate a JSON artifact before handing it to a script or downstream AI workflow
 python qwen.py farm schema validate .run/reports/setup-doctor.json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+python qwen.py farm schema validate <run-dir>/timing-summary.json
 ```
 
-Without `--schema`, validation auto-detects the current core farm artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means the artifact/schema could not be read or inferred.
+Without `--schema`, validation auto-detects the current core farm artifacts and post-run package JSON artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means the artifact/schema could not be read or inferred.
 
 For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
 

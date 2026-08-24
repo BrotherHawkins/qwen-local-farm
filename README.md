@@ -132,6 +132,14 @@ python qwen.py farm snippets pack <run-dir> --label research-pack
 
 Snippet packs are post-run artifacts under `.run/snippet_packs/` by default. They read existing `result.json` files, make no model calls, deduplicate and cap snippets deterministically, and write both Markdown and JSON.
 
+When the downstream model needs summary context plus evidence, create a synthesis bundle instead:
+
+```bash
+python qwen.py farm synthesis bundle <run-dir> --label research-bundle
+```
+
+Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls.
+
 To compare dogfood runs over time, record compact local quality history with `python qwen.py farm dogfood record <run-dir>` and compare records with `python qwen.py farm dogfood compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and privacy rules.
 
 Token-aware chunking can also be configured in `.qwen-farm.json`:

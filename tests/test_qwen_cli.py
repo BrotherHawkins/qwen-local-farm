@@ -200,3 +200,34 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/snippet_packs")
         self.assertEqual(args.max_snippets, 12)
         self.assertEqual(args.per_file, 3)
+
+    def test_parse_args_accepts_farm_synthesis_bundle(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "synthesis",
+                "bundle",
+                ".run/farm-results/run-1",
+                "--label",
+                "dogfood-lite",
+                "--output",
+                ".run/synthesis_bundles",
+                "--max-snippets",
+                "12",
+                "--per-file",
+                "3",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "synthesis")
+        self.assertEqual(args.synthesis_command, "bundle")
+        self.assertEqual(args.run_dir, ".run/farm-results/run-1")
+        self.assertEqual(args.label, "dogfood-lite")
+        self.assertEqual(args.output, ".run/synthesis_bundles")
+        self.assertEqual(args.max_snippets, 12)
+        self.assertEqual(args.per_file, 3)

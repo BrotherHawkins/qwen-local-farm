@@ -350,6 +350,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             ollama_base_url=OLLAMA_BASE_URL,
             agent_id=args.agent,
             profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
             output_dir=output_dir,
             find_ollama_fn=find_ollama,
             request_json_fn=request_json,
@@ -388,6 +389,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             ollama_base_url=OLLAMA_BASE_URL,
             agent_id=args.agent,
             profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
             output_dir=output_dir,
             find_ollama_fn=find_ollama,
             request_json_fn=request_json,
@@ -527,6 +529,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             default_model=MODEL,
             config_path=Path(args.config) if args.config else None,
             profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
             model=args.model,
             chunk_strategy=args.chunk_strategy,
             chunk_chars=args.chunk_chars,
@@ -605,12 +608,14 @@ def parse_args() -> argparse.Namespace:
     farm_doctor.add_argument("--output")
     farm_doctor.add_argument("--agent", default="default")
     farm_doctor.add_argument("--profile")
+    farm_doctor.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
 
     farm_recommend = farm_subparsers.add_parser("recommend")
     farm_recommend.add_argument("--json", action="store_true")
     farm_recommend.add_argument("--output")
     farm_recommend.add_argument("--agent", default="default")
     farm_recommend.add_argument("--profile")
+    farm_recommend.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
     farm_recommend_subparsers = farm_recommend.add_subparsers(dest="recommend_command", required=False)
 
     farm_recommend_apply = farm_recommend_subparsers.add_parser("apply")
@@ -636,6 +641,7 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--agent", default="default")
     farm_run.add_argument("--config")
     farm_run.add_argument("--profile")
+    farm_run.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
     farm_run.add_argument("--model")
     farm_run.add_argument("--chunk-strategy", choices=["character", "token"])
     farm_run.add_argument("--chunk-chars", type=int)

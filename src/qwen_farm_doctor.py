@@ -85,6 +85,7 @@ def build_doctor_report(
     ollama_base_url: str,
     agent_id: str = "default",
     profile: str | None = None,
+    resource_mode: str | None = None,
     output_dir: Path | None = None,
     generated_at: str | None = None,
     find_ollama_fn: FindOllama | None = None,
@@ -152,6 +153,7 @@ def build_doctor_report(
             agent_id=agent_id,
             default_model=default_model,
             profile=profile,
+            resource_mode=resource_mode,
         )
         agent.update(
             {
@@ -304,6 +306,7 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
 
     agent = report.get("agent", {}) if isinstance(report.get("agent"), dict) else {}
     runtime = report.get("runtime", {}) if isinstance(report.get("runtime"), dict) else {}
+    resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
     lines.extend(
         [
             "",
@@ -313,6 +316,10 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
             f"- Model: `{agent.get('model') or ''}`",
             f"- Model installed: `{agent.get('model_installed')}`",
             f"- Profile: `{runtime.get('profile') or ''}`",
+            f"- Resource mode requested: `{resource_mode.get('requested') or ''}`",
+            f"- Resource mode effective: `{resource_mode.get('effective') or ''}`",
+            f"- Resource mode source: `{resource_mode.get('source') or ''}`",
+            f"- Resource mode reason: {resource_mode.get('reason') or ''}",
             f"- Chunk strategy: `{((runtime.get('summarize') or {}) if isinstance(runtime.get('summarize'), dict) else {}).get('chunk_strategy') or ''}`",
             f"- Parallel jobs: `{((runtime.get('concurrency') or {}) if isinstance(runtime.get('concurrency'), dict) else {}).get('jobs') or ''}`",
             "",

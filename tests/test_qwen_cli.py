@@ -50,6 +50,8 @@ class ParseArgsTests(unittest.TestCase):
                 "Summarize risks",
                 "--agent",
                 "qwen8",
+                "--resource-mode",
+                "hybrid",
             ],
         ):
             args = qwen.parse_args()
@@ -60,6 +62,7 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.mode, "prompt")
         self.assertEqual(args.instructions, "Summarize risks")
         self.assertEqual(args.agent, "qwen8")
+        self.assertEqual(args.resource_mode, "hybrid")
 
     def test_parse_args_accepts_token_chunk_overrides(self) -> None:
         with patch.object(
@@ -131,6 +134,8 @@ class ParseArgsTests(unittest.TestCase):
                 "default",
                 "--profile",
                 "local-8gb",
+                "--resource-mode",
+                "auto",
             ],
         ):
             args = qwen.parse_args()
@@ -141,6 +146,7 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/reports")
         self.assertEqual(args.agent, "default")
         self.assertEqual(args.profile, "local-8gb")
+        self.assertEqual(args.resource_mode, "auto")
 
     def test_parse_args_accepts_farm_recommend(self) -> None:
         with patch.object(
@@ -157,6 +163,8 @@ class ParseArgsTests(unittest.TestCase):
                 "qwen8",
                 "--profile",
                 "local-12gb",
+                "--resource-mode",
+                "gpu",
             ],
         ):
             args = qwen.parse_args()
@@ -167,6 +175,7 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/recommendations")
         self.assertEqual(args.agent, "qwen8")
         self.assertEqual(args.profile, "local-12gb")
+        self.assertEqual(args.resource_mode, "gpu")
         self.assertIsNone(args.recommend_command)
 
     def test_parse_args_accepts_farm_recommend_apply(self) -> None:
@@ -523,6 +532,7 @@ class FarmHandlerTests(unittest.TestCase):
             output="out",
             agent="default",
             profile="local-8gb",
+            resource_mode="cpu",
         )
         report = {"schema_version": 1, "status": "ready"}
 
@@ -536,6 +546,7 @@ class FarmHandlerTests(unittest.TestCase):
         self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
         self.assertEqual(build.call_args.kwargs["agent_id"], "default")
         self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
+        self.assertEqual(build.call_args.kwargs["resource_mode"], "cpu")
         write.assert_called_once_with(report)
         printed.assert_called_once()
         self.assertEqual(json.loads(printed.call_args.args[0]), report)
@@ -547,6 +558,7 @@ class FarmHandlerTests(unittest.TestCase):
             output=None,
             agent="default",
             profile=None,
+            resource_mode=None,
         )
         report = {"schema_version": 1, "status": "ready"}
 
@@ -569,6 +581,7 @@ class FarmHandlerTests(unittest.TestCase):
             output="out",
             agent="default",
             profile="local-8gb",
+            resource_mode="hybrid",
         )
         report = {"schema_version": 1, "status": "ready"}
 
@@ -582,6 +595,7 @@ class FarmHandlerTests(unittest.TestCase):
         self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
         self.assertEqual(build.call_args.kwargs["agent_id"], "default")
         self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
+        self.assertEqual(build.call_args.kwargs["resource_mode"], "hybrid")
         self.assertEqual(build.call_args.kwargs["output_dir"], Path("out"))
         write.assert_called_once_with(report)
         printed.assert_called_once()
@@ -595,6 +609,7 @@ class FarmHandlerTests(unittest.TestCase):
             output=None,
             agent="default",
             profile=None,
+            resource_mode=None,
         )
         report = {"schema_version": 1, "status": "ready"}
 

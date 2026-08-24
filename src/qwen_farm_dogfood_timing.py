@@ -17,6 +17,7 @@ JOB_DELTA_FIELDS = ("duration_ms", "queue_wait_ms", "chunk_count", "call_count",
 COMPARABILITY_FIELDS = (
     ("model", "model"),
     ("profile", "profile"),
+    ("runtime.resource_mode.effective", "resource_mode.effective"),
     ("commit", "commit"),
     ("runtime.concurrency.jobs", "concurrency.jobs"),
     ("runtime.concurrency.chunks", "concurrency.chunks"),
@@ -107,6 +108,7 @@ def compact_runtime(status: dict[str, Any]) -> dict[str, Any]:
         summarize = {}
     return {
         "profile": runtime.get("profile"),
+        "resource_mode": runtime.get("resource_mode"),
         "model": runtime.get("model", status.get("model")),
         "concurrency": {
             "jobs": concurrency.get("jobs"),
@@ -307,6 +309,7 @@ def build_timing_record(
         "agent": status.get("agent"),
         "model": status.get("model"),
         "profile": runtime.get("profile"),
+        "resource_mode": (runtime.get("resource_mode") or {}).get("effective") if isinstance(runtime.get("resource_mode"), dict) else None,
         "runtime": runtime,
         "totals": build_totals(status, job_rows, calls, summary),
         "slowest_jobs": [
@@ -339,6 +342,7 @@ def run_identity(record: dict[str, Any]) -> dict[str, Any]:
         "status": record.get("status"),
         "model": record.get("model"),
         "profile": record.get("profile"),
+        "resource_mode": record.get("resource_mode"),
         "commit": record.get("commit"),
     }
 

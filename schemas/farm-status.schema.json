@@ -42,7 +42,31 @@
       "type": "string"
     },
     "runtime": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "resource_mode": {
+          "type": "object",
+          "properties": {
+            "requested": {
+              "type": "string",
+              "enum": ["auto", "gpu", "hybrid", "cpu"]
+            },
+            "effective": {
+              "type": "string",
+              "enum": ["gpu", "hybrid", "cpu"]
+            },
+            "source": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "agent_option_override": {
+              "type": ["object", "null"]
+            }
+          }
+        }
+      }
     },
     "input": {
       "type": "object",

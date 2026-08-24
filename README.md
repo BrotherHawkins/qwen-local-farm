@@ -68,6 +68,7 @@ Use a named profile or override specific values:
 ```bash
 python qwen.py farm run notes --mode summarize --profile local-12gb
 python qwen.py farm run notes --mode summarize --profile local-24gb --chunk-chars 20000 --parallel-jobs 2
+python qwen.py farm run notes --mode summarize --resource-mode cpu
 ```
 
 The default chunker uses character budgets. For fewer, larger chunks on supported Qwen models, set up exact local tokenizers and opt into token-aware chunking:
@@ -115,16 +116,18 @@ Apply requires an explicit write flag:
 python qwen.py farm recommend apply --write
 ```
 
-`farm recommend apply` writes `.run/recommendations/farm-config-apply.json` and `.run/recommendations/FARM_CONFIG_APPLY.md`. Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first, then writes only supported farm config fields. Resource mode and `OLLAMA_NUM_PARALLEL` remain guidance because they are not current `.qwen-farm.json` fields.
+`farm recommend apply` writes `.run/recommendations/farm-config-apply.json` and `.run/recommendations/FARM_CONFIG_APPLY.md`. Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first, then writes only supported farm config fields. Resource mode is now a supported farm config field. `OLLAMA_NUM_PARALLEL` remains guidance because it is an Ollama service environment setting, not a farm config field.
 
-Resource mode recommendations use this vocabulary:
+Resource modes use this runtime vocabulary:
 
 | Mode | Meaning |
 | --- | --- |
-| `gpu` | Prefer speed through GPU placement. |
-| `hybrid` | Use GPU when available, while allowing CPU/RAM fallback or partial offload. |
-| `cpu` | Avoid VRAM pressure and accept slower runs. |
-| `auto` | More local evidence is needed before choosing a concrete mode. |
+| `gpu` | Prefer speed through GPU placement. Fails early if the selected agent explicitly forces CPU. |
+| `hybrid` | Allow partial GPU offload or Ollama-managed fallback. Fails early if the selected agent explicitly forces CPU. |
+| `cpu` | Avoid VRAM pressure and force effective agent options to include `num_gpu: 0`. |
+| `auto` | Resolve deterministically before model calls from the selected profile and agent options. |
+
+Resource mode does not silently change the selected model or switch agents. Pick a larger or CPU-specific agent explicitly when quality/model size matters.
 
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
 
@@ -133,6 +136,7 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 ```json
 {
   "profile": "local-12gb",
+  "resource_mode": "auto",
   "model": "qwen3.5:4b",
   "summarize": {
     "chunk_strategy": "character",
@@ -152,7 +156,7 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 }
 ```
 
-Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 

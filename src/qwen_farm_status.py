@@ -71,6 +71,7 @@ def write_status(run_dir: Path, status: dict[str, Any]) -> None:
 def render_status_markdown(status: dict[str, Any]) -> str:
     counts = status.get("counts", {})
     runtime = status.get("runtime") or {}
+    resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
     summarize = runtime.get("summarize") or {}
     concurrency = runtime.get("concurrency") or {}
     lines = [
@@ -91,6 +92,9 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         "## Runtime",
         "",
         f"Profile: `{runtime.get('profile', '')}`",
+        f"Resource mode requested: `{resource_mode.get('requested') or ''}`",
+        f"Resource mode effective: `{resource_mode.get('effective') or ''}`",
+        f"Resource mode source: `{resource_mode.get('source') or ''}`",
         f"Model: `{runtime.get('model', status.get('model', ''))}`",
         f"Chunk strategy: `{summarize.get('chunk_strategy', '')}`",
         f"Chunk chars: `{summarize.get('chunk_chars', '')}`",

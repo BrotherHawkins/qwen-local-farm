@@ -771,6 +771,44 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
             self.assertIn("$.status: expected one of", "\n".join(result["errors"]))
 
+    def test_validate_artifact_reports_malformed_resource_mode_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "timing-summary.json"
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "0.1",
+                        "run_id": "run-1",
+                        "status": "complete",
+                        "mode": "summarize",
+                        "agent": "default",
+                        "model": "qwen3.5:4b",
+                        "profile": "local-8gb",
+                        "resource_mode": {
+                            "requested": "auto",
+                            "effective": "rocket",
+                            "source": "profile",
+                            "reason": "bad",
+                            "agent_option_override": None,
+                        },
+                        "timing": {},
+                        "counts": {},
+                        "jobs": [],
+                        "calls": [],
+                        "aggregate_by_call_kind": {},
+                        "slowest_jobs": [],
+                        "slowest_calls": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertIn("$.resource_mode.effective: expected one of", "\n".join(result["errors"]))
+
     def test_validate_artifact_reports_malformed_package_schema_errors(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "bundle.json"

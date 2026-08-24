@@ -415,7 +415,7 @@ Possible meanings:
 Current state:
 
 - Model choice is explicit through agent configs.
-- Hybrid and CPU/RAM modes are manually selected.
+- Implemented: first-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes in config/CLI/resolved artifacts.
 - Runtime profiles now make model, summarize chunk sizing, and concurrency assumptions explicit for each run.
 - Every run writes `farm-config.resolved.json`.
 - File-job scheduler concurrency can use `concurrency.jobs` as a bounded worker-slot limit.
@@ -424,6 +424,7 @@ Roadmap:
 
 - Use runtime profiles as the stable configuration layer for both power users and AI-assisted setup.
 - Implemented: bounded file-job scheduler concurrency using `concurrency.jobs`.
+- Implemented: resource intent can be selected without silently changing agent id or model id.
 - Add model routing rules that consider speed, VRAM pressure, job type, and expected quality.
 - Add a simple worker scheduler:
   - max concurrent jobs
@@ -435,14 +436,14 @@ Roadmap:
 
 Open questions:
 
-- How should `farm doctor` recommend safe `parallel_jobs` and Ollama `OLLAMA_NUM_PARALLEL` values?
+- When should resource mode be allowed to switch agent ids or model sizes?
 - Should heavy 14B jobs require an explicit queue/mode label?
 - Should GPU use be opt-in for background jobs?
 - Should advanced users manage multiple Ollama server pools themselves, or should the farm eventually provide a pool abstraction?
 
 Likely next PR:
 
-- Add a resource policy doc and a basic `workers.json` configuration sketch.
+- Decide whether to tackle automatic agent/model routing, multi-server pools, or resource fallback retries first.
 
 ## 12. Capability Discovery And Setup Guidance
 
@@ -527,6 +528,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 - Implemented: runtime profiles and resolved run config artifacts.
 - Implemented: bounded file-job scheduler concurrency from resolved profile settings.
+- Implemented: first-class resource modes with deterministic `auto` resolution and CPU enforcement.
 - Worker configuration.
 - Resource-aware routing.
 - Multiple processing modes.

@@ -116,7 +116,7 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["status"], "ready")
             self.assertEqual(report["agent"], "default")
             self.assertEqual(report["model"], "qwen3.5:4b")
-            self.assertEqual(report["resource_mode"]["recommended"], "hybrid")
+            self.assertEqual(report["resource_mode"]["recommended"], "gpu")
             self.assertEqual(report["profile"]["recommended"], "local-8gb")
             self.assertEqual(report["concurrency"]["parallel_jobs"]["recommended"], 1)
             self.assertEqual(report["concurrency"]["ollama_num_parallel"]["recommended"], 1)
@@ -140,7 +140,7 @@ class FarmRecommendTests(unittest.TestCase):
             )
 
             self.assertEqual(report["status"], "needs_setup")
-            self.assertEqual(report["resource_mode"]["recommended"], "auto")
+            self.assertEqual(report["resource_mode"]["recommended"], "gpu")
             self.assertEqual(report["summarize"]["chunk_strategy"], "character")
             self.assertEqual(report["evidence"]["benchmark"]["status"], "skipped")
             self.assertIn("ollama.install", [item["id"] for item in report["next_actions"]])
@@ -173,6 +173,22 @@ class FarmRecommendTests(unittest.TestCase):
 
             self.assertEqual(report["resource_mode"]["recommended"], "cpu")
             self.assertEqual(report["resource_mode"]["confidence"], "high")
+
+    def test_explicit_resource_mode_cpu_recommends_cpu(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report = qwen_farm_recommend.build_recommendation_report(
+                root=Path(temp_dir),
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                resource_mode="cpu",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=ready_ollama,
+                tokenizer_status_fn=ready_tokenizers,
+            )
+
+            self.assertEqual(report["resource_mode"]["recommended"], "cpu")
+            self.assertEqual(report["evidence"]["runtime"]["resource_mode"]["requested"], "cpu")
+            self.assertEqual(report["evidence"]["runtime"]["resource_mode"]["effective"], "cpu")
 
     def test_local_24gb_profile_still_recommends_single_worker_without_parallel_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -232,8 +248,10 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertTrue(report["dry_run"])
             self.assertFalse(config_path.exists())
             self.assertEqual(report["proposed_config"]["profile"], "local-8gb")
+            self.assertEqual(report["proposed_config"]["resource_mode"], "hybrid")
             self.assertEqual(report["proposed_config"]["summarize"]["chunk_strategy"], "token")
-            self.assertIn("resource_mode", [item["path"] for item in report["not_applied"]])
+            self.assertIn("resource_mode", [item["path"] for item in report["changes"]])
+            self.assertNotIn("resource_mode", [item["path"] for item in report["not_applied"]])
             self.assertIn("OLLAMA_NUM_PARALLEL", [item["path"] for item in report["not_applied"]])
 
     def test_apply_write_writes_config(self) -> None:
@@ -257,6 +275,7 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertIsNone(report["backup_path"])
             written = json.loads(config_path.read_text(encoding="utf-8"))
             self.assertEqual(written["model"], "qwen3.5:4b")
+            self.assertEqual(written["resource_mode"], "hybrid")
             self.assertEqual(written["concurrency"]["jobs"], 1)
 
     def test_apply_write_backs_up_existing_config_and_preserves_safe_fields(self) -> None:

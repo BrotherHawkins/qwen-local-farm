@@ -154,6 +154,7 @@ python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
 python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
 python qwen.py farm run input-folder --mode summarize --chunk-strategy token
 python qwen.py farm run input-folder --mode summarize --snippets auto
+python qwen.py farm run input-folder --mode summarize --resource-mode cpu
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
@@ -188,14 +189,16 @@ python qwen.py farm schema validate .run/recommendations/farm-recommendation.jso
 
 `farm doctor` stays read-only and fast. It reports whether a latest recommendation exists and points to `farm recommend` when missing. `farm recommend` writes `.run/recommendations/farm-recommendation.json` plus Markdown, runs only a tiny user-invoked Ollama probe when the selected model is ready, and never edits config or service environment variables.
 
-Primary AIs should read the recommendation JSON before suggesting settings. Treat `parallel_jobs` as farm worker slots and `OLLAMA_NUM_PARALLEL` as a separate Ollama service setting. Resource mode is recommendation vocabulary:
+Primary AIs should read the recommendation JSON before suggesting settings. Treat `parallel_jobs` as farm worker slots and `OLLAMA_NUM_PARALLEL` as a separate Ollama service setting. Resource mode is a farm runtime/config setting:
 
 | Mode | Meaning |
 | --- | --- |
-| `gpu` | Prefer speed through GPU placement. |
-| `hybrid` | Use GPU when available, while allowing CPU/RAM fallback or partial offload. |
-| `cpu` | Avoid VRAM pressure and accept slower runs. |
-| `auto` | More local evidence is needed before choosing a concrete mode. |
+| `gpu` | Prefer speed through GPU placement. Fails early if the selected agent explicitly forces CPU. |
+| `hybrid` | Allow partial GPU offload or Ollama-managed fallback. Fails early if the selected agent explicitly forces CPU. |
+| `cpu` | Avoid VRAM pressure and force effective agent options to include `num_gpu: 0`. |
+| `auto` | Resolve deterministically before model calls from the selected profile and agent options. |
+
+Resource mode does not silently change model size or switch agent id. If the user wants a deeper model, choose an agent such as `qwen8` or `qwen14-hybrid` explicitly.
 
 If `status` is not `ready`, explain the warnings and next actions rather than treating the settings as measured truth. If confidence is low, run a small dogfood folder before changing `.qwen-farm.json`.
 
@@ -212,7 +215,7 @@ Only apply after inspecting the preview:
 python qwen.py farm recommend apply --write
 ```
 
-Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first and writes only supported farm config fields. The apply report JSON lists exact field-level changes plus `not_applied` guidance such as `resource_mode` and `OLLAMA_NUM_PARALLEL`, which are not current config fields. Primary AIs should explain those guidance-only settings separately instead of implying the farm changed Ollama service state.
+Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first and writes only supported farm config fields. The apply report JSON lists exact field-level changes. `resource_mode` is applied when valid; `OLLAMA_NUM_PARALLEL` stays in `not_applied` guidance because the farm does not change Ollama service state.
 
 Use snippets when:
 
@@ -261,6 +264,7 @@ Example `.qwen-farm.json`:
 ```json
 {
   "profile": "local-8gb",
+  "resource_mode": "auto",
   "model": "qwen3.5:4b",
   "summarize": {
     "chunk_strategy": "character",
@@ -291,7 +295,7 @@ local-24gb
 custom
 ```
 
-`farm doctor` provides read-only setup and readiness guidance. Hardware probing and automatic recommendation are still deferred; until then, AI assistants should choose conservative profiles and leave visible config files behind.
+`farm doctor` provides read-only setup and readiness guidance, including requested/effective resource mode. AI assistants should choose conservative profiles and modes, then leave visible config files and resolved run artifacts behind.
 
 Custom prompt invocation:
 

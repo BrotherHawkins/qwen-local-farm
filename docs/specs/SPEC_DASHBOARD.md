@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 12 |
+| Implemented | 13 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -62,6 +62,7 @@ None.
 | 0009 | Implemented | Add | [0009-add-dogfood-quality-history.md](changes/0009-add-dogfood-quality-history.md) | Adds a local dogfood quality history workflow to record and compare summarize/snippet run quality over time. |
 | 0010 | Implemented | Add | [0010-add-cross-file-snippet-packs.md](changes/0010-add-cross-file-snippet-packs.md) | Adds deterministic cross-file snippet packs from existing summarize run artifacts for downstream synthesis. |
 | 0011 | Implemented | Add | [0011-add-summary-snippet-synthesis-bundles.md](changes/0011-add-summary-snippet-synthesis-bundles.md) | Adds post-run synthesis bundles that combine compact per-file summaries with selected verified snippets. |
+| 0012 | Implemented | Add | [0012-add-run-id-lookup-for-post-run-helpers.md](changes/0012-add-run-id-lookup-for-post-run-helpers.md) | Lets post-run helper commands accept known farm run IDs as well as run directory paths. |
 
 ## Stale Drafts To Revisit
 

@@ -13,7 +13,7 @@ Generated history lives under:
 Record an existing farm run:
 
 ```powershell
-python qwen.py farm dogfood record .run/dogfood_0008/lite-ranked-final/farm-results/farm-run-2026-08-24-123139-37f1 --label 0008-lite-ranked-final
+python qwen.py farm dogfood record <run-ref> --label 0008-lite-ranked-final
 ```
 
 The default output folder is:
@@ -73,7 +73,7 @@ Optional notes file:
 Record with notes:
 
 ```powershell
-python qwen.py farm dogfood record <run-dir> --label 0009-lite-candidate --notes .run/dogfood_0009/quality-notes.json
+python qwen.py farm dogfood record <run-ref> --label 0009-lite-candidate --notes .run/dogfood_0009/quality-notes.json
 ```
 
 ## Compare Runs

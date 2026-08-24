@@ -1325,6 +1325,35 @@ def find_run_dir(root: Path, run_id: str) -> Path:
     raise FileNotFoundError(f"Unknown farm run: {run_id}")
 
 
+def validate_run_dir(run_dir: Path, *, run_ref: str | None = None) -> Path:
+    label = f" for {run_ref}" if run_ref else ""
+    if run_dir.exists() and not run_dir.is_dir():
+        raise FileNotFoundError(f"Farm run reference{label} is not a directory: {run_dir}")
+    if not run_dir.is_dir():
+        raise FileNotFoundError(f"Farm run directory{label} does not exist: {run_dir}")
+    if not run_status_path(run_dir).exists():
+        raise FileNotFoundError(f"Farm run directory{label} is missing farm-status.json: {run_dir}")
+    return run_dir
+
+
+def resolve_run_reference(root: Path, run_ref: str) -> Path:
+    candidate = Path(run_ref)
+    if candidate.exists():
+        return validate_run_dir(candidate)
+
+    for entry in read_run_index(root):
+        if entry.get("run_id") == run_ref:
+            return validate_run_dir(Path(entry["path"]), run_ref=run_ref)
+
+    try:
+        return find_run_dir(root, run_ref)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"Unknown farm run reference: {run_ref}. Run `python qwen.py farm list` to see known runs, "
+            "or pass a full run directory path."
+        ) from exc
+
+
 def list_runs_text(root: Path) -> str:
     return render_run_list(load_runs(root))
 

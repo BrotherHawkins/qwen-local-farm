@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import qwen
@@ -231,3 +233,82 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/synthesis_bundles")
         self.assertEqual(args.max_snippets, 12)
         self.assertEqual(args.per_file, 3)
+
+
+class FarmHandlerTests(unittest.TestCase):
+    def test_snippets_pack_resolves_run_reference_before_building_pack(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="snippets",
+            snippets_command="pack",
+            run_dir="farm-run-1",
+            output="out",
+            label="label",
+            max_snippets=5,
+            per_file=2,
+        )
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.qwen_farm_snippet_packs.build_snippet_pack", return_value={"counts": {"selected": 1}}) as build,
+            patch("src.qwen_farm_snippet_packs.write_snippet_pack", return_value=(Path("pack.json"), Path("pack.md"))),
+            patch("builtins.print"),
+        ):
+            qwen.handle_farm(args)
+
+        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+
+    def test_synthesis_bundle_resolves_run_reference_before_building_bundle(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="synthesis",
+            synthesis_command="bundle",
+            run_dir="farm-run-1",
+            output="out",
+            label="label",
+            max_snippets=5,
+            per_file=2,
+        )
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch(
+                "src.qwen_farm_synthesis_bundles.build_synthesis_bundle",
+                return_value={"counts": {"items": 1, "snippets_selected": 1}},
+            ) as build,
+            patch(
+                "src.qwen_farm_synthesis_bundles.write_synthesis_bundle",
+                return_value=(Path("bundle.json"), Path("bundle.md")),
+            ),
+            patch("builtins.print"),
+        ):
+            qwen.handle_farm(args)
+
+        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+
+    def test_dogfood_record_resolves_run_reference_before_building_record(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="dogfood",
+            dogfood_command="record",
+            run_dir="farm-run-1",
+            output="out",
+            label="label",
+            notes=None,
+        )
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch(
+                "src.qwen_farm_dogfood.build_quality_record",
+                return_value={"label": "label", "run_id": "farm-run-1"},
+            ) as build,
+            patch("src.qwen_farm_dogfood.write_quality_record", return_value=Path("record.json")),
+            patch("builtins.print"),
+        ):
+            qwen.handle_farm(args)
+
+        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        self.assertEqual(build.call_args.kwargs["run_dir"], resolved)

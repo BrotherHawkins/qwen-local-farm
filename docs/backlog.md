@@ -27,7 +27,7 @@ Status values:
 | BL-0012 | Open | 0001 | Drop-folder scanning | Manual `farm scan` first, watcher later. |
 | BL-0013 | Implemented | 0001 | Chunking | Implemented first for summarize mode by 0002; broader chunking remains tracked separately. |
 | BL-0014 | Implemented | 0002, 0003, 0006 | Tokenizer-aware chunk sizing | Implemented by 0006 as opt-in exact local tokenizer-aware summarize chunk sizing. |
-| BL-0015 | Open | 0002 | Markdown heading ancestry preservation | Preserve heading context in chunk inputs and outputs. |
+| BL-0015 | Implemented | 0002, 0026 | Markdown heading ancestry preservation | 0026 preserves heading context in chunk inputs, chunk records, and chunk result artifacts. |
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
 | BL-0017 | Implemented | 0002, 0025 | Chunk retries separate from file retries | 0025 implemented independent chunk and reduce retry controls for chunked summarize jobs. |
 | BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
@@ -47,7 +47,7 @@ Status values:
 | BL-0032 | Open | 0004 | Chunk-level parallelism using `concurrency.chunks` | Run chunks concurrently after file-level concurrency is stable. |
 | BL-0033 | Open | 0004 | Multiple Ollama server pools | Advanced manual/managed routing across multiple local servers. |
 | BL-0034 | Open | 0004 | Per-agent or per-model routing across loaded models | Resource-aware model selection and scheduling. |
-| BL-0035 | Open | 0002 | Chunk overlap | Add overlap between adjacent chunks where useful without bloating context. |
+| BL-0035 | Implemented | 0002, 0026 | Chunk overlap | 0026 added opt-in character and token overlap with explicit chunk metadata. |
 | BL-0036 | Implemented | 0004, 0005 | Farm timing metrics in run/job/chunk artifacts | Implemented by 0005 for runs, jobs, chunk map calls, reduce calls, and timing summary artifacts. |
 | BL-0037 | Implemented | 0004, 0006, 0019 | Dogfood benchmark history for timing regressions | 0019 implemented local timing history records and comparisons so slower runs can be spotted across implementation changes. |
 | BL-0038 | Open | 0005 | In-progress chunk and reduce timing/status visibility | Dogfood showed chunk artifacts appear while jobs run, but `farm-status.json` does not yet surface active chunk/reduce progress until job completion. |
@@ -55,7 +55,7 @@ Status values:
 | BL-0040 | Open | 0006 | Estimated token fallback | Provide clearly labeled estimated token counting when exact local tokenization is unavailable. |
 | BL-0041 | Open | 0005, 0006 | Token-per-second metrics | Capture backend eval/generation token metrics when available. |
 | BL-0042 | Open | 0006 | Progressive reduce quality tuning | Improve multi-batch reduce quality after first-pass token budget safety exists. |
-| BL-0043 | Open | 0006 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
+| BL-0043 | Open | 0006, 0026 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
 | BL-0044 | Implemented | 0007, 0008 | Advanced snippet ranking | 0008 implemented deterministic scoring, diversity, and diagnostics; semantic ranking remains separate in BL-0047. |
 | BL-0045 | Implemented | 0007, 0010 | Cross-file snippet packs | 0010 implemented deterministic Markdown/JSON snippet packs from existing summarize run artifacts for later synthesis workflows. |
 | BL-0046 | Open | 0007, 0010 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing; 0010 only proposes generic Markdown/JSON packs. |
@@ -99,9 +99,15 @@ Status values:
 | BL-0084 | Open | 0025 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy is stable. |
 | BL-0085 | Open | 0025 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
 | BL-0086 | Open | 0025 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
-| BL-0087 | Open | 0025 | Retry failed files from a previous run | Add a post-run or run command path for rerunning failed jobs without rebuilding the whole input set. |
-| BL-0088 | Open | 0025 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
-| BL-0089 | Open | 0025 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
+| BL-0087 | Open | 0025, 0026 | Retry failed files from a previous run | Add a post-run or run command path for rerunning failed jobs without rebuilding the whole input set. |
+| BL-0088 | Open | 0025, 0026 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
+| BL-0089 | Open | 0025, 0026 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
+| BL-0090 | Open | 0026 | Semantic chunking | Use semantic boundaries or retrieval-style grouping only after deterministic heading/overlap chunking is stable. |
+| BL-0091 | Open | 0026 | Code-aware chunking | Split code by symbols, functions, classes, or language-aware units rather than generic paragraphs. |
+| BL-0092 | Open | 0026 | Frontmatter-aware note splitting | Treat note metadata/frontmatter as structured context when chunking Markdown-like notes. |
+| BL-0093 | Open | 0026 | Chunk visualization UI or dashboard | Make chunk boundaries, heading ancestry, overlap, and reduce flow easier to inspect visually if artifacts are not enough. |
+| BL-0094 | Open | 0026 | Automatic overlap tuning | Adjust overlap from quality/timing evidence only after fixed overlap settings prove useful. |
+| BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
 
 ## Notes
 

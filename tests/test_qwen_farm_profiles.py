@@ -25,6 +25,9 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["chunk_strategy"], "character")
             self.assertEqual(config["summarize"]["chunk_chars"], 8000)
             self.assertEqual(config["summarize"]["token_safety_margin"], 0.10)
+            self.assertTrue(config["summarize"]["preserve_heading_ancestry"])
+            self.assertEqual(config["summarize"]["chunk_overlap_chars"], 0)
+            self.assertEqual(config["summarize"]["chunk_overlap_tokens"], 0)
             self.assertEqual(config["summarize"]["snippet_policy"], "off")
             self.assertIsNone(config["summarize"]["snippet_count"])
             self.assertEqual(config["concurrency"]["jobs"], 1)
@@ -62,7 +65,11 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                         "profile": "local-12gb",
                         "resource_mode": "cpu",
                         "model": "qwen-test:8b",
-                        "summarize": {"chunk_chars": 18000},
+                        "summarize": {
+                            "chunk_chars": 18000,
+                            "preserve_heading_ancestry": False,
+                            "chunk_overlap_chars": 250,
+                        },
                         "concurrency": {"jobs": 2},
                         "failure_policy": {"max_attempts": 3, "per_file_timeout_seconds": 900},
                     }
@@ -77,6 +84,9 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["model"], "qwen-test:8b")
             self.assertEqual(config["summarize"]["chunk_chars"], 18000)
             self.assertEqual(config["summarize"]["reduce_chars"], 12000)
+            self.assertFalse(config["summarize"]["preserve_heading_ancestry"])
+            self.assertEqual(config["summarize"]["chunk_overlap_chars"], 250)
+            self.assertEqual(config["summarize"]["chunk_overlap_tokens"], 0)
             self.assertEqual(config["concurrency"]["jobs"], 2)
             self.assertEqual(config["concurrency"]["chunks"], 1)
             self.assertEqual(config["failure_policy"]["max_attempts"], 3)
@@ -92,6 +102,8 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     "profile",
                     "resource_mode",
                     "summarize.chunk_chars",
+                    "summarize.chunk_overlap_chars",
+                    "summarize.preserve_heading_ancestry",
                 ],
             )
 
@@ -119,6 +131,9 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     resource_mode="gpu",
                     model="qwen-test:14b",
                     chunk_chars=21000,
+                    preserve_heading_ancestry=False,
+                    chunk_overlap_chars=300,
+                    chunk_overlap_tokens=25,
                     parallel_jobs=3,
                     max_attempts=4,
                     per_file_timeout_seconds=1200,
@@ -132,6 +147,9 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["model"], "qwen-test:14b")
             self.assertEqual(config["summarize"]["chunk_chars"], 21000)
             self.assertEqual(config["summarize"]["reduce_chars"], 20000)
+            self.assertFalse(config["summarize"]["preserve_heading_ancestry"])
+            self.assertEqual(config["summarize"]["chunk_overlap_chars"], 300)
+            self.assertEqual(config["summarize"]["chunk_overlap_tokens"], 25)
             self.assertEqual(config["concurrency"]["jobs"], 3)
             self.assertEqual(config["failure_policy"]["max_attempts"], 4)
             self.assertEqual(config["failure_policy"]["per_file_timeout_seconds"], 1200)
@@ -139,6 +157,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["failure_policy"]["reduce_max_attempts"], 1)
             self.assertIn("model", config["provenance"]["cli_override_fields"])
             self.assertIn("resource_mode", config["provenance"]["cli_override_fields"])
+            self.assertIn("summarize.chunk_overlap_chars", config["provenance"]["cli_override_fields"])
             self.assertIn("failure_policy.max_attempts", config["provenance"]["cli_override_fields"])
 
     def test_invalid_json_fails(self) -> None:
@@ -374,6 +393,37 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     root=Path(temp_dir),
                     default_model="qwen-test:1b",
                     overrides=RuntimeOverrides(chunk_tokens=0),
+                )
+
+    def test_invalid_heading_ancestry_config_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"summarize": {"preserve_heading_ancestry": "yes"}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "preserve_heading_ancestry"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_invalid_chunk_overlap_config_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"summarize": {"chunk_overlap_chars": -1}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "chunk_overlap_chars"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_cli_chunk_overlap_override_validation_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(ValueError, "--chunk-overlap-tokens"):
+                resolve_runtime_config(
+                    root=Path(temp_dir),
+                    default_model="qwen-test:1b",
+                    overrides=RuntimeOverrides(chunk_overlap_tokens=-1),
                 )
 
     def test_unknown_failure_policy_field_fails(self) -> None:

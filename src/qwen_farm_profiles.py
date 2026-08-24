@@ -30,6 +30,9 @@ SUMMARIZE_FIELDS = {
     "chunk_tokens",
     "reduce_tokens",
     "token_safety_margin",
+    "preserve_heading_ancestry",
+    "chunk_overlap_chars",
+    "chunk_overlap_tokens",
     "snippet_policy",
     "snippet_count",
     "snippet_min_count",
@@ -47,6 +50,9 @@ DEFAULT_CHUNK_STRATEGY = "character"
 DEFAULT_TOKEN_SAFETY_MARGIN = 0.10
 DEFAULT_TOKEN_PROMPT_RESERVE = 1_024
 DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP = 4_096
+DEFAULT_PRESERVE_HEADING_ANCESTRY = True
+DEFAULT_CHUNK_OVERLAP_CHARS = 0
+DEFAULT_CHUNK_OVERLAP_TOKENS = 0
 DEFAULT_MAX_ATTEMPTS = 2
 DEFAULT_PER_FILE_TIMEOUT_SECONDS = 600
 DEFAULT_CHUNK_MAX_ATTEMPTS = 2
@@ -64,6 +70,9 @@ class RuntimeOverrides:
     chunk_tokens: int | None = None
     reduce_tokens: int | None = None
     token_safety_margin: float | None = None
+    preserve_heading_ancestry: bool | None = None
+    chunk_overlap_chars: int | None = None
+    chunk_overlap_tokens: int | None = None
     snippets: str | None = None
     snippet_policy: str | None = None
     snippet_count: int | None = None
@@ -97,6 +106,14 @@ def default_snippet_fields() -> dict[str, Any]:
     }
 
 
+def default_chunk_context_fields() -> dict[str, Any]:
+    return {
+        "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+        "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+        "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
+    }
+
+
 def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
     if profile not in PROFILE_NAMES:
         raise ValueError(f"Unknown farm profile: {profile}")
@@ -111,6 +128,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 4_000,
                 "reduce_chars": 4_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -129,6 +149,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 6_000,
                 "reduce_chars": 6_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -147,6 +170,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 8_000,
                 "reduce_chars": 8_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -165,6 +191,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 12_000,
                 "reduce_chars": 12_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -183,6 +212,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 20_000,
                 "reduce_chars": 20_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -201,6 +233,9 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 8_000,
                 "reduce_chars": 8_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+                "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+                "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
                 "snippet_policy": DEFAULT_SNIPPET_POLICY,
                 "snippet_count": None,
                 "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
@@ -253,6 +288,12 @@ def validate_chunk_strategy(value: Any) -> str:
 def validate_non_negative_int(value: Any, field_path: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ValueError(f"{field_path} must be a non-negative integer.")
+    return value
+
+
+def validate_bool(value: Any, field_path: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_path} must be a boolean.")
     return value
 
 
@@ -364,6 +405,18 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
             normalized["summarize"]["token_safety_margin"] = validate_safety_margin(
                 summarize["token_safety_margin"], "summarize.token_safety_margin"
             )
+        if "preserve_heading_ancestry" in summarize:
+            normalized["summarize"]["preserve_heading_ancestry"] = validate_bool(
+                summarize["preserve_heading_ancestry"], "summarize.preserve_heading_ancestry"
+            )
+        if "chunk_overlap_chars" in summarize:
+            normalized["summarize"]["chunk_overlap_chars"] = validate_non_negative_int(
+                summarize["chunk_overlap_chars"], "summarize.chunk_overlap_chars"
+            )
+        if "chunk_overlap_tokens" in summarize:
+            normalized["summarize"]["chunk_overlap_tokens"] = validate_non_negative_int(
+                summarize["chunk_overlap_tokens"], "summarize.chunk_overlap_tokens"
+            )
         if "snippet_policy" in summarize:
             normalized["summarize"]["snippet_policy"] = validate_snippet_policy(summarize["snippet_policy"])
         if "snippet_count" in summarize:
@@ -456,6 +509,21 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
     if overrides.token_safety_margin is not None:
         summarize["token_safety_margin"] = validate_safety_margin(
             overrides.token_safety_margin, "--token-safety-margin"
+        )
+    if overrides.preserve_heading_ancestry is not None:
+        summarize["preserve_heading_ancestry"] = validate_bool(
+            overrides.preserve_heading_ancestry,
+            "--preserve-heading-ancestry",
+        )
+    if overrides.chunk_overlap_chars is not None:
+        summarize["chunk_overlap_chars"] = validate_non_negative_int(
+            overrides.chunk_overlap_chars,
+            "--chunk-overlap-chars",
+        )
+    if overrides.chunk_overlap_tokens is not None:
+        summarize["chunk_overlap_tokens"] = validate_non_negative_int(
+            overrides.chunk_overlap_tokens,
+            "--chunk-overlap-tokens",
         )
     if overrides.snippets is not None:
         summarize.update(parse_snippets_override(overrides.snippets))
@@ -592,6 +660,18 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
         summarize.get("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN),
         "summarize.token_safety_margin",
     )
+    validate_bool(
+        summarize.get("preserve_heading_ancestry", DEFAULT_PRESERVE_HEADING_ANCESTRY),
+        "summarize.preserve_heading_ancestry",
+    )
+    validate_non_negative_int(
+        summarize.get("chunk_overlap_chars", DEFAULT_CHUNK_OVERLAP_CHARS),
+        "summarize.chunk_overlap_chars",
+    )
+    validate_non_negative_int(
+        summarize.get("chunk_overlap_tokens", DEFAULT_CHUNK_OVERLAP_TOKENS),
+        "summarize.chunk_overlap_tokens",
+    )
     validate_snippet_settings(summarize)
     concurrency = config.get("concurrency")
     if not isinstance(concurrency, dict):
@@ -639,6 +719,7 @@ def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dic
     summarize = updated["summarize"]
     summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
     summarize.setdefault("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN)
+    summarize.update({**default_chunk_context_fields(), **summarize})
     summarize.update({**default_snippet_fields(), **summarize})
     if summarize["chunk_strategy"] == "token":
         if summarize.get("chunk_tokens") is None or summarize.get("reduce_tokens") is None:
@@ -746,6 +827,15 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
             "reduce_tokens": runtime_config["summarize"].get("reduce_tokens"),
             "token_safety_margin": runtime_config["summarize"].get(
                 "token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN
+            ),
+            "preserve_heading_ancestry": runtime_config["summarize"].get(
+                "preserve_heading_ancestry", DEFAULT_PRESERVE_HEADING_ANCESTRY
+            ),
+            "chunk_overlap_chars": runtime_config["summarize"].get(
+                "chunk_overlap_chars", DEFAULT_CHUNK_OVERLAP_CHARS
+            ),
+            "chunk_overlap_tokens": runtime_config["summarize"].get(
+                "chunk_overlap_tokens", DEFAULT_CHUNK_OVERLAP_TOKENS
             ),
             "snippet_policy": runtime_config["summarize"].get("snippet_policy", DEFAULT_SNIPPET_POLICY),
             "snippet_count": runtime_config["summarize"].get("snippet_count"),

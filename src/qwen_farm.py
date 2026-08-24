@@ -11,6 +11,7 @@ from src.qwen_farm_chunks import (
     TextChunk,
     chunk_text,
     chunk_text_by_tokens,
+    overlap_metadata,
     render_chunk_input,
     render_reduce_input,
 )
@@ -278,6 +279,8 @@ def chunk_result_envelope(
     agent: dict[str, Any],
     snippets: dict[str, Any] | None = None,
     timing: dict[str, Any] | None = None,
+    heading_ancestry: list[dict[str, Any]] | None = None,
+    overlap: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     envelope = {
         "schema_version": FARM_SCHEMA_VERSION,
@@ -291,6 +294,8 @@ def chunk_result_envelope(
             "chunk_path": relative_to(chunk_input_path, run_dir),
             "chunk_index": chunk_index,
             "chunk_total": chunk_total,
+            "heading_ancestry": heading_ancestry or [],
+            "overlap": overlap or {"before_chars": 0, "before_tokens": None, "source": "none"},
         },
         "result": result.payload,
         "artifacts": {
@@ -698,6 +703,9 @@ def run_chunked_summary_job(
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     chunk_max_attempts = int(failure_policy.get("chunk_max_attempts", DEFAULT_MAX_ATTEMPTS))
     reduce_max_attempts = int(failure_policy.get("reduce_max_attempts", DEFAULT_MAX_ATTEMPTS))
+    preserve_heading_ancestry = bool(runtime_summarize.get("preserve_heading_ancestry", True))
+    chunk_overlap_chars = int(runtime_summarize.get("chunk_overlap_chars", 0))
+    chunk_overlap_tokens = int(runtime_summarize.get("chunk_overlap_tokens", 0))
     if chunk_strategy == "token":
         if token_counter is None or chunk_tokens is None:
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
@@ -706,10 +714,17 @@ def run_chunked_summary_job(
             max_input_tokens=chunk_tokens,
             token_counter=token_counter,
             source_path=job["input_path"],
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            overlap_tokens=chunk_overlap_tokens,
         )
         strategy_name = TOKEN_CHUNK_STRATEGY
     else:
-        chunks = chunk_text(content, max_chars=chunk_body_budget(job["input_path"], chunk_chars))
+        chunks = chunk_text(
+            content,
+            max_chars=chunk_body_budget(job["input_path"], chunk_chars),
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            overlap_chars=chunk_overlap_chars,
+        )
         strategy_name = CHUNK_STRATEGY
     chunks_dir = job_dir / "chunks"
     chunk_results_dir = job_dir / "chunk-results"
@@ -753,7 +768,7 @@ def run_chunked_summary_job(
             agent=agent,
             ollama_base_url=ollama_base_url,
             timeout=timeout,
-            summary_max_input_chars=len(chunk_input) if chunk_strategy == "token" else chunk_chars,
+            summary_max_input_chars=len(chunk_input),
             model_processor=model_processor,
             snippet_request=chunk_snippet_request,
             chunk_id=chunk.chunk_id,
@@ -798,6 +813,8 @@ def run_chunked_summary_job(
                 diagnostics=chunk_selection,
             ),
             timing=call_timings[-1],
+            heading_ancestry=chunk.heading_ancestry,
+            overlap=overlap_metadata(chunk),
         )
         write_json(json_path, envelope)
         chunk_payloads.append(chunk_result.payload)
@@ -806,6 +823,8 @@ def run_chunked_summary_job(
                 "chunk_id": chunk.chunk_id,
                 "chars": chunk.chars or len(chunk.text),
                 "tokens": chunk.tokens,
+                "heading_ancestry": chunk.heading_ancestry,
+                "overlap": overlap_metadata(chunk),
                 "input": relative_to(chunk_input_path, run_dir),
                 "result_json": relative_to(json_path, run_dir),
                 "result_md": relative_to(markdown_path, run_dir),
@@ -878,6 +897,9 @@ def run_chunked_summary_job(
         "reduce_chars": reduce_chars if chunk_strategy == "character" else None,
         "chunk_tokens": chunk_tokens if chunk_strategy == "token" else None,
         "reduce_tokens": reduce_tokens if chunk_strategy == "token" else None,
+        "preserve_heading_ancestry": preserve_heading_ancestry,
+        "chunk_overlap_chars": chunk_overlap_chars,
+        "chunk_overlap_tokens": chunk_overlap_tokens,
         "tokenizer": token_counter.tokenizer_id if token_counter is not None else None,
         "counts_are_estimated": False if token_counter is not None else None,
         "chunks": chunk_records,
@@ -1146,6 +1168,9 @@ def resolve_run_agent_and_config(
     chunk_tokens: int | None = None,
     reduce_tokens: int | None = None,
     token_safety_margin: float | None = None,
+    preserve_heading_ancestry: bool | None = None,
+    chunk_overlap_chars: int | None = None,
+    chunk_overlap_tokens: int | None = None,
     snippets: str | None = None,
     snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
@@ -1169,6 +1194,9 @@ def resolve_run_agent_and_config(
             chunk_tokens=chunk_tokens,
             reduce_tokens=reduce_tokens,
             token_safety_margin=token_safety_margin,
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            chunk_overlap_chars=chunk_overlap_chars,
+            chunk_overlap_tokens=chunk_overlap_tokens,
             snippets=snippets,
             snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
@@ -1207,6 +1235,9 @@ def run_farm(
     chunk_tokens: int | None = None,
     reduce_tokens: int | None = None,
     token_safety_margin: float | None = None,
+    preserve_heading_ancestry: bool | None = None,
+    chunk_overlap_chars: int | None = None,
+    chunk_overlap_tokens: int | None = None,
     snippets: str | None = None,
     snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
@@ -1240,6 +1271,9 @@ def run_farm(
             chunk_tokens=chunk_tokens,
             reduce_tokens=reduce_tokens,
             token_safety_margin=token_safety_margin,
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            chunk_overlap_chars=chunk_overlap_chars,
+            chunk_overlap_tokens=chunk_overlap_tokens,
             snippets=snippets,
             snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
@@ -1257,6 +1291,12 @@ def run_farm(
         runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
 
     runtime_config.setdefault("failure_policy", default_failure_policy())
+    if preserve_heading_ancestry is not None:
+        runtime_config["summarize"]["preserve_heading_ancestry"] = preserve_heading_ancestry
+    if chunk_overlap_chars is not None:
+        runtime_config["summarize"]["chunk_overlap_chars"] = chunk_overlap_chars
+    if chunk_overlap_tokens is not None:
+        runtime_config["summarize"]["chunk_overlap_tokens"] = chunk_overlap_tokens
     if max_attempts is not None:
         runtime_config["failure_policy"]["max_attempts"] = max_attempts
     if per_file_timeout_seconds is not None:

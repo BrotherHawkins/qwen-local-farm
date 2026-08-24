@@ -156,6 +156,7 @@ python qwen.py farm run input-folder --mode summarize --chunk-strategy token
 python qwen.py farm run input-folder --mode summarize --snippets auto
 python qwen.py farm run input-folder --mode summarize --resource-mode cpu
 python qwen.py farm run input-folder --mode summarize --max-attempts 1 --chunk-max-attempts 1
+python qwen.py farm run input-folder --mode summarize --chunk-overlap-chars 500
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
@@ -179,6 +180,10 @@ Use token-aware chunking when:
 - the primary AI wants fewer local worker calls before frontier synthesis
 
 When token budgets are omitted, the farm uses conservative derived budgets and caps summarize chunks at 4096 tokens. A primary AI should only raise `chunk_tokens`/`reduce_tokens` after checking warnings and summary quality on the user's machine.
+
+Chunked summarize preserves Markdown heading ancestry by default. This means chunk input artifacts include compact context like `# Title` and `## Section` before the chunk body, helping the local worker understand where the chunk sits in the article. A request can disable it with `--no-preserve-heading-ancestry`, but leave it on for ordinary Markdown/article inputs.
+
+Overlap is opt-in. Use `--chunk-overlap-chars <n>` for character chunking or `--chunk-overlap-tokens <n>` for token-aware chunking when dogfood shows ideas are being split awkwardly across chunk boundaries. Keep overlap small because it spends prompt budget and can increase duplication in summaries. Runtime artifacts record the effective heading/overlap settings and chunk metadata records whether a chunk received prior-source overlap.
 
 For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
 

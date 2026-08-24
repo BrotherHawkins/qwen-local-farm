@@ -631,6 +631,58 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(resolved["summarize"]["chunk_chars"], 500)
             self.assertTrue(observed_inputs)
 
+    def test_chunked_summary_records_heading_ancestry_and_overlap(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "\n\n".join(
+                [
+                    "# Article Title",
+                    "Intro " * 20,
+                    "## First Section",
+                    "Alpha " * 30,
+                    "## Second Section",
+                    "Beta " * 30,
+                ]
+            )
+            (root / "input" / "article.md").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_chars=140,
+                reduce_chars=700,
+                chunk_overlap_chars=25,
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            chunk_records = result["chunking"]["chunks"]
+            overlapped = next(chunk for chunk in chunk_records if chunk["overlap"]["source"] == "previous")
+            chunk_result = qwen_farm.read_json(run_dir / overlapped["result_json"])
+            chunk_input = (run_dir / overlapped["input"]).read_text(encoding="utf-8")
+            status_md = (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8")
+
+            self.assertTrue(status["runtime"]["summarize"]["preserve_heading_ancestry"])
+            self.assertEqual(status["runtime"]["summarize"]["chunk_overlap_chars"], 25)
+            self.assertIn("Preserve heading ancestry: `True`", status_md)
+            self.assertIn("Chunk overlap chars: `25`", status_md)
+            self.assertTrue(overlapped["heading_ancestry"])
+            self.assertLessEqual(overlapped["overlap"]["before_chars"], 25)
+            self.assertEqual(chunk_result["input"]["heading_ancestry"], overlapped["heading_ancestry"])
+            self.assertEqual(chunk_result["input"]["overlap"]["source"], "previous")
+            self.assertIn("Heading context:", chunk_input)
+            self.assertIn("Overlap context from previous source text", chunk_input)
+            self.assertIn("Chunk text:", chunk_input)
+
     def test_token_strategy_can_single_pass_long_character_input(self) -> None:
         observed_inputs: list[tuple[int, int]] = []
 

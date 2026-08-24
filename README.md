@@ -152,6 +152,9 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
     "chunk_chars": 12000,
     "reduce_chars": 12000,
     "token_safety_margin": 0.1,
+    "preserve_heading_ancestry": true,
+    "chunk_overlap_chars": 0,
+    "chunk_overlap_tokens": 0,
     "snippet_policy": "off",
     "snippet_count": null,
     "snippet_min_count": 2,
@@ -171,7 +174,7 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 }
 ```
 
-Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, concurrency settings, and failure policy. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, heading/overlap policy, concurrency settings, and failure policy. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown.
 
@@ -228,7 +231,9 @@ Token-aware chunking can also be configured in `.qwen-farm.json`:
     "chunk_strategy": "token",
     "chunk_tokens": 6500,
     "reduce_tokens": 6500,
-    "token_safety_margin": 0.1
+    "token_safety_margin": 0.1,
+    "preserve_heading_ancestry": true,
+    "chunk_overlap_tokens": 0
   }
 }
 ```
@@ -236,6 +241,16 @@ Token-aware chunking can also be configured in `.qwen-farm.json`:
 If token budgets are omitted, the farm derives a conservative budget from the selected agent's `num_ctx` and caps summarize chunks at 4096 tokens for local-worker summary quality. Power users can raise `chunk_tokens` and `reduce_tokens` explicitly after dogfooding their hardware/model combination.
 
 If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
+
+Markdown heading ancestry is enabled by default for chunked summarize inputs. Chunk input artifacts include a compact `Heading context` block so a worker processing chunk 4 still knows it is inside headings such as `# Title` and `## Section`. Overlap is opt-in:
+
+```bash
+python qwen.py farm run notes --mode summarize --chunk-overlap-chars 500
+python qwen.py farm run notes --mode summarize --chunk-strategy token --chunk-overlap-tokens 200
+python qwen.py farm run notes --mode summarize --no-preserve-heading-ancestry
+```
+
+Overlap adds prior source text as context for continuity, not as primary chunk coverage. It can improve boundary quality, but it spends prompt budget and may make summaries more repetitive, so the default is `0`.
 
 To gather ordinary per-job results from an existing run into one easier-to-inspect folder:
 

@@ -6,6 +6,7 @@ The gate is intentionally lightweight:
 
 - compile Python files
 - run fast unit tests
+- check spec dashboard consistency
 - avoid Ollama, model pulls, GPU checks, or long benchmarks
 
 That keeps public PR validation predictable on GitHub-hosted runners while local machines remain responsible for model and hardware-specific verification.
@@ -38,6 +39,7 @@ Run these before pushing when touching Python:
 ```bash
 python -m compileall qwen.py examples src tests
 python -m unittest discover -s tests -p "test_*.py"
+python -m src.qwen_spec_guard
 ```
 
 ## GitHub Required Check Setup

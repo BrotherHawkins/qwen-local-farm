@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 23 |
+| Implemented | 24 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -73,6 +73,7 @@ None.
 | 0020 | Implemented | Add | [0020-add-benchmark-based-profile-recommendations.md](changes/0020-add-benchmark-based-profile-recommendations.md) | Adds measured local profile, chunking, and concurrency recommendations for power users and doctor-guided setup. |
 | 0021 | Implemented | Add | [0021-add-safe-recommendation-config-apply.md](changes/0021-add-safe-recommendation-config-apply.md) | Adds a safe preview/write workflow for applying recommendation JSON to `.qwen-farm.json`. |
 | 0022 | Implemented | Add | [0022-add-resource-aware-runtime-modes.md](changes/0022-add-resource-aware-runtime-modes.md) | Adds first-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes to config, CLI, resolved artifacts, and recommendation apply. |
+| 0023 | Implemented | Add | [0023-add-spec-dashboard-consistency-checks.md](changes/0023-add-spec-dashboard-consistency-checks.md) | Adds a model-free CI guard for spec dashboard counts, change-spec rows, status/type values, and plan links. |
 
 ## Stale Drafts To Revisit
 

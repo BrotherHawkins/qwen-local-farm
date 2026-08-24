@@ -165,6 +165,7 @@ Current state:
 
 - Agent responses are plain model text.
 - Some benchmark scripts write JSON records, but normal agent outputs are not schema-driven yet.
+- The first tracked schema contracts exist for core farm status, job result, status CLI, and doctor JSON artifacts.
 
 Roadmap:
 
@@ -214,12 +215,12 @@ Example envelope:
 
 Open questions:
 
-- Should structured output use strict JSON Schema, Pydantic-style examples, or lightweight repo-native schemas?
+- The first pass uses JSON Schema-compatible repo-native contracts plus a dependency-free validation helper.
 - Which output contracts should be first-class, and which should stay prompt-level conventions?
 
 Likely next PR:
 
-- Add `schemas/` with a few simple JSON output contracts and document how agents can request them.
+- Extend schemas to post-run package artifacts, or add a public schema validation CLI once the core contracts prove useful.
 
 ## 4. Chunking Larger Context
 
@@ -501,8 +502,8 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: generic custom-prompt support.
 - Implemented: verified verbatim source snippets for `summarize`, with deterministic ranking and compact diagnostics.
 - Implemented: first AI-facing usage doc.
-- Next: output schema folder.
-- Next: stricter validation helpers.
+- Implemented: first output schema folder and model-free validation helper.
+- Next: post-run package schemas or public schema validation CLI.
 
 ### Milestone 2a: Early Mode Rollout
 

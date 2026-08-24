@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-status-run.schema.json",
+  "title": "Qwen Local Farm Single Run Status JSON",
+  "description": "CLI envelope printed by python qwen.py farm status <run-id> --json.",
+  "type": "object",
+  "required": ["schema_version", "scope", "run_id", "run"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "scope": {
+      "const": "run"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "run": {
+      "type": "object",
+      "required": ["schema_version", "run_id", "status", "mode", "jobs"],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["running", "complete", "complete_with_warnings", "partial", "failed"]
+        },
+        "mode": {
+          "type": "string"
+        },
+        "jobs": {
+          "type": "array"
+        }
+      }
+    }
+  }
+}

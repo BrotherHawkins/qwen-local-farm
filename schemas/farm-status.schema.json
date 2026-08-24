@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-status.schema.json",
+  "title": "Qwen Local Farm Persisted Run Status",
+  "description": "Current persisted run status artifact written as farm-status.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "status",
+    "mode",
+    "agent",
+    "model",
+    "runtime",
+    "input",
+    "output",
+    "counts",
+    "jobs",
+    "skipped_files",
+    "created_at",
+    "updated_at",
+    "timing"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["running", "complete", "complete_with_warnings", "partial", "failed"]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "runtime": {
+      "type": "object"
+    },
+    "input": {
+      "type": "object",
+      "required": ["path", "kind"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["queued", "running", "complete", "complete_with_warnings", "failed", "skipped", "total"],
+      "properties": {
+        "queued": {
+          "type": "integer"
+        },
+        "running": {
+          "type": "integer"
+        },
+        "complete": {
+          "type": "integer"
+        },
+        "complete_with_warnings": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["job_id", "status", "input_path", "warnings", "chunking", "snippets", "timing"],
+        "properties": {
+          "job_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "running", "complete", "complete_with_warnings", "failed", "skipped"]
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "result_json": {
+            "type": ["string", "null"]
+          },
+          "result_md": {
+            "type": ["string", "null"]
+          },
+          "raw_response": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "chunking": {
+            "type": "object"
+          },
+          "snippets": {
+            "type": "object"
+          },
+          "timing": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "skipped_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "timing": {
+      "type": "object",
+      "required": ["started_at", "completed_at", "duration_ms"],
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "completed_at": {
+          "type": ["string", "null"]
+        },
+        "duration_ms": {
+          "type": ["integer", "null"]
+        }
+      }
+    }
+  }
+}

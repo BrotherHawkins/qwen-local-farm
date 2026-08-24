@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-job-result.schema.json",
+  "title": "Qwen Local Farm Persisted Job Result",
+  "description": "Current persisted per-job result artifact written as jobs/job-*/result.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "job_id",
+    "mode",
+    "status",
+    "structured_valid",
+    "input",
+    "result",
+    "artifacts",
+    "model",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "complete_with_warnings", "failed"]
+    },
+    "structured_valid": {
+      "type": "boolean"
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "source_path": {
+          "type": "string"
+        },
+        "chunk_path": {
+          "type": "string"
+        },
+        "chunk_index": {
+          "type": "integer"
+        },
+        "chunk_total": {
+          "type": "integer"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "abstract": {
+          "type": "string"
+        },
+        "bullets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "open_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "snippets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["markdown", "raw_response"],
+      "properties": {
+        "markdown": {
+          "type": "string"
+        },
+        "raw_response": {
+          "type": "string"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["agent", "model"],
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "chunking": {
+      "type": "object"
+    },
+    "snippets": {
+      "type": "object"
+    },
+    "timing": {
+      "type": "object"
+    }
+  }
+}

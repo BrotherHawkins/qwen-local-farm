@@ -19,7 +19,7 @@ Status values:
 | BL-0004 | Open | 0000 | Optional local Ollama/model integration tests | Should stay opt-in/local unless runner hardware is known. |
 | BL-0005 | Open | 0000 | Scheduled benchmark checks on known hardware | Requires stable machine profile and benchmark corpus. |
 | BL-0006 | Open | 0001 | CLI spelling for future non-MVP modes | Revisit before adding `extract`, `classify`, or `review`. |
-| BL-0007 | Open | 0001 | Full schema files for status/result validation | Could support stricter primary-AI consumption and CI validation. |
+| BL-0007 | Implemented | 0001, 0016 | Full schema files for status/result validation | 0016 implemented tracked schemas and model-free validation coverage for key farm JSON artifacts. |
 | BL-0008 | Open | 0001 | Skip-list overrides | Include/exclude controls for farm file discovery. |
 | BL-0009 | Open | 0001 | Caller-provided retry/timeout behavior | Make failure policy configurable per run/request. |
 | BL-0010 | Open | 0001 | `farm collect` | Helper for gathering results after a run. |
@@ -79,6 +79,11 @@ Status values:
 | BL-0064 | Open | 0014 | Configurable bundle fitting policies | Let callers choose evidence-first, summary-first, or balanced budget fitting instead of one deterministic default. |
 | BL-0065 | Open | 0014 | Reserved prompt-wrapper budget | Let callers reserve prompt space around a bundle so total downstream prompt size, not just bundle size, fits. |
 | BL-0066 | Open | 0014 | Budget planning for snippet packs | Add similar size estimation and optional caps to snippet-only packs. |
+| BL-0067 | Open | 0016 | Schemas for post-run package artifacts | Add schemas for timing summaries, snippet packs, synthesis bundles, dogfood history, and comparison outputs after the core status/result contracts land. |
+| BL-0068 | Open | 0016 | Public schema validation CLI | Add `farm schema validate <path>` or similar if first-pass schemas land without a public validator command. |
+| BL-0069 | Open | 0016 | Schema version migration guidance | Define compatibility and migration guidance across persisted farm artifact versions and newer CLI/report envelope versions. |
+| BL-0070 | Open | 0016 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize. |
+| BL-0071 | Open | 0016 | Strict schema mode | Add a stricter validation mode that rejects unknown/additional fields after artifact contracts mature. |
 
 ## Notes
 

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-doctor.schema.json",
+  "title": "Qwen Local Farm Doctor Report",
+  "description": "Doctor report printed by python qwen.py farm doctor --json and written as setup-doctor.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "status",
+    "root",
+    "environment",
+    "ollama",
+    "agent",
+    "runtime",
+    "tokenizers",
+    "runs",
+    "checks",
+    "recommendations",
+    "report_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "ready_with_warnings", "needs_setup", "unknown"]
+    },
+    "root": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "object",
+      "required": ["os", "python", "python_ok"],
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "python": {
+          "type": "string"
+        },
+        "python_ok": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ollama": {
+      "type": "object",
+      "required": ["executable", "found", "base_url", "endpoint_ready", "models", "error"],
+      "properties": {
+        "executable": {
+          "type": ["string", "null"]
+        },
+        "found": {
+          "type": "boolean"
+        },
+        "base_url": {
+          "type": "string"
+        },
+        "endpoint_ready": {
+          "type": "boolean"
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id", "model", "model_installed", "error"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "model": {
+          "type": ["string", "null"]
+        },
+        "model_installed": {
+          "type": ["boolean", "string"]
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "runtime": {
+      "type": "object"
+    },
+    "tokenizers": {
+      "type": "object",
+      "required": ["ready", "cache_dir", "models"],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "counts_are_estimated": {
+          "type": "boolean"
+        },
+        "cache_dir": {
+          "type": "string"
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "error": {
+          "type": "string"
+        },
+        "probe_stderr": {
+          "type": "string"
+        }
+      }
+    },
+    "runs": {
+      "type": "object",
+      "required": ["known_count", "latest"],
+      "properties": {
+        "known_count": {
+          "type": "integer"
+        },
+        "latest": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "message"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok", "warn", "fail", "unknown"]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "message"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["required", "recommended", "optional"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "report_paths": {
+      "type": "object",
+      "required": ["markdown", "json"],
+      "properties": {
+        "markdown": {
+          "type": "string"
+        },
+        "json": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

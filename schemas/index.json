@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "schemas": [
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-status.schema.json",
+      "path": "schemas/farm-status.schema.json",
+      "surface": "persisted farm-status.json",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-job-result.schema.json",
+      "path": "schemas/farm-job-result.schema.json",
+      "surface": "persisted jobs/job-*/result.json",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-status-overview.schema.json",
+      "path": "schemas/farm-status-overview.schema.json",
+      "surface": "python qwen.py farm status --json",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-status-run.schema.json",
+      "path": "schemas/farm-status-run.schema.json",
+      "surface": "python qwen.py farm status <run-id> --json",
+      "status": "current"
+    },
+    {
+      "id": "https://qwen-local-farm.local/schemas/farm-doctor.schema.json",
+      "path": "schemas/farm-doctor.schema.json",
+      "surface": "python qwen.py farm doctor --json",
+      "status": "current"
+    }
+  ]
+}

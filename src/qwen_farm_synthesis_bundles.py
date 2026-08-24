@@ -25,6 +25,92 @@ from src.qwen_farm_snippet_packs import (
 
 
 SYNTHESIS_BUNDLE_SCHEMA_VERSION = 1
+DEFAULT_CHARS_PER_TOKEN = 4.0
+BUDGET_SCHEMA_VERSION = 1
+
+
+def estimate_tokens_from_chars(char_count: int, chars_per_token: float = DEFAULT_CHARS_PER_TOKEN) -> int:
+    if char_count <= 0:
+        return 0
+    return int((char_count + chars_per_token - 1) // chars_per_token)
+
+
+def validate_budget_options(
+    *,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+) -> None:
+    if max_chars is not None and max_chars <= 0:
+        raise ValueError("--max-chars must be a positive integer.")
+    if max_estimated_tokens is not None and max_estimated_tokens <= 0:
+        raise ValueError("--max-estimated-tokens must be a positive integer.")
+    if chars_per_token <= 0:
+        raise ValueError("--chars-per-token must be a positive number.")
+
+
+def effective_max_chars(
+    *,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+) -> int | None:
+    validate_budget_options(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    caps = []
+    if max_chars is not None:
+        caps.append(max_chars)
+    if max_estimated_tokens is not None:
+        caps.append(int(max_estimated_tokens * chars_per_token))
+    return min(caps) if caps else None
+
+
+def count_bundle_snippets(items: list[dict[str, Any]]) -> int:
+    return sum(len([snippet for snippet in item.get("snippets", []) if isinstance(snippet, dict)]) for item in items)
+
+
+def refresh_bundle_counts(bundle: dict[str, Any]) -> None:
+    items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
+    counts = bundle.setdefault("counts", {})
+    counts["items"] = len(items)
+    counts["items_with_snippets"] = len([item for item in items if item.get("snippets")])
+    counts["snippets_selected"] = count_bundle_snippets(items)
+
+
+def empty_budget_metadata(
+    *,
+    max_chars: int | None,
+    max_estimated_tokens: int | None,
+    chars_per_token: float,
+    effective_chars: int | None,
+) -> dict[str, Any]:
+    return {
+        "schema_version": BUDGET_SCHEMA_VERSION,
+        "max_chars": max_chars,
+        "max_estimated_tokens": max_estimated_tokens,
+        "chars_per_token": chars_per_token,
+        "effective_max_chars": effective_chars,
+        "input": {
+            "chars": 0,
+            "estimated_tokens": 0,
+        },
+        "output": {
+            "chars": 0,
+            "estimated_tokens": 0,
+        },
+        "fit": True,
+        "was_capped": False,
+        "dropped": {
+            "snippets": 0,
+            "open_questions": 0,
+            "bullets": 0,
+            "items": 0,
+        },
+        "warnings": [],
+    }
 
 
 def normalize_string_list(value: Any) -> list[str]:
@@ -135,18 +221,131 @@ def attach_snippets(items: list[dict[str, Any]], snippets: list[dict[str, Any]])
         item.setdefault("snippets", []).append(snippet)
 
 
+def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int]) -> bool:
+    items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
+
+    for item in reversed(items):
+        snippets = [snippet for snippet in item.get("snippets", []) if isinstance(snippet, dict)]
+        if snippets:
+            item["snippets"] = snippets[:-1]
+            dropped["snippets"] += 1
+            refresh_bundle_counts(bundle)
+            return True
+
+    for item in reversed(items):
+        summary = item.get("summary", {}) if isinstance(item.get("summary"), dict) else {}
+        open_questions = normalize_string_list(summary.get("open_questions", []))
+        if open_questions:
+            summary["open_questions"] = open_questions[:-1]
+            dropped["open_questions"] += 1
+            return True
+
+    for item in reversed(items):
+        summary = item.get("summary", {}) if isinstance(item.get("summary"), dict) else {}
+        bullets = normalize_string_list(summary.get("bullets", []))
+        if bullets:
+            summary["bullets"] = bullets[:-1]
+            dropped["bullets"] += 1
+            return True
+
+    for index in range(len(items) - 1, -1, -1):
+        if not items[index].get("snippets"):
+            del items[index]
+            bundle["items"] = items
+            dropped["items"] += 1
+            refresh_bundle_counts(bundle)
+            return True
+
+    return False
+
+
+def update_budget_sizes(bundle: dict[str, Any], markdown: str, chars_per_token: float) -> None:
+    budget = bundle.setdefault("budget", {})
+    char_count = len(markdown)
+    budget["output"] = {
+        "chars": char_count,
+        "estimated_tokens": estimate_tokens_from_chars(char_count, chars_per_token),
+    }
+    effective_chars = budget.get("effective_max_chars")
+    budget["fit"] = effective_chars is None or char_count <= effective_chars
+
+
+def settle_budget_output_size(bundle: dict[str, Any], chars_per_token: float) -> str:
+    markdown = ""
+    for _ in range(5):
+        markdown = render_synthesis_bundle_markdown(bundle)
+        previous = dict((bundle.get("budget") or {}).get("output") or {})
+        update_budget_sizes(bundle, markdown, chars_per_token)
+        if previous == (bundle.get("budget") or {}).get("output"):
+            return render_synthesis_bundle_markdown(bundle)
+    return render_synthesis_bundle_markdown(bundle)
+
+
+def apply_budget(
+    bundle: dict[str, Any],
+    *,
+    max_chars: int | None,
+    max_estimated_tokens: int | None,
+    chars_per_token: float,
+) -> None:
+    effective_chars = effective_max_chars(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    budget = empty_budget_metadata(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+        effective_chars=effective_chars,
+    )
+    bundle["budget"] = budget
+    full_markdown = settle_budget_output_size(bundle, chars_per_token)
+    budget["input"] = {
+        "chars": len(full_markdown),
+        "estimated_tokens": estimate_tokens_from_chars(len(full_markdown), chars_per_token),
+    }
+    budget["output"] = dict(budget["input"])
+    budget["fit"] = effective_chars is None or len(full_markdown) <= effective_chars
+
+    if effective_chars is None or budget["fit"]:
+        budget["was_capped"] = False
+        settle_budget_output_size(bundle, chars_per_token)
+        return
+
+    budget["was_capped"] = True
+    while True:
+        markdown = settle_budget_output_size(bundle, chars_per_token)
+        if len(markdown) <= effective_chars:
+            budget["fit"] = True
+            return
+        if not drop_one_budget_unit(bundle, budget["dropped"]):
+            budget["fit"] = False
+            budget["warnings"].append("minimum_bundle_exceeds_budget")
+            settle_budget_output_size(bundle, chars_per_token)
+            return
+
+
 def build_synthesis_bundle(
     *,
     run_dir: Path,
     label: str | None = None,
     max_snippets: int = DEFAULT_MAX_SNIPPETS,
     per_file: int = DEFAULT_PER_FILE_SNIPPETS,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
     created_at: str | None = None,
 ) -> dict[str, Any]:
     if max_snippets < 0:
         raise ValueError("--max-snippets must be a non-negative integer.")
     if per_file < 0:
         raise ValueError("--per-file must be a non-negative integer.")
+    validate_budget_options(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
 
     status = read_json_object(run_dir / "farm-status.json")
     run_label = label or str(status.get("run_id") or run_dir.name)
@@ -155,7 +354,7 @@ def build_synthesis_bundle(
     selected = renumber_snippets(apply_caps(deduped, max_snippets=max_snippets, per_file=per_file))
     attach_snippets(items, selected)
 
-    return {
+    bundle = {
         "schema_version": SYNTHESIS_BUNDLE_SCHEMA_VERSION,
         "created_at": created_at or utc_now(),
         "label": run_label,
@@ -180,6 +379,14 @@ def build_synthesis_bundle(
         "items": items,
         "diagnostics": diagnostics,
     }
+    apply_budget(
+        bundle,
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    refresh_bundle_counts(bundle)
+    return bundle
 
 
 def render_list_section(lines: list[str], heading: str, items: list[str]) -> None:
@@ -191,6 +398,11 @@ def render_list_section(lines: list[str], heading: str, items: list[str]) -> Non
 
 def render_synthesis_bundle_markdown(bundle: dict[str, Any]) -> str:
     counts = bundle.get("counts", {}) if isinstance(bundle.get("counts"), dict) else {}
+    budget = bundle.get("budget", {}) if isinstance(bundle.get("budget"), dict) else {}
+    output = budget.get("output", {}) if isinstance(budget.get("output"), dict) else {}
+    cap = budget.get("effective_max_chars")
+    cap_text = f"; cap {cap:,} chars" if cap is not None else "; no cap"
+    fit_text = "yes" if budget.get("fit", True) else "no"
     lines = [
         f"# Synthesis Bundle {bundle.get('label')}",
         "",
@@ -198,6 +410,10 @@ def render_synthesis_bundle_markdown(bundle: dict[str, Any]) -> str:
         f"Model: {bundle.get('model') or ''}",
         f"Items: {counts.get('items', 0)}",
         f"Selected snippets: {counts.get('snippets_selected', 0)}",
+        (
+            f"Budget: {int(output.get('chars', 0)):,} chars, "
+            f"~{int(output.get('estimated_tokens', 0)):,} tokens estimated{cap_text}; fit {fit_text}"
+        ),
         "",
     ]
 

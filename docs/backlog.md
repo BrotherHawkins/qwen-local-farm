@@ -73,8 +73,12 @@ Status values:
 | BL-0058 | Implemented | 0010, 0012 | Run-ID lookup for post-run helpers | 0012 implemented exact known run ID lookup for `farm snippets pack`, `farm synthesis bundle`, and `farm dogfood record` while preserving full path input. |
 | BL-0059 | Implemented | 0010, 0011 | Summary-plus-snippet synthesis bundles | 0011 implemented post-run Markdown/JSON bundles that combine compact per-file summaries with selected verified snippets. |
 | BL-0060 | Open | 0011 | Summary bundle field filters and templates | Let callers choose which summary fields appear in synthesis bundles. |
-| BL-0061 | Open | 0011 | Bundle token or character budget planning | Estimate or cap bundle size so downstream frontier prompts stay within a target budget. |
+| BL-0061 | Implemented | 0011, 0014 | Bundle token or character budget planning | 0014 implemented size estimates plus optional character and estimated-token caps for synthesis bundles. |
 | BL-0062 | Open | 0011 | Cross-run synthesis bundles | Merge summary/snippet evidence across separate farm runs after single-run bundles are stable. |
+| BL-0063 | Open | 0014 | Exact downstream bundle tokenizer adapters | Add exact token counters for common downstream/frontier targets after estimated bundle budgets prove useful. |
+| BL-0064 | Open | 0014 | Configurable bundle fitting policies | Let callers choose evidence-first, summary-first, or balanced budget fitting instead of one deterministic default. |
+| BL-0065 | Open | 0014 | Reserved prompt-wrapper budget | Let callers reserve prompt space around a bundle so total downstream prompt size, not just bundle size, fits. |
+| BL-0066 | Open | 0014 | Budget planning for snippet packs | Add similar size estimation and optional caps to snippet-only packs. |
 
 ## Notes
 

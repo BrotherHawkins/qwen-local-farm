@@ -398,6 +398,9 @@ def handle_farm(args: argparse.Namespace) -> None:
                 label=args.label,
                 max_snippets=args.max_snippets,
                 per_file=args.per_file,
+                max_chars=args.max_chars,
+                max_estimated_tokens=args.max_estimated_tokens,
+                chars_per_token=args.chars_per_token,
             )
             json_path, markdown_path = qwen_farm_synthesis_bundles.write_synthesis_bundle(bundle, output_dir)
             print(f"Synthesis bundle written: {json_path}")
@@ -553,6 +556,9 @@ def parse_args() -> argparse.Namespace:
     synthesis_bundle.add_argument("--label")
     synthesis_bundle.add_argument("--max-snippets", type=int, default=24)
     synthesis_bundle.add_argument("--per-file", type=int, default=4)
+    synthesis_bundle.add_argument("--max-chars", type=int)
+    synthesis_bundle.add_argument("--max-estimated-tokens", type=int)
+    synthesis_bundle.add_argument("--chars-per-token", type=float, default=4.0)
 
     args = parser.parse_args()
     if not args.command:

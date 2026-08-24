@@ -134,6 +134,11 @@ class SynthesisBundleTests(unittest.TestCase):
             self.assertEqual(bundle["counts"]["snippet_candidates"], 3)
             self.assertEqual(bundle["counts"]["snippets_selected"], 2)
             self.assertEqual(bundle["counts"]["duplicates_dropped"], 1)
+            self.assertEqual(bundle["budget"]["schema_version"], 1)
+            self.assertIsNone(bundle["budget"]["effective_max_chars"])
+            self.assertFalse(bundle["budget"]["was_capped"])
+            self.assertGreater(bundle["budget"]["output"]["chars"], 0)
+            self.assertGreater(bundle["budget"]["output"]["estimated_tokens"], 0)
             self.assertEqual(bundle["items"][0]["summary"]["title"], "Evidence Packs")
             self.assertEqual(bundle["items"][1]["summary"]["bullets"], ["String bullets are normalized."])
             self.assertEqual(bundle["items"][2]["snippets"], [])
@@ -226,6 +231,93 @@ class SynthesisBundleTests(unittest.TestCase):
             self.assertIn("## article-a.txt", markdown)
             self.assertIn("Summary: Summary one should be included", markdown)
             self.assertIn("Evidence:", markdown)
+            self.assertIn("Budget:", markdown)
+
+    def test_estimate_tokens_from_chars_rounds_up(self) -> None:
+        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(0), 0)
+        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(1, 4.0), 1)
+        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(8, 4.0), 2)
+        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(9, 4.0), 3)
+
+    def test_effective_max_chars_uses_strictest_cap(self) -> None:
+        self.assertIsNone(qwen_farm_synthesis_bundles.effective_max_chars())
+        self.assertEqual(qwen_farm_synthesis_bundles.effective_max_chars(max_chars=100), 100)
+        self.assertEqual(
+            qwen_farm_synthesis_bundles.effective_max_chars(max_estimated_tokens=20, chars_per_token=4.0),
+            80,
+        )
+        self.assertEqual(
+            qwen_farm_synthesis_bundles.effective_max_chars(
+                max_chars=100,
+                max_estimated_tokens=20,
+                chars_per_token=4.0,
+            ),
+            80,
+        )
+
+    def test_invalid_budget_options_fail_before_building_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+
+            with self.assertRaisesRegex(ValueError, "--max-chars"):
+                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=0)
+            with self.assertRaisesRegex(ValueError, "--max-estimated-tokens"):
+                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_estimated_tokens=0)
+            with self.assertRaisesRegex(ValueError, "--chars-per-token"):
+                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, chars_per_token=0)
+
+    def test_character_budget_drops_optional_content_and_fits_when_feasible(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            full = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
+            max_chars = full["budget"]["output"]["chars"] - 250
+
+            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=max_chars)
+
+            self.assertTrue(capped["budget"]["was_capped"])
+            self.assertTrue(capped["budget"]["fit"])
+            self.assertLessEqual(capped["budget"]["output"]["chars"], max_chars)
+            self.assertEqual(capped["budget"]["effective_max_chars"], max_chars)
+            self.assertGreater(sum(capped["budget"]["dropped"].values()), 0)
+            self.assertEqual(capped["counts"]["snippets_selected"], qwen_farm_synthesis_bundles.count_bundle_snippets(capped["items"]))
+
+    def test_estimated_token_budget_resolves_to_character_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                max_estimated_tokens=180,
+                chars_per_token=4.0,
+            )
+
+            self.assertEqual(capped["budget"]["effective_max_chars"], 720)
+            self.assertLessEqual(capped["budget"]["output"]["chars"], 720)
+            self.assertLessEqual(capped["budget"]["output"]["estimated_tokens"], 180)
+
+    def test_budget_fitting_never_truncates_remaining_snippets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=800)
+            remaining_texts = [
+                snippet["text"]
+                for item in capped["items"]
+                for snippet in item.get("snippets", [])
+            ]
+
+            valid_texts = {
+                "The central claim is that small verified evidence packs make synthesis easier.",
+                "QMD combines BM25 search, an optional cross-encoder reranker, and LLM expansion.",
+            }
+            self.assertTrue(set(remaining_texts).issubset(valid_texts))
+
+    def test_tiny_budget_marks_unfit_when_minimum_bundle_exceeds_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=10)
+
+            self.assertTrue(capped["budget"]["was_capped"])
+            self.assertFalse(capped["budget"]["fit"])
+            self.assertIn("minimum_bundle_exceeds_budget", capped["budget"]["warnings"])
 
 
 if __name__ == "__main__":

@@ -70,6 +70,20 @@ python qwen.py farm run notes --mode summarize --profile local-12gb
 python qwen.py farm run notes --mode summarize --profile local-24gb --chunk-chars 20000 --parallel-jobs 2
 ```
 
+The default chunker uses character budgets. For fewer, larger chunks on supported Qwen models, set up exact local tokenizers and opt into token-aware chunking:
+
+```bash
+python -m pip install --user "transformers>=5.15" "tokenizers>=0.22"
+python qwen.py farm tokenizer setup
+python qwen.py farm run notes --mode summarize --chunk-strategy token
+```
+
+Tokenizer assets are cached under `.run/tokenizers/`, which is ignored by Git. Verify readiness later with:
+
+```bash
+python qwen.py farm tokenizer status
+```
+
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
 
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
@@ -79,8 +93,10 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
   "profile": "local-12gb",
   "model": "qwen3.5:4b",
   "summarize": {
+    "chunk_strategy": "character",
     "chunk_chars": 12000,
-    "reduce_chars": 12000
+    "reduce_chars": 12000,
+    "token_safety_margin": 0.1
   },
   "concurrency": {
     "jobs": 1,
@@ -90,6 +106,21 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 ```
 
 Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+
+Token-aware chunking can also be configured in `.qwen-farm.json`:
+
+```json
+{
+  "summarize": {
+    "chunk_strategy": "token",
+    "chunk_tokens": 6500,
+    "reduce_tokens": 6500,
+    "token_safety_margin": 0.1
+  }
+}
+```
+
+If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
 
 Apply custom instructions to every readable text file:
 

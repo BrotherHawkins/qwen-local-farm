@@ -150,6 +150,7 @@ Runtime profile invocation:
 python qwen.py farm run input-folder --mode summarize --profile local-12gb
 python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
 python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
+python qwen.py farm run input-folder --mode summarize --chunk-strategy token
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
@@ -158,6 +159,20 @@ For actual same-model parallel processing, the user's Ollama server may need ext
 
 Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.qwen-farm.json` for the user, then the farm writes the final effective settings into every run.
 
+Use character chunking when:
+
+- tokenizer setup has not been verified
+- the run needs the simplest model-free behavior
+- the selected model is not one of the supported Qwen/Ollama aliases
+
+Use token-aware chunking when:
+
+- `python qwen.py farm tokenizer status` reports ready
+- large article-like inputs are being over-split by character budgets
+- the primary AI wants fewer local worker calls before frontier synthesis
+
+For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
+
 Example `.qwen-farm.json`:
 
 ```json
@@ -165,8 +180,10 @@ Example `.qwen-farm.json`:
   "profile": "local-8gb",
   "model": "qwen3.5:4b",
   "summarize": {
+    "chunk_strategy": "character",
     "chunk_chars": 8000,
-    "reduce_chars": 8000
+    "reduce_chars": 8000,
+    "token_safety_margin": 0.1
   },
   "concurrency": {
     "jobs": 1,
@@ -378,6 +395,8 @@ The doctor report should let a primary AI explain:
 - which model profile is safest
 - whether GPU acceleration is available
 - whether CPU/RAM fallback is appropriate
+- whether tokenizer-aware chunking is available locally
+- whether tokenizer dependencies or cache setup are still needed
 - whether more setup is needed
 
 This keeps the experience approachable for non-technical users while still giving power users direct control.

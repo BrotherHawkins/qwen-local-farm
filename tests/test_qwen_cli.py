@@ -58,6 +58,41 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.instructions, "Summarize risks")
         self.assertEqual(args.agent, "qwen8")
 
+    def test_parse_args_accepts_token_chunk_overrides(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "run",
+                "notes",
+                "--chunk-strategy",
+                "token",
+                "--chunk-tokens",
+                "6500",
+                "--reduce-tokens",
+                "6400",
+                "--token-safety-margin",
+                "0.15",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.chunk_strategy, "token")
+        self.assertEqual(args.chunk_tokens, 6500)
+        self.assertEqual(args.reduce_tokens, 6400)
+        self.assertEqual(args.token_safety_margin, 0.15)
+
+    def test_parse_args_accepts_farm_tokenizer_status(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "farm", "tokenizer", "status", "--model", "qwen3:4b"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "tokenizer")
+        self.assertEqual(args.tokenizer_command, "status")
+        self.assertEqual(args.model, ["qwen3:4b"])
+
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
             args = qwen.parse_args()

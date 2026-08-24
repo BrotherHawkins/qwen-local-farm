@@ -459,6 +459,7 @@ Capability discovery should report:
 - available agents.
 - supported modes.
 - chunking support.
+- tokenizer dependency and cache readiness.
 - output schemas.
 
 Likely future command:
@@ -474,7 +475,7 @@ Possible outputs:
 .run/reports/setup-doctor.json
 ```
 
-The point is not just troubleshooting. The primary AI should be able to inspect the report, explain tradeoffs, and choose a safe local model/profile for the user's machine.
+The point is not just troubleshooting. The primary AI should be able to inspect the report, explain tradeoffs, choose a safe local model/profile for the user's machine, and guide tokenizer setup for token-aware chunking when useful.
 
 ## Proposed Milestones
 

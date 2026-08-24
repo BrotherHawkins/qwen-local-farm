@@ -54,7 +54,22 @@
       "type": ["integer", "null"]
     },
     "runtime": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "resource_mode": {
+          "type": ["object", "null"],
+          "properties": {
+            "requested": {
+              "type": "string",
+              "enum": ["auto", "gpu", "hybrid", "cpu"]
+            },
+            "effective": {
+              "type": "string",
+              "enum": ["gpu", "hybrid", "cpu"]
+            }
+          }
+        }
+      }
     },
     "totals": {
       "type": "object",

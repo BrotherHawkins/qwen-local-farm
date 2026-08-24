@@ -204,6 +204,7 @@ def compact_runtime(status: dict[str, Any]) -> dict[str, Any]:
         summarize = {}
     return {
         "profile": runtime.get("profile"),
+        "resource_mode": runtime.get("resource_mode"),
         "model": runtime.get("model", status.get("model")),
         "summarize": {
             "chunk_strategy": summarize.get("chunk_strategy"),

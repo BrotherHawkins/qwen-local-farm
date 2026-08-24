@@ -9,6 +9,7 @@ from src.qwen_farm_profiles import (
     PROFILE_NAMES,
     RuntimeOverrides,
     derive_token_budget,
+    finalize_runtime_config_for_agent,
     resolve_runtime_config,
 )
 
@@ -19,6 +20,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             config = resolve_runtime_config(root=Path(temp_dir), default_model="qwen-test:1b")
 
             self.assertEqual(config["profile"], "local-8gb")
+            self.assertEqual(config["resource_mode"], "auto")
             self.assertEqual(config["model"], "qwen-test:1b")
             self.assertEqual(config["summarize"]["chunk_strategy"], "character")
             self.assertEqual(config["summarize"]["chunk_chars"], 8000)
@@ -39,6 +41,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                         overrides=RuntimeOverrides(profile=profile),
                     )
                     self.assertEqual(config["profile"], profile)
+                    self.assertIn(config["resource_mode"], {"auto", "cpu"})
                     self.assertGreater(config["summarize"]["chunk_chars"], 0)
 
     def test_config_file_overrides_profile_defaults(self) -> None:
@@ -48,6 +51,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                 json.dumps(
                     {
                         "profile": "local-12gb",
+                        "resource_mode": "cpu",
                         "model": "qwen-test:8b",
                         "summarize": {"chunk_chars": 18000},
                         "concurrency": {"jobs": 2},
@@ -59,12 +63,13 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             config = resolve_runtime_config(root=root, default_model="qwen-test:1b")
 
             self.assertEqual(config["profile"], "local-12gb")
+            self.assertEqual(config["resource_mode"], "cpu")
             self.assertEqual(config["model"], "qwen-test:8b")
             self.assertEqual(config["summarize"]["chunk_chars"], 18000)
             self.assertEqual(config["summarize"]["reduce_chars"], 12000)
             self.assertEqual(config["concurrency"]["jobs"], 2)
             self.assertEqual(config["concurrency"]["chunks"], 1)
-            self.assertEqual(config["provenance"]["config_fields"], ["concurrency.jobs", "model", "profile", "summarize.chunk_chars"])
+            self.assertEqual(config["provenance"]["config_fields"], ["concurrency.jobs", "model", "profile", "resource_mode", "summarize.chunk_chars"])
 
     def test_cli_overrides_beat_config_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -87,6 +92,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                 config_path=config_path,
                 overrides=RuntimeOverrides(
                     profile="local-24gb",
+                    resource_mode="gpu",
                     model="qwen-test:14b",
                     chunk_chars=21000,
                     parallel_jobs=3,
@@ -94,11 +100,13 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             )
 
             self.assertEqual(config["profile"], "local-24gb")
+            self.assertEqual(config["resource_mode"], "gpu")
             self.assertEqual(config["model"], "qwen-test:14b")
             self.assertEqual(config["summarize"]["chunk_chars"], 21000)
             self.assertEqual(config["summarize"]["reduce_chars"], 20000)
             self.assertEqual(config["concurrency"]["jobs"], 3)
             self.assertIn("model", config["provenance"]["cli_override_fields"])
+            self.assertIn("resource_mode", config["provenance"]["cli_override_fields"])
 
     def test_invalid_json_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -125,6 +133,89 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     default_model="qwen-test:1b",
                     overrides=RuntimeOverrides(profile="giant-cloud"),
                 )
+
+    def test_unknown_resource_mode_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(json.dumps({"resource_mode": "rocket"}), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "resource_mode"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_cpu_mode_forces_num_gpu_zero(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(
+                root=Path(temp_dir),
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(resource_mode="cpu"),
+            )
+            agent = {"id": "default", "model": "qwen-test:1b", "options": {"num_gpu": 30}}
+
+            finalized = finalize_runtime_config_for_agent(config, agent)
+
+            self.assertEqual(finalized["resource_mode"]["requested"], "cpu")
+            self.assertEqual(finalized["resource_mode"]["effective"], "cpu")
+            self.assertEqual(agent["options"]["num_gpu"], 0)
+            self.assertEqual(finalized["resource_mode"]["agent_option_override"]["before"], 30)
+
+    def test_gpu_mode_rejects_cpu_forced_agent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(
+                root=Path(temp_dir),
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(resource_mode="gpu"),
+            )
+            agent = {"id": "qwen8-cpu", "model": "qwen-test:8b", "options": {"num_gpu": 0}}
+
+            with self.assertRaisesRegex(ValueError, "conflicts"):
+                finalize_runtime_config_for_agent(config, agent)
+
+    def test_hybrid_mode_rejects_cpu_forced_agent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(
+                root=Path(temp_dir),
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(resource_mode="hybrid"),
+            )
+            agent = {"id": "qwen8-cpu", "model": "qwen-test:8b", "options": {"num_gpu": 0}}
+
+            with self.assertRaisesRegex(ValueError, "conflicts"):
+                finalize_runtime_config_for_agent(config, agent)
+
+    def test_auto_cpu_small_resolves_to_cpu(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(
+                root=Path(temp_dir),
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(profile="cpu-small"),
+            )
+            agent = {"id": "default", "model": "qwen-test:1b", "options": {}}
+
+            finalized = finalize_runtime_config_for_agent(config, agent)
+
+            self.assertEqual(finalized["resource_mode"]["requested"], "cpu")
+            self.assertEqual(finalized["resource_mode"]["effective"], "cpu")
+            self.assertEqual(agent["options"]["num_gpu"], 0)
+
+    def test_auto_cpu_forced_agent_resolves_to_cpu(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(root=Path(temp_dir), default_model="qwen-test:1b")
+            agent = {"id": "qwen8-cpu", "model": "qwen-test:8b", "options": {"num_gpu": 0}}
+
+            finalized = finalize_runtime_config_for_agent(config, agent)
+
+            self.assertEqual(finalized["resource_mode"]["requested"], "auto")
+            self.assertEqual(finalized["resource_mode"]["effective"], "cpu")
+
+    def test_auto_positive_num_gpu_resolves_to_hybrid(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(root=Path(temp_dir), default_model="qwen-test:1b")
+            agent = {"id": "qwen14-hybrid", "model": "qwen-test:14b", "options": {"num_gpu": 24}}
+
+            finalized = finalize_runtime_config_for_agent(config, agent)
+
+            self.assertEqual(finalized["resource_mode"]["requested"], "auto")
+            self.assertEqual(finalized["resource_mode"]["effective"], "hybrid")
 
     def test_token_strategy_config_is_valid(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

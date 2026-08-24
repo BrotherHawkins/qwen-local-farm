@@ -63,10 +63,22 @@
       }
     },
     "existing_config": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "resource_mode": {
+          "type": "string",
+          "enum": ["auto", "gpu", "hybrid", "cpu"]
+        }
+      }
     },
     "proposed_config": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "resource_mode": {
+          "type": "string",
+          "enum": ["auto", "gpu", "hybrid", "cpu"]
+        }
+      }
     },
     "changes": {
       "type": "array",

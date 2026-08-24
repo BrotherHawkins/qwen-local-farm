@@ -49,6 +49,8 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertEqual(report["agent"]["model"], "qwen3.5:4b")
             self.assertTrue(report["agent"]["model_installed"])
             self.assertEqual(report["runtime"]["profile"], "local-8gb")
+            self.assertEqual(report["runtime"]["resource_mode"]["requested"], "auto")
+            self.assertEqual(report["runtime"]["resource_mode"]["effective"], "gpu")
             self.assertTrue(report["tokenizers"]["ready"])
             self.assertEqual(report["runs"], {"known_count": 0, "latest": []})
             self.assertEqual(report["profile_recommendation"]["status"], "missing")
@@ -139,6 +141,7 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertIn("# Farm Doctor", markdown)
             self.assertIn("## Ollama", markdown)
             self.assertIn("## Agent And Runtime", markdown)
+            self.assertIn("Resource mode effective", markdown)
             self.assertIn("## Profile Recommendation", markdown)
             self.assertIn("## Recommendations", markdown)
 

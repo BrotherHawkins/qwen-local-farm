@@ -18,8 +18,10 @@ from src.qwen_farm_snippets import (
 CONFIG_FILE_NAME = ".qwen-farm.json"
 PROFILE_NAMES = ["cpu-small", "local-4gb", "local-8gb", "local-12gb", "local-24gb", "custom"]
 DEFAULT_PROFILE = "local-8gb"
+RESOURCE_MODES = {"auto", "gpu", "hybrid", "cpu"}
+EFFECTIVE_RESOURCE_MODES = {"gpu", "hybrid", "cpu"}
 
-TOP_LEVEL_FIELDS = {"profile", "model", "summarize", "concurrency"}
+TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency"}
 CHUNK_STRATEGIES = {"character", "token"}
 SUMMARIZE_FIELDS = {
     "chunk_strategy",
@@ -44,6 +46,7 @@ DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP = 4_096
 @dataclass(frozen=True)
 class RuntimeOverrides:
     profile: str | None = None
+    resource_mode: str | None = None
     model: str | None = None
     chunk_strategy: str | None = None
     chunk_chars: int | None = None
@@ -78,6 +81,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
     profiles: dict[str, dict[str, Any]] = {
         "cpu-small": {
             "profile": "cpu-small",
+            "resource_mode": "cpu",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -94,6 +98,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         },
         "local-4gb": {
             "profile": "local-4gb",
+            "resource_mode": "auto",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -110,6 +115,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         },
         "local-8gb": {
             "profile": "local-8gb",
+            "resource_mode": "auto",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -126,6 +132,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         },
         "local-12gb": {
             "profile": "local-12gb",
+            "resource_mode": "auto",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -142,6 +149,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         },
         "local-24gb": {
             "profile": "local-24gb",
+            "resource_mode": "auto",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -158,6 +166,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         },
         "custom": {
             "profile": "custom",
+            "resource_mode": "auto",
             "model": default_model,
             "summarize": {
                 "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
@@ -187,6 +196,14 @@ def validate_profile_name(value: Any) -> str:
     if profile not in PROFILE_NAMES:
         raise ValueError(f"Unknown farm profile: {profile}")
     return profile
+
+
+def validate_resource_mode(value: Any, field_path: str = "resource_mode") -> str:
+    mode = str(value).strip().lower()
+    if mode not in RESOURCE_MODES:
+        allowed = ", ".join(sorted(RESOURCE_MODES))
+        raise ValueError(f"{field_path} must be one of: {allowed}.")
+    return mode
 
 
 def validate_model(value: Any) -> str:
@@ -286,6 +303,8 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
     normalized: dict[str, Any] = {}
     if "profile" in data:
         normalized["profile"] = validate_profile_name(data["profile"])
+    if "resource_mode" in data:
+        normalized["resource_mode"] = validate_resource_mode(data["resource_mode"])
     if "model" in data:
         normalized["model"] = validate_model(data["model"])
     if "summarize" in data:
@@ -361,6 +380,8 @@ def read_config_file(path: Path) -> dict[str, Any]:
 def merge_config(target: dict[str, Any], update: dict[str, Any]) -> None:
     if "profile" in update:
         target["profile"] = update["profile"]
+    if "resource_mode" in update:
+        target["resource_mode"] = update["resource_mode"]
     if "model" in update:
         target["model"] = update["model"]
     if "summarize" in update:
@@ -373,6 +394,8 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
     data: dict[str, Any] = {}
     if overrides.profile is not None:
         data["profile"] = validate_profile_name(overrides.profile)
+    if overrides.resource_mode is not None:
+        data["resource_mode"] = validate_resource_mode(overrides.resource_mode, "--resource-mode")
     if overrides.model is not None:
         data["model"] = validate_model(overrides.model)
 
@@ -479,6 +502,17 @@ def resolve_runtime_config(
 
 def validate_resolved_config(config: dict[str, Any]) -> None:
     validate_profile_name(config.get("profile"))
+    if "resource_mode" in config:
+        resource_mode = config["resource_mode"]
+        if isinstance(resource_mode, dict):
+            requested = resource_mode.get("requested")
+            effective = resource_mode.get("effective")
+            validate_resource_mode(requested)
+            if str(effective) not in EFFECTIVE_RESOURCE_MODES:
+                allowed = ", ".join(sorted(EFFECTIVE_RESOURCE_MODES))
+                raise ValueError(f"resource_mode.effective must be one of: {allowed}.")
+        else:
+            validate_resource_mode(resource_mode)
     validate_model(config.get("model"))
     summarize = config.get("summarize")
     if not isinstance(summarize, dict):
@@ -531,6 +565,7 @@ def derive_token_budget(num_ctx: int, safety_margin: float) -> int:
 
 def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
     updated = deepcopy(runtime_config)
+    updated = resolve_resource_mode_for_agent(updated, agent)
     summarize = updated["summarize"]
     summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
     summarize.setdefault("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN)
@@ -547,9 +582,91 @@ def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dic
     return updated
 
 
+def agent_options(agent: dict[str, Any]) -> dict[str, Any]:
+    options = agent.get("options")
+    return options if isinstance(options, dict) else {}
+
+
+def agent_forces_cpu(agent: dict[str, Any]) -> bool:
+    return agent_options(agent).get("num_gpu") == 0
+
+
+def agent_uses_partial_gpu(agent: dict[str, Any]) -> bool:
+    num_gpu = agent_options(agent).get("num_gpu")
+    return isinstance(num_gpu, int) and not isinstance(num_gpu, bool) and num_gpu > 0
+
+
+def resource_mode_source(runtime_config: dict[str, Any]) -> str:
+    provenance = runtime_config.get("provenance") or {}
+    cli_fields = set(provenance.get("cli_override_fields") or [])
+    config_fields = set(provenance.get("config_fields") or [])
+    if "resource_mode" in cli_fields:
+        return "cli"
+    if "resource_mode" in config_fields:
+        return "config"
+    return "profile"
+
+
+def requested_resource_mode(runtime_config: dict[str, Any]) -> str:
+    current = runtime_config.get("resource_mode", "auto")
+    if isinstance(current, dict):
+        current = current.get("requested", "auto")
+    return validate_resource_mode(current)
+
+
+def resolve_effective_resource_mode(requested: str, profile: str, agent: dict[str, Any]) -> tuple[str, str]:
+    if requested == "cpu":
+        return "cpu", "Requested cpu mode forces CPU/RAM placement with num_gpu 0."
+    if requested in {"gpu", "hybrid"}:
+        if agent_forces_cpu(agent):
+            agent_id = str(agent.get("id") or "")
+            raise ValueError(
+                f"Resource mode `{requested}` conflicts with selected agent `{agent_id}`, "
+                "which explicitly sets options.num_gpu to 0. Use --resource-mode cpu/auto or choose a GPU-capable agent."
+            )
+        if requested == "gpu":
+            return "gpu", "Requested gpu mode allows Ollama to use GPU placement for the selected agent."
+        return "hybrid", "Requested hybrid mode allows partial GPU offload or Ollama-managed fallback."
+
+    if profile == "cpu-small":
+        return "cpu", "Auto resolved to cpu because the selected profile is cpu-small."
+    if agent_forces_cpu(agent):
+        agent_id = str(agent.get("id") or "")
+        return "cpu", f"Auto resolved to cpu because selected agent `{agent_id}` sets options.num_gpu to 0."
+    if agent_uses_partial_gpu(agent):
+        agent_id = str(agent.get("id") or "")
+        return "hybrid", f"Auto resolved to hybrid because selected agent `{agent_id}` sets positive options.num_gpu."
+    return "gpu", f"Auto resolved to gpu because profile `{profile}` can use GPU placement and the agent does not force CPU."
+
+
+def resolve_resource_mode_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
+    updated = deepcopy(runtime_config)
+    requested = requested_resource_mode(updated)
+    profile = validate_profile_name(updated.get("profile"))
+    effective, reason = resolve_effective_resource_mode(requested, profile, agent)
+    source = resource_mode_source(updated)
+    override: dict[str, Any] | None = None
+    if effective == "cpu":
+        agent.setdefault("options", {})
+        if not isinstance(agent["options"], dict):
+            agent["options"] = {}
+        previous = agent["options"].get("num_gpu")
+        agent["options"]["num_gpu"] = 0
+        override = {"path": "agent.options.num_gpu", "before": previous, "after": 0}
+    updated["resource_mode"] = {
+        "requested": requested,
+        "effective": effective,
+        "source": source,
+        "reason": reason,
+        "agent_option_override": override,
+    }
+    return updated
+
+
 def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
     return {
         "profile": runtime_config["profile"],
+        "resource_mode": runtime_config.get("resource_mode"),
         "model": runtime_config["model"],
         "summarize": {
             "chunk_strategy": runtime_config["summarize"].get("chunk_strategy", DEFAULT_CHUNK_STRATEGY),

@@ -103,6 +103,7 @@ def build_recommendation_report(
     ollama_base_url: str,
     agent_id: str = "default",
     profile: str | None = None,
+    resource_mode: str | None = None,
     output_dir: Path | None = None,
     generated_at: str | None = None,
     find_ollama_fn: FindOllama | None = None,
@@ -119,6 +120,7 @@ def build_recommendation_report(
         agent_id=agent_id,
         default_model=default_model,
         profile=profile,
+        resource_mode=resource_mode,
     )
     model = str(agent.get("model") or runtime.get("model") or default_model)
 
@@ -159,7 +161,7 @@ def build_recommendation_report(
     if benchmark.get("status") != "complete":
         warnings.append(str(benchmark.get("message") or "Benchmark probe did not complete."))
 
-    resource_mode = recommend_resource_mode(agent=agent, ollama=ollama, benchmark=benchmark)
+    resource_mode = recommend_resource_mode(runtime=runtime, agent=agent, ollama=ollama, benchmark=benchmark)
     profile_rec = recommend_profile(runtime=runtime, requested_profile=profile, benchmark=benchmark, runtime_error=runtime_error)
     concurrency = recommend_concurrency(runtime=runtime, benchmark=benchmark)
     summarize = recommend_summarize(runtime=runtime, tokenizer=tokenizer, agent=agent)
@@ -263,7 +265,23 @@ def skipped_benchmark(ollama: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def recommend_resource_mode(*, agent: dict[str, Any], ollama: dict[str, Any], benchmark: dict[str, Any]) -> dict[str, Any]:
+def recommend_resource_mode(
+    *,
+    runtime: dict[str, Any],
+    agent: dict[str, Any],
+    ollama: dict[str, Any],
+    benchmark: dict[str, Any],
+) -> dict[str, Any]:
+    runtime_resource = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
+    effective = runtime_resource.get("effective")
+    requested = runtime_resource.get("requested")
+    if effective in {"gpu", "hybrid", "cpu"}:
+        confidence = "high" if requested != "auto" or effective == "cpu" else "medium"
+        return {
+            "recommended": effective,
+            "confidence": confidence,
+            "reason": runtime_resource.get("reason") or "Use the resource mode resolved by the current runtime config.",
+        }
     options = agent.get("options") if isinstance(agent.get("options"), dict) else {}
     num_gpu = options.get("num_gpu")
     agent_id = str(agent.get("id") or "").lower()
@@ -463,8 +481,9 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
             "",
             "```powershell",
             "python qwen.py farm doctor --json",
-            "python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations",
+            "python qwen.py farm recommend --agent default --profile local-8gb --resource-mode auto --output .run/recommendations",
             "python qwen.py farm schema validate .run/recommendations/farm-recommendation.json",
+            "python qwen.py farm recommend apply",
             "```",
             "",
         ]
@@ -602,6 +621,7 @@ def load_existing_config(path: Path) -> tuple[dict[str, Any], str | None]:
 
 def config_from_recommendation(recommendation: dict[str, Any]) -> dict[str, Any]:
     profile = recommendation.get("profile") if isinstance(recommendation.get("profile"), dict) else {}
+    resource_mode = recommendation.get("resource_mode") if isinstance(recommendation.get("resource_mode"), dict) else {}
     summarize = recommendation.get("summarize") if isinstance(recommendation.get("summarize"), dict) else {}
     concurrency = recommendation.get("concurrency") if isinstance(recommendation.get("concurrency"), dict) else {}
     parallel_jobs = concurrency.get("parallel_jobs") if isinstance(concurrency.get("parallel_jobs"), dict) else {}
@@ -609,6 +629,8 @@ def config_from_recommendation(recommendation: dict[str, Any]) -> dict[str, Any]
     config: dict[str, Any] = {}
     if profile.get("recommended"):
         config["profile"] = profile["recommended"]
+    if resource_mode.get("recommended"):
+        config["resource_mode"] = resource_mode["recommended"]
     if recommendation.get("model"):
         config["model"] = recommendation["model"]
 
@@ -634,6 +656,8 @@ def merge_configs(existing: dict[str, Any], recommended: dict[str, Any]) -> dict
     for key in ("profile", "model"):
         if key in recommended:
             merged[key] = recommended[key]
+    if "resource_mode" in recommended:
+        merged["resource_mode"] = recommended["resource_mode"]
     if "summarize" in recommended:
         current = merged.get("summarize") if isinstance(merged.get("summarize"), dict) else {}
         merged["summarize"] = {**current, **recommended["summarize"]}
@@ -690,15 +714,6 @@ def config_value_at(config: dict[str, Any], path: str) -> tuple[bool, Any]:
 
 def not_applied_guidance(recommendation: dict[str, Any]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    resource_mode = recommendation.get("resource_mode") if isinstance(recommendation.get("resource_mode"), dict) else {}
-    if resource_mode.get("recommended"):
-        rows.append(
-            {
-                "path": "resource_mode",
-                "value": str(resource_mode["recommended"]),
-                "reason": "Resource mode is recommendation guidance, not a current .qwen-farm.json field.",
-            }
-        )
     concurrency = recommendation.get("concurrency") if isinstance(recommendation.get("concurrency"), dict) else {}
     ollama_parallel = (
         concurrency.get("ollama_num_parallel")
@@ -839,6 +854,7 @@ def _resolve_agent_runtime(
     agent_id: str,
     default_model: str,
     profile: str | None,
+    resource_mode: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     try:
         agent, runtime = qwen_farm.resolve_run_agent_and_config(
@@ -846,12 +862,20 @@ def _resolve_agent_runtime(
             agent_id=agent_id,
             default_model=default_model,
             profile=profile,
+            resource_mode=resource_mode,
         )
         return agent, compact_runtime_config(runtime), None
     except Exception as exc:
         fallback = {"id": agent_id, "model": default_model, "options": {}}
         runtime = {
             "profile": profile or "local-8gb",
+            "resource_mode": {
+                "requested": resource_mode or "auto",
+                "effective": "cpu" if resource_mode == "cpu" else "gpu",
+                "source": "fallback",
+                "reason": "Runtime config did not resolve cleanly.",
+                "agent_option_override": None,
+            },
             "model": default_model,
             "summarize": {},
             "concurrency": {"jobs": 1, "chunks": 1},

@@ -149,6 +149,8 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["jobs"][0]["result_json"], "jobs/job-0001/result.json")
             self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
             self.assertEqual(status["runtime"]["profile"], "local-8gb")
+            self.assertEqual(status["runtime"]["resource_mode"]["requested"], "auto")
+            self.assertEqual(status["runtime"]["resource_mode"]["effective"], "gpu")
             self.assertEqual(status["runtime"]["model"], "qwen-test:1b")
             self.assertTimingComplete(status["timing"])
             self.assertIsInstance(status["jobs"][0]["timing"].get("queued_at"), str)
@@ -160,6 +162,7 @@ class FarmRunTests(unittest.TestCase):
 
             timing_summary = qwen_farm.read_json(run_dir / "timing-summary.json")
             self.assertEqual(timing_summary["run_id"], status["run_id"])
+            self.assertEqual(timing_summary["resource_mode"]["effective"], "gpu")
             self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
 
     def test_default_summarize_processor_sets_fast_model_options(self) -> None:
@@ -784,6 +787,71 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(seen_models, ["config-model:1b"])
             self.assertEqual(status["model"], "config-model:1b")
             self.assertEqual(status["runtime"]["model"], "config-model:1b")
+
+    def test_resource_mode_cpu_forces_agent_num_gpu_zero(self) -> None:
+        seen_options: list[dict[str, object]] = []
+
+        def recording_processor(**kwargs: object) -> FarmModelResult:
+            agent = kwargs["agent"]
+            assert isinstance(agent, dict)
+            seen_options.append(dict(agent.get("options") or {}))
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "agents" / "gpuish.json").write_text(
+                json.dumps({"model": "qwen-test:1b", "options": {"num_gpu": 30}}),
+                encoding="utf-8",
+            )
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="gpuish",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                resource_mode="cpu",
+                model_processor=recording_processor,
+            )
+
+            self.assertEqual(seen_options[0]["num_gpu"], 0)
+            self.assertEqual(status["runtime"]["resource_mode"]["requested"], "cpu")
+            self.assertEqual(status["runtime"]["resource_mode"]["effective"], "cpu")
+            self.assertEqual(status["runtime"]["resource_mode"]["agent_option_override"]["before"], 30)
+
+    def test_resource_mode_gpu_rejects_cpu_agent_before_run_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "agents" / "cpu-agent.json").write_text(
+                json.dumps({"model": "qwen-test:1b", "options": {"num_gpu": 0}}),
+                encoding="utf-8",
+            )
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            output = root / "results"
+
+            with self.assertRaisesRegex(ValueError, "conflicts"):
+                qwen_farm.run_farm(
+                    root=root,
+                    input_folder=root / "input",
+                    output_dir=output,
+                    mode="summarize",
+                    instructions=None,
+                    agent_id="cpu-agent",
+                    default_model="qwen-test:1b",
+                    ollama_base_url="http://127.0.0.1:11434",
+                    resource_mode="gpu",
+                    model_processor=fake_processor,
+                )
+
+            self.assertFalse(output.exists())
 
     def test_chunk_warnings_mark_run_complete_with_warnings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

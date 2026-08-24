@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-timing-summary.schema.json",
+  "title": "Qwen Local Farm Timing Summary",
+  "description": "Post-run timing summary artifact written beside a farm run as timing-summary.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "status",
+    "mode",
+    "agent",
+    "model",
+    "timing",
+    "counts",
+    "jobs",
+    "calls",
+    "aggregate_by_call_kind",
+    "slowest_jobs",
+    "slowest_calls"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["running", "complete", "complete_with_warnings", "partial", "failed"]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "profile": {
+      "type": ["string", "null"]
+    },
+    "timing": {
+      "type": "object"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["job_id", "status", "input_path", "duration_ms"],
+        "properties": {
+          "job_id": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": ["string", "null"]
+          },
+          "input_path": {
+            "type": ["string", "null"]
+          },
+          "queue_wait_ms": {
+            "type": ["integer", "null"]
+          },
+          "duration_ms": {
+            "type": ["integer", "null"]
+          },
+          "started_at": {
+            "type": ["string", "null"]
+          },
+          "completed_at": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["job_id", "input_path", "kind", "duration_ms"],
+        "properties": {
+          "job_id": {
+            "type": ["string", "null"]
+          },
+          "input_path": {
+            "type": ["string", "null"]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": ["integer", "null"]
+          },
+          "status": {
+            "type": ["string", "null"]
+          },
+          "started_at": {
+            "type": ["string", "null"]
+          },
+          "completed_at": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "aggregate_by_call_kind": {
+      "type": "object"
+    },
+    "slowest_jobs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "slowest_calls": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

@@ -354,7 +354,7 @@ timing-summary.json
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.
 
-Tracked JSON Schema-compatible contracts for the core JSON artifacts live in `schemas/`. Use `schemas/index.json` to discover the current contracts for persisted run status, job results, `farm status --json` envelopes, and doctor reports. Validation is model-free and does not require Ollama.
+Tracked JSON Schema-compatible contracts live in `schemas/`. Use `schemas/index.json` to discover the current contracts for persisted run status, job results, `farm status --json` envelopes, doctor reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Validation is model-free and does not require Ollama.
 
 Use `farm schema validate` when a primary AI or script needs to confirm that an artifact matches the expected contract before consuming it:
 
@@ -362,9 +362,11 @@ Use `farm schema validate` when a primary AI or script needs to confirm that an 
 python qwen.py farm schema validate .run/reports/setup-doctor.json --json
 python qwen.py farm schema validate <run-dir>/farm-status.json
 python qwen.py farm schema validate <run-dir>/jobs/job-0001/result.json
+python qwen.py farm schema validate <run-dir>/timing-summary.json
+python qwen.py farm schema validate .run/synthesis_bundles/<label>.json
 ```
 
-Auto-detection covers the current core farm JSON artifacts. Pass `--schema <schema-path-or-id>` when validating a less obvious file or when a workflow wants an explicit contract.
+Auto-detection covers the current core farm JSON artifacts and post-run package JSON artifacts. Pass `--schema <schema-path-or-id>` when validating a less obvious file or when a workflow wants an explicit contract.
 
 When a run feels slow, inspect `timing-summary.json` first. It summarizes total run duration, job durations, queue wait, aggregate time by call kind, slowest jobs, and slowest model calls. Per-job `result.json` files include the model-call timing records for successful jobs, and failed jobs keep call timing in `farm-status.json`.
 

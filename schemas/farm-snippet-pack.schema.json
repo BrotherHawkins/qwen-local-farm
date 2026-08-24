@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
+  "title": "Qwen Local Farm Snippet Pack",
+  "description": "Post-run selected source evidence package written by farm snippets pack.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "created_at",
+    "label",
+    "run_id",
+    "run_path",
+    "mode",
+    "model",
+    "limits",
+    "counts",
+    "snippets",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": ["string", "null"]
+    },
+    "run_path": {
+      "type": "string"
+    },
+    "mode": {
+      "type": ["string", "null"]
+    },
+    "model": {
+      "type": ["string", "null"]
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_snippets", "per_file", "source"],
+      "properties": {
+        "max_snippets": {
+          "type": "integer"
+        },
+        "per_file": {
+          "type": "integer"
+        },
+        "source": {
+          "const": "selected"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["jobs_seen", "jobs_with_snippets", "candidates", "selected", "duplicates_dropped", "jobs_skipped"],
+      "properties": {
+        "jobs_seen": {
+          "type": "integer"
+        },
+        "jobs_with_snippets": {
+          "type": "integer"
+        },
+        "candidates": {
+          "type": "integer"
+        },
+        "selected": {
+          "type": "integer"
+        },
+        "duplicates_dropped": {
+          "type": "integer"
+        },
+        "jobs_skipped": {
+          "type": "integer"
+        }
+      }
+    },
+    "snippets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "input_path", "job_id", "text", "reason"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "score_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "start_line": {
+            "type": "integer"
+          },
+          "end_line": {
+            "type": "integer"
+          },
+          "start_char": {
+            "type": "integer"
+          },
+          "end_char": {
+            "type": "integer"
+          },
+          "source_path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["skipped_jobs", "warnings"],
+      "properties": {
+        "skipped_jobs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

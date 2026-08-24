@@ -61,6 +61,7 @@ def resolve_schema_reference(root: Path, reference: str) -> dict[str, Any]:
 def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
     matches: list[str] = []
     schema_version = artifact.get("schema_version")
+    limits = artifact.get("limits") if isinstance(artifact.get("limits"), dict) else {}
 
     if schema_version == 1 and artifact.get("scope") == "overview":
         matches.append("schemas/farm-status-overview.schema.json")
@@ -72,6 +73,27 @@ def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
         matches.append("schemas/farm-status.schema.json")
     if schema_version == "0.1" and {"job_id", "structured_valid", "result", "artifacts"}.issubset(artifact):
         matches.append("schemas/farm-job-result.schema.json")
+    if (
+        schema_version == "0.1"
+        and {"run_id", "aggregate_by_call_kind", "slowest_jobs", "slowest_calls"}.issubset(artifact)
+    ):
+        matches.append("schemas/farm-timing-summary.schema.json")
+    if (
+        schema_version == 1
+        and limits.get("source") == "selected"
+        and {"snippets", "diagnostics", "counts"}.issubset(artifact)
+    ):
+        matches.append("schemas/farm-snippet-pack.schema.json")
+    if (
+        schema_version == 1
+        and limits.get("snippet_source") == "selected"
+        and {"items", "budget", "diagnostics", "counts"}.issubset(artifact)
+    ):
+        matches.append("schemas/farm-synthesis-bundle.schema.json")
+    if schema_version == 1 and {"recorded_at", "totals", "quality", "jobs"}.issubset(artifact):
+        matches.append("schemas/farm-dogfood-record.schema.json")
+    if schema_version == 1 and {"compared_at", "baseline", "candidate", "duration_ms", "jobs"}.issubset(artifact):
+        matches.append("schemas/farm-dogfood-comparison.schema.json")
 
     if not matches:
         raise ValueError("Could not infer a schema for this artifact. Pass --schema to choose one explicitly.")

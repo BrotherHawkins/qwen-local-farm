@@ -10,6 +10,17 @@ class FakeTokenCounter:
         return len(text.split())
 
 
+class RecordingTokenCounter(FakeTokenCounter):
+    def __init__(self) -> None:
+        self.max_chars_seen = 0
+        self.calls = 0
+
+    def count_tokens(self, text: str) -> int:
+        self.calls += 1
+        self.max_chars_seen = max(self.max_chars_seen, len(text))
+        return super().count_tokens(text)
+
+
 class ChunkPlanningTests(unittest.TestCase):
     def test_heading_ancestry_ignores_fenced_code_headings(self) -> None:
         content = "\n".join(
@@ -137,6 +148,35 @@ class ChunkPlanningTests(unittest.TestCase):
         for chunk in chunks:
             rendered = qwen_farm_chunks.render_chunk_input("source.txt", chunk)
             self.assertLessEqual(counter.count_tokens(rendered), 32)
+
+    def test_token_overlap_uses_bounded_suffix_window(self) -> None:
+        counter = RecordingTokenCounter()
+        content = " ".join(f"word{index}" for index in range(5000))
+
+        overlap = qwen_farm_chunks.suffix_under_token_budget(content, 10, counter)
+
+        self.assertLessEqual(counter.count_tokens(overlap), 10)
+        self.assertLess(counter.max_chars_seen, len(content) // 2)
+
+    def test_chunk_text_by_tokens_replans_by_overage(self) -> None:
+        counter = RecordingTokenCounter()
+        content = "\n\n".join(["alpha " * 20, "beta " * 20, "gamma " * 20])
+
+        chunks = qwen_farm_chunks.chunk_text_by_tokens(
+            content,
+            max_input_tokens=32,
+            token_counter=counter,
+            source_path="source.txt",
+            overlap_tokens=8,
+        )
+
+        self.assertGreater(len(chunks), 1)
+        self.assertLess(counter.calls, 80)
+        for chunk in chunks:
+            self.assertLessEqual(
+                counter.count_tokens(qwen_farm_chunks.render_chunk_input("source.txt", chunk)),
+                32,
+            )
 
     def test_chunk_text_by_tokens_splits_oversized_paragraph(self) -> None:
         counter = FakeTokenCounter()

@@ -135,15 +135,24 @@ def suffix_under_token_budget(text: str, max_tokens: int, token_counter: TokenCo
     if max_tokens <= 0 or not text.strip():
         return ""
     stripped = text.rstrip()
-    if token_counter.count_tokens(stripped) <= max_tokens:
-        return stripped
+
+    window_size = min(len(stripped), max(256, max_tokens * 8))
+    window = stripped[-window_size:]
+    window_tokens = token_counter.count_tokens(window)
+    while window_tokens < max_tokens and window_size < len(stripped):
+        window_size = min(len(stripped), window_size * 2)
+        window = stripped[-window_size:]
+        window_tokens = token_counter.count_tokens(window)
+
+    if window_tokens <= max_tokens:
+        return window.lstrip()
 
     low = 0
-    high = len(stripped)
-    best = len(stripped)
+    high = len(window)
+    best = len(window)
     while low <= high:
         mid = (low + high) // 2
-        candidate = stripped[mid:].lstrip()
+        candidate = window[mid:].lstrip()
         tokens = token_counter.count_tokens(candidate) if candidate else 0
         if tokens <= max_tokens:
             best = mid
@@ -151,7 +160,7 @@ def suffix_under_token_budget(text: str, max_tokens: int, token_counter: TokenCo
         else:
             low = mid + 1
 
-    candidate = stripped[best:].lstrip()
+    candidate = window[best:].lstrip()
     boundary = candidate.find(" ")
     if boundary > 0:
         trimmed = candidate[boundary + 1 :].lstrip()
@@ -380,10 +389,12 @@ def chunk_text_by_tokens(
 
         planned: list[TextChunk] = []
         over_budget = False
+        max_overage = 0
         for chunk in contextualized:
             rendered_tokens = token_counter.count_tokens(render_chunk_input(source_path, chunk))
             if rendered_tokens > max_input_tokens:
                 over_budget = True
+                max_overage = max(max_overage, rendered_tokens - max_input_tokens)
                 break
             planned.append(
                 TextChunk(
@@ -402,7 +413,7 @@ def chunk_text_by_tokens(
             )
         if not over_budget:
             return planned
-        body_budget -= 1
+        body_budget -= max(1, max_overage)
 
     raise ValueError(
         f"Could not plan token chunks under the configured budget of {max_input_tokens} tokens "

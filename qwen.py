@@ -383,6 +383,35 @@ def handle_farm(args: argparse.Namespace) -> None:
     if args.farm_command == "dogfood":
         from src import qwen_farm_dogfood
 
+        if args.dogfood_command == "timing":
+            from src import qwen_farm_dogfood_timing
+
+            if args.timing_command == "record":
+                output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "runs"
+                record = qwen_farm_dogfood_timing.build_timing_record(
+                    root=ROOT,
+                    run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+                    label=args.label,
+                )
+                path = qwen_farm_dogfood_timing.write_timing_record(record, output_dir)
+                print(f"Dogfood timing record written: {path}")
+                print(f"Label: {record['label']}")
+                print(f"Run: {record['run_id']}")
+                print(f"Duration ms: {(record.get('totals') or {}).get('duration_ms')}")
+                return
+
+            if args.timing_command == "compare":
+                baseline = qwen_farm_dogfood_timing.read_json_object(Path(args.baseline_record))
+                candidate = qwen_farm_dogfood_timing.read_json_object(Path(args.candidate_record))
+                output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "comparisons"
+                comparison = qwen_farm_dogfood_timing.compare_timing_records(baseline, candidate)
+                json_path, md_path = qwen_farm_dogfood_timing.write_timing_comparison(comparison, output_dir)
+                print(f"Dogfood timing comparison written: {json_path}")
+                print(f"Markdown: {md_path}")
+                return
+
+            raise RuntimeError(f"Unknown farm dogfood timing command: {args.timing_command}")
+
         if args.dogfood_command == "record":
             output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "runs"
             record = qwen_farm_dogfood.build_quality_record(
@@ -590,6 +619,19 @@ def parse_args() -> argparse.Namespace:
     dogfood_compare.add_argument("baseline_record")
     dogfood_compare.add_argument("candidate_record")
     dogfood_compare.add_argument("--output")
+
+    dogfood_timing = farm_dogfood_subparsers.add_parser("timing")
+    dogfood_timing_subparsers = dogfood_timing.add_subparsers(dest="timing_command", required=True)
+
+    dogfood_timing_record = dogfood_timing_subparsers.add_parser("record")
+    dogfood_timing_record.add_argument("run_dir", metavar="run-ref")
+    dogfood_timing_record.add_argument("--label")
+    dogfood_timing_record.add_argument("--output")
+
+    dogfood_timing_compare = dogfood_timing_subparsers.add_parser("compare")
+    dogfood_timing_compare.add_argument("baseline_record")
+    dogfood_timing_compare.add_argument("candidate_record")
+    dogfood_timing_compare.add_argument("--output")
 
     farm_snippets = farm_subparsers.add_parser("snippets")
     farm_snippets_subparsers = farm_snippets.add_subparsers(dest="snippets_command", required=True)

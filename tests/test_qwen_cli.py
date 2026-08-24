@@ -251,6 +251,59 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.candidate_record, "candidate.json")
         self.assertEqual(args.output, ".run/dogfood_history/comparisons")
 
+    def test_parse_args_accepts_farm_dogfood_timing_record(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "dogfood",
+                "timing",
+                "record",
+                ".run/farm-results/run-1",
+                "--label",
+                "timing-candidate",
+                "--output",
+                ".run/dogfood_timing/runs",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "dogfood")
+        self.assertEqual(args.dogfood_command, "timing")
+        self.assertEqual(args.timing_command, "record")
+        self.assertEqual(args.run_dir, ".run/farm-results/run-1")
+        self.assertEqual(args.label, "timing-candidate")
+        self.assertEqual(args.output, ".run/dogfood_timing/runs")
+
+    def test_parse_args_accepts_farm_dogfood_timing_compare(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "dogfood",
+                "timing",
+                "compare",
+                "baseline.json",
+                "candidate.json",
+                "--output",
+                ".run/dogfood_timing/comparisons",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "dogfood")
+        self.assertEqual(args.dogfood_command, "timing")
+        self.assertEqual(args.timing_command, "compare")
+        self.assertEqual(args.baseline_record, "baseline.json")
+        self.assertEqual(args.candidate_record, "candidate.json")
+        self.assertEqual(args.output, ".run/dogfood_timing/comparisons")
+
     def test_parse_args_accepts_farm_snippets_pack(self) -> None:
         with patch.object(
             sys,
@@ -560,3 +613,56 @@ class FarmHandlerTests(unittest.TestCase):
 
         resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+
+    def test_dogfood_timing_record_resolves_run_reference_before_building_record(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="dogfood",
+            dogfood_command="timing",
+            timing_command="record",
+            run_dir="farm-run-1",
+            output="out",
+            label="label",
+        )
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch(
+                "src.qwen_farm_dogfood_timing.build_timing_record",
+                return_value={"label": "label", "run_id": "farm-run-1", "totals": {"duration_ms": 1000}},
+            ) as build,
+            patch("src.qwen_farm_dogfood_timing.write_timing_record", return_value=Path("record.json")),
+            patch("builtins.print"),
+        ):
+            qwen.handle_farm(args)
+
+        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+
+    def test_dogfood_timing_compare_writes_json_and_markdown(self) -> None:
+        args = argparse.Namespace(
+            farm_command="dogfood",
+            dogfood_command="timing",
+            timing_command="compare",
+            baseline_record="baseline.json",
+            candidate_record="candidate.json",
+            output="out",
+        )
+        baseline = {"label": "baseline"}
+        candidate = {"label": "candidate"}
+        comparison = {"baseline": baseline, "candidate": candidate}
+
+        with (
+            patch("src.qwen_farm_dogfood_timing.read_json_object", side_effect=[baseline, candidate]) as read_json,
+            patch("src.qwen_farm_dogfood_timing.compare_timing_records", return_value=comparison) as compare,
+            patch(
+                "src.qwen_farm_dogfood_timing.write_timing_comparison",
+                return_value=(Path("comparison.json"), Path("comparison.md")),
+            ) as write,
+            patch("builtins.print"),
+        ):
+            qwen.handle_farm(args)
+
+        read_json.assert_has_calls([call(Path("baseline.json")), call(Path("candidate.json"))])
+        compare.assert_called_once_with(baseline, candidate)
+        write.assert_called_once_with(comparison, Path("out"))

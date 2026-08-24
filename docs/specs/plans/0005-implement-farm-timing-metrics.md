@@ -1,6 +1,6 @@
 # 0005 Implement Farm Timing Metrics
 
-Status: Accepted
+Status: Implemented
 Change Spec: [0005 Add Farm Timing Metrics](../changes/0005-add-farm-timing-metrics.md)
 
 ## WHY
@@ -242,4 +242,4 @@ git diff --check
 - [x] `BL-0037` remains open unless cross-run history is implemented.
 - [x] Model-free unit tests cover the timing contract.
 - [x] Compile check passes.
-- [ ] Dogfood run or documented local blocker is recorded.
+- [x] Dogfood run or documented local blocker is recorded.

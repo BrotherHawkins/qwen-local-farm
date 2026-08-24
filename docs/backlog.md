@@ -50,6 +50,7 @@ Status values:
 | BL-0035 | Open | 0002 | Chunk overlap | Add overlap between adjacent chunks where useful without bloating context. |
 | BL-0036 | Implemented | 0004, 0005 | Farm timing metrics in run/job/chunk artifacts | Implemented by 0005 for runs, jobs, chunk map calls, reduce calls, and timing summary artifacts. |
 | BL-0037 | Open | 0004 | Dogfood benchmark history for timing regressions | Save comparable dogfood run summaries so slower runs can be spotted across implementation changes. |
+| BL-0038 | Open | 0005 | In-progress chunk and reduce timing/status visibility | Dogfood showed chunk artifacts appear while jobs run, but `farm-status.json` does not yet surface active chunk/reduce progress until job completion. |
 
 ## Notes
 

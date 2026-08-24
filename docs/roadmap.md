@@ -358,7 +358,7 @@ farm-inbox/
 
 ## 9. Failure And Review Policy
 
-Default failure policy:
+Implemented failure policy:
 
 - Retry a failing file/sub-job.
 - If it still fails, mark that sub-job failed.
@@ -366,12 +366,24 @@ Default failure policy:
 - Mark the run `partial` if any file failed.
 - Mark the run `complete_with_warnings` if outputs exist but structured repair or other non-fatal issues occurred.
 
-Longer term, failure behavior should be caller-provided:
+The current farm config supports fixed retry and timeout knobs:
 
 ```json
 {
   "failure_policy": {
     "max_attempts": 2,
+    "per_file_timeout_seconds": 600,
+    "chunk_max_attempts": 2,
+    "reduce_max_attempts": 2
+  }
+}
+```
+
+Longer term, failure behavior can grow into policy decisions:
+
+```json
+{
+  "failure_policy": {
     "on_file_failure": "continue",
     "on_schema_failure": "repair_then_warn",
     "on_run_failure": "stop"

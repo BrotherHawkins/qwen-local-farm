@@ -152,9 +152,14 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["runtime"]["resource_mode"]["requested"], "auto")
             self.assertEqual(status["runtime"]["resource_mode"]["effective"], "gpu")
             self.assertEqual(status["runtime"]["model"], "qwen-test:1b")
+            self.assertEqual(status["runtime"]["failure_policy"]["max_attempts"], 2)
+            self.assertEqual(status["runtime"]["failure_policy"]["per_file_timeout_seconds"], 600)
+            self.assertEqual(status["runtime"]["failure_policy"]["chunk_max_attempts"], 2)
+            self.assertEqual(status["runtime"]["failure_policy"]["reduce_max_attempts"], 2)
             self.assertTimingComplete(status["timing"])
             self.assertIsInstance(status["jobs"][0]["timing"].get("queued_at"), str)
             self.assertTimingComplete(status["jobs"][0]["timing"])
+            self.assertIn("Max attempts: `2`", (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8"))
 
             result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
             self.assertEqual(result["timing"]["calls"][0]["kind"], "single")
@@ -250,6 +255,98 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["status"], "partial")
             self.assertEqual(status["counts"]["complete"], 1)
             self.assertEqual(status["counts"]["failed"], 1)
+
+    def test_single_pass_retry_obeys_max_attempts_and_keeps_failed_call_timing(self) -> None:
+        attempts = 0
+
+        def flaky_processor(**kwargs: object) -> FarmModelResult:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError("transient single-pass failure")
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                max_attempts=2,
+                model_processor=flaky_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+
+            self.assertEqual(status["status"], "complete")
+            self.assertEqual(attempts, 2)
+            self.assertEqual([call["status"] for call in result["timing"]["calls"]], ["failed", "complete"])
+            self.assertIn("transient single-pass failure", result["timing"]["calls"][0]["error"])
+
+    def test_prompt_mode_retry_obeys_max_attempts(self) -> None:
+        attempts = 0
+
+        def always_failing_processor(**_kwargs: object) -> FarmModelResult:
+            nonlocal attempts
+            attempts += 1
+            raise RuntimeError("prompt failure")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="prompt",
+                instructions="Do the thing.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                max_attempts=1,
+                model_processor=always_failing_processor,
+            )
+
+            self.assertEqual(status["status"], "failed")
+            self.assertEqual(attempts, 1)
+            self.assertIn("prompt failure", status["jobs"][0]["error"])
+
+    def test_invalid_direct_failure_policy_override_fails_before_run_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            output = root / "results"
+
+            with self.assertRaisesRegex(ValueError, "--max-attempts"):
+                qwen_farm.run_farm(
+                    root=root,
+                    input_folder=root / "input",
+                    output_dir=output,
+                    mode="summarize",
+                    instructions=None,
+                    agent_id="default",
+                    default_model="qwen-test:1b",
+                    ollama_base_url="http://127.0.0.1:11434",
+                    max_attempts=0,
+                    model_processor=fake_processor,
+                )
+
+            self.assertFalse(output.exists())
 
     def test_list_and_status_text_find_runs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -682,6 +779,143 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("exceeds reduce token budget", status["jobs"][0]["error"])
             self.assertTrue(any("#chunk-" in call for call in calls))
             self.assertFalse(any("#reduce" in call for call in calls))
+
+    def test_chunk_retry_recovers_without_rerunning_prior_chunks(self) -> None:
+        calls: dict[str, int] = {}
+
+        def flaky_chunk_processor(**kwargs: object) -> FarmModelResult:
+            file_path = str(kwargs["file_path"])
+            calls[file_path] = calls.get(file_path, 0) + 1
+            if file_path.endswith("#chunk-0002") and calls[file_path] == 1:
+                raise RuntimeError("transient chunk failure")
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = " ".join(f"word{index}" for index in range(80))
+            (root / "input" / "long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                chunk_max_attempts=2,
+                reduce_max_attempts=1,
+                model_processor=flaky_chunk_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            failed_calls = [call for call in result["timing"]["calls"] if call["status"] == "failed"]
+
+            self.assertEqual(status["status"], "complete")
+            self.assertEqual(calls["long.txt#chunk-0001"], 1)
+            self.assertEqual(calls["long.txt#chunk-0002"], 2)
+            self.assertEqual(failed_calls[0]["kind"], "chunk_map")
+            self.assertEqual(failed_calls[0]["chunk_id"], "chunk-0002")
+            self.assertEqual(failed_calls[0]["attempt"], 1)
+            self.assertEqual(failed_calls[0]["max_attempts"], 2)
+
+    def test_reduce_retry_recovers_after_transient_failure(self) -> None:
+        reduce_attempts = 0
+
+        def flaky_reduce_processor(**kwargs: object) -> FarmModelResult:
+            nonlocal reduce_attempts
+            file_path = str(kwargs["file_path"])
+            if file_path == "long.txt":
+                reduce_attempts += 1
+                if reduce_attempts == 1:
+                    raise RuntimeError("transient reduce failure")
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = " ".join(f"word{index}" for index in range(80))
+            (root / "input" / "long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                chunk_max_attempts=1,
+                reduce_max_attempts=2,
+                model_processor=flaky_reduce_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            reduce_calls = [call for call in result["timing"]["calls"] if call["kind"] == "reduce"]
+
+            self.assertEqual(status["status"], "complete")
+            self.assertEqual(reduce_attempts, 2)
+            self.assertEqual([call["status"] for call in reduce_calls], ["failed", "complete"])
+            self.assertEqual([call["attempt"] for call in reduce_calls], [1, 2])
+            self.assertEqual({call["max_attempts"] for call in reduce_calls}, {2})
+
+    def test_reduce_retry_exhaustion_fails_file_attempt(self) -> None:
+        reduce_attempts = 0
+
+        def failing_reduce_processor(**kwargs: object) -> FarmModelResult:
+            nonlocal reduce_attempts
+            file_path = str(kwargs["file_path"])
+            if file_path == "long.txt":
+                reduce_attempts += 1
+                raise RuntimeError("reduce stayed broken")
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = " ".join(f"word{index}" for index in range(80))
+            (root / "input" / "long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=30,
+                reduce_tokens=1000,
+                token_counter=FakeTokenCounter(),
+                max_attempts=1,
+                chunk_max_attempts=1,
+                reduce_max_attempts=1,
+                model_processor=failing_reduce_processor,
+            )
+
+            self.assertEqual(status["status"], "failed")
+            self.assertEqual(reduce_attempts, 1)
+            self.assertIn("reduce stayed broken", status["jobs"][0]["error"])
 
     def test_chunked_snippets_are_selected_from_verified_chunk_snippets(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

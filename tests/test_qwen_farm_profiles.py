@@ -28,6 +28,15 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["snippet_policy"], "off")
             self.assertIsNone(config["summarize"]["snippet_count"])
             self.assertEqual(config["concurrency"]["jobs"], 1)
+            self.assertEqual(
+                config["failure_policy"],
+                {
+                    "max_attempts": 2,
+                    "per_file_timeout_seconds": 600,
+                    "chunk_max_attempts": 2,
+                    "reduce_max_attempts": 2,
+                },
+            )
 
     def test_all_built_in_profiles_resolve(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -55,6 +64,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                         "model": "qwen-test:8b",
                         "summarize": {"chunk_chars": 18000},
                         "concurrency": {"jobs": 2},
+                        "failure_policy": {"max_attempts": 3, "per_file_timeout_seconds": 900},
                     }
                 ),
                 encoding="utf-8",
@@ -69,7 +79,21 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["reduce_chars"], 12000)
             self.assertEqual(config["concurrency"]["jobs"], 2)
             self.assertEqual(config["concurrency"]["chunks"], 1)
-            self.assertEqual(config["provenance"]["config_fields"], ["concurrency.jobs", "model", "profile", "resource_mode", "summarize.chunk_chars"])
+            self.assertEqual(config["failure_policy"]["max_attempts"], 3)
+            self.assertEqual(config["failure_policy"]["per_file_timeout_seconds"], 900)
+            self.assertEqual(config["failure_policy"]["chunk_max_attempts"], 2)
+            self.assertEqual(
+                config["provenance"]["config_fields"],
+                [
+                    "concurrency.jobs",
+                    "failure_policy.max_attempts",
+                    "failure_policy.per_file_timeout_seconds",
+                    "model",
+                    "profile",
+                    "resource_mode",
+                    "summarize.chunk_chars",
+                ],
+            )
 
     def test_cli_overrides_beat_config_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -96,6 +120,10 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     model="qwen-test:14b",
                     chunk_chars=21000,
                     parallel_jobs=3,
+                    max_attempts=4,
+                    per_file_timeout_seconds=1200,
+                    chunk_max_attempts=5,
+                    reduce_max_attempts=1,
                 ),
             )
 
@@ -105,8 +133,13 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["chunk_chars"], 21000)
             self.assertEqual(config["summarize"]["reduce_chars"], 20000)
             self.assertEqual(config["concurrency"]["jobs"], 3)
+            self.assertEqual(config["failure_policy"]["max_attempts"], 4)
+            self.assertEqual(config["failure_policy"]["per_file_timeout_seconds"], 1200)
+            self.assertEqual(config["failure_policy"]["chunk_max_attempts"], 5)
+            self.assertEqual(config["failure_policy"]["reduce_max_attempts"], 1)
             self.assertIn("model", config["provenance"]["cli_override_fields"])
             self.assertIn("resource_mode", config["provenance"]["cli_override_fields"])
+            self.assertIn("failure_policy.max_attempts", config["provenance"]["cli_override_fields"])
 
     def test_invalid_json_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -341,6 +374,37 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     root=Path(temp_dir),
                     default_model="qwen-test:1b",
                     overrides=RuntimeOverrides(chunk_tokens=0),
+                )
+
+    def test_unknown_failure_policy_field_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"failure_policy": {"surprise": 1}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "Unknown failure_policy field"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_non_positive_failure_policy_value_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"failure_policy": {"chunk_max_attempts": 0}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "failure_policy.chunk_max_attempts"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_cli_failure_policy_override_validation_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(ValueError, "--reduce-max-attempts"):
+                resolve_runtime_config(
+                    root=Path(temp_dir),
+                    default_model="qwen-test:1b",
+                    overrides=RuntimeOverrides(reduce_max_attempts=0),
                 )
 
     def test_derived_token_budget_is_capped_for_summary_quality(self) -> None:

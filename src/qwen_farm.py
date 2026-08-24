@@ -33,12 +33,16 @@ from src.qwen_farm_model import (
     render_summary_markdown,
 )
 from src.qwen_farm_profiles import (
+    DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_PER_FILE_TIMEOUT_SECONDS,
     RuntimeOverrides,
     compact_runtime_config,
+    default_failure_policy,
     finalize_runtime_config_for_agent,
     model_is_explicit,
     resolve_runtime_config,
     set_effective_model,
+    validate_resolved_config,
 )
 from src.qwen_farm_status import (
     count_jobs,
@@ -65,8 +69,6 @@ from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now,
 from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
 
 
-DEFAULT_MAX_ATTEMPTS = 2
-DEFAULT_PER_FILE_TIMEOUT_SECONDS = 600
 SUPPORTED_MODES = {"summarize", "prompt"}
 
 ModelProcessor = Callable[..., FarmModelResult]
@@ -389,6 +391,8 @@ def timed_model_call(
     chunk_id: str | None = None,
     reduce_generation: int | None = None,
     reduce_batch_index: int | None = None,
+    attempt: int = 1,
+    max_attempts: int = 1,
 ) -> FarmModelResult:
     started = utc_now()
     record: dict[str, Any] = {
@@ -404,6 +408,8 @@ def timed_model_call(
         record["reduce_generation"] = reduce_generation
     if reduce_batch_index is not None:
         record["reduce_batch_index"] = reduce_batch_index
+    record["attempt"] = attempt
+    record["max_attempts"] = max_attempts
 
     try:
         result = model_processor(
@@ -430,6 +436,26 @@ def timed_model_call(
         record["warnings"] = result.warnings
     call_timings.append(record)
     return result
+
+
+def retry_model_call(
+    *,
+    max_attempts: int,
+    **kwargs: Any,
+) -> FarmModelResult:
+    last_error: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return timed_model_call(
+                **kwargs,
+                attempt=attempt,
+                max_attempts=max_attempts,
+            )
+        except Exception as exc:
+            last_error = exc
+            if attempt >= max_attempts:
+                raise
+    raise RuntimeError("Retry loop ended without a result.") from last_error
 
 
 def unique_warnings(items: list[str]) -> list[str]:
@@ -518,6 +544,7 @@ def reduce_summary_payloads(
     token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
+    reduce_max_attempts: int,
 ) -> tuple[FarmModelResult, list[str]]:
     warnings: list[str] = []
     pending = payloads
@@ -537,7 +564,7 @@ def reduce_summary_payloads(
                 raise ValueError(
                     f"Reduce input for `{source_path}` exceeds reduce token budget of {reduce_tokens} tokens."
                 )
-            result = timed_model_call(
+            result = retry_model_call(
                 call_timings=call_timings,
                 kind="reduce",
                 mode="summarize",
@@ -550,6 +577,7 @@ def reduce_summary_payloads(
                 summary_max_input_chars=len(reduce_input) if chunk_strategy == "token" else reduce_chars,
                 model_processor=model_processor,
                 reduce_generation=generation,
+                max_attempts=reduce_max_attempts,
             )
             warnings.extend(result.warnings)
             return result, warnings
@@ -564,7 +592,7 @@ def reduce_summary_payloads(
 
         for batch_index, batch in enumerate(batches, start=1):
             batch_input = render_reduce_input(source_path, batch)
-            result = timed_model_call(
+            result = retry_model_call(
                 call_timings=call_timings,
                 kind="reduce",
                 mode="summarize",
@@ -578,6 +606,7 @@ def reduce_summary_payloads(
                 model_processor=model_processor,
                 reduce_generation=generation,
                 reduce_batch_index=batch_index,
+                max_attempts=reduce_max_attempts,
             )
             warnings.extend(result.warnings)
             next_pending.append(result.payload)
@@ -665,7 +694,10 @@ def run_chunked_summary_job(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     runtime_summarize: dict[str, Any],
+    failure_policy: dict[str, Any],
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
+    chunk_max_attempts = int(failure_policy.get("chunk_max_attempts", DEFAULT_MAX_ATTEMPTS))
+    reduce_max_attempts = int(failure_policy.get("reduce_max_attempts", DEFAULT_MAX_ATTEMPTS))
     if chunk_strategy == "token":
         if token_counter is None or chunk_tokens is None:
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
@@ -711,7 +743,7 @@ def run_chunked_summary_job(
         chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
         chunk_input = chunk_input_path.read_text(encoding="utf-8")
 
-        chunk_result = timed_model_call(
+        chunk_result = retry_model_call(
             call_timings=call_timings,
             kind="chunk_map",
             mode="summarize",
@@ -725,6 +757,7 @@ def run_chunked_summary_job(
             model_processor=model_processor,
             snippet_request=chunk_snippet_request,
             chunk_id=chunk.chunk_id,
+            max_attempts=chunk_max_attempts,
         )
         warnings.extend(warning for warning in chunk_result.warnings if not warning.startswith("snippet_"))
         chunk_verified_snippets = chunk_result.payload.get("snippets") or []
@@ -794,6 +827,7 @@ def run_chunked_summary_job(
         token_counter=token_counter,
         model_processor=model_processor,
         call_timings=call_timings,
+        reduce_max_attempts=reduce_max_attempts,
     )
     warnings.extend(reduce_warnings)
     final_snippets: list[dict[str, Any]] = []
@@ -909,6 +943,7 @@ def run_file_job(
             model_processor=model_processor,
             call_timings=call_timings,
             runtime_summarize=summarize,
+            failure_policy=runtime_config["failure_policy"],
         )
     snippet_request = resolve_snippet_request(
         summarize,
@@ -1115,6 +1150,10 @@ def resolve_run_agent_and_config(
     snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
+    max_attempts: int | None = None,
+    per_file_timeout_seconds: int | None = None,
+    chunk_max_attempts: int | None = None,
+    reduce_max_attempts: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     runtime_config = resolve_runtime_config(
         root=root,
@@ -1134,6 +1173,10 @@ def resolve_run_agent_and_config(
             snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
+            max_attempts=max_attempts,
+            per_file_timeout_seconds=per_file_timeout_seconds,
+            chunk_max_attempts=chunk_max_attempts,
+            reduce_max_attempts=reduce_max_attempts,
         ),
     )
     agent = load_agent(root, agent_id, str(runtime_config["model"]))
@@ -1169,8 +1212,10 @@ def run_farm(
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
     runtime_config: dict[str, Any] | None = None,
-    max_attempts: int = DEFAULT_MAX_ATTEMPTS,
-    per_file_timeout_seconds: int = DEFAULT_PER_FILE_TIMEOUT_SECONDS,
+    max_attempts: int | None = None,
+    per_file_timeout_seconds: int | None = None,
+    chunk_max_attempts: int | None = None,
+    reduce_max_attempts: int | None = None,
     model_processor: ModelProcessor = default_model_processor,
     token_counter: ExactTokenCounter | None = None,
     token_counter_loader: TokenCounterLoader = load_exact_token_counter,
@@ -1199,6 +1244,10 @@ def run_farm(
             snippet_max_chars=snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
+            max_attempts=max_attempts,
+            per_file_timeout_seconds=per_file_timeout_seconds,
+            chunk_max_attempts=chunk_max_attempts,
+            reduce_max_attempts=reduce_max_attempts,
         )
     else:
         agent = load_agent(root, agent_id, str(runtime_config["model"]))
@@ -1206,6 +1255,17 @@ def run_farm(
             agent["model"] = runtime_config["model"]
         runtime_config = set_effective_model(runtime_config, str(agent["model"]))
         runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
+
+    runtime_config.setdefault("failure_policy", default_failure_policy())
+    if max_attempts is not None:
+        runtime_config["failure_policy"]["max_attempts"] = max_attempts
+    if per_file_timeout_seconds is not None:
+        runtime_config["failure_policy"]["per_file_timeout_seconds"] = per_file_timeout_seconds
+    if chunk_max_attempts is not None:
+        runtime_config["failure_policy"]["chunk_max_attempts"] = chunk_max_attempts
+    if reduce_max_attempts is not None:
+        runtime_config["failure_policy"]["reduce_max_attempts"] = reduce_max_attempts
+    validate_resolved_config(runtime_config)
 
     if runtime_config["summarize"].get("chunk_strategy") == "token" and token_counter is None:
         token_counter = token_counter_loader(root=root, model=str(agent["model"]), local_files_only=True)
@@ -1274,9 +1334,9 @@ def run_farm(
         instructions=instructions,
         agent=agent,
         ollama_base_url=ollama_base_url,
-        timeout=per_file_timeout_seconds,
+        timeout=int(runtime_config["failure_policy"]["per_file_timeout_seconds"]),
         runtime_config=runtime_config,
-        max_attempts=max_attempts,
+        max_attempts=int(runtime_config["failure_policy"]["max_attempts"]),
         model_processor=model_processor,
         token_counter=token_counter,
     )

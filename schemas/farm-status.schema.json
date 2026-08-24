@@ -65,6 +65,33 @@
               "type": ["object", "null"]
             }
           }
+        },
+        "failure_policy": {
+          "type": "object",
+          "required": [
+            "max_attempts",
+            "per_file_timeout_seconds",
+            "chunk_max_attempts",
+            "reduce_max_attempts"
+          ],
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "per_file_timeout_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "chunk_max_attempts": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "reduce_max_attempts": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         }
       }
     },

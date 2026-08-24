@@ -110,6 +110,32 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.snippets, "auto")
         self.assertEqual(args.snippet_max_chars, 800)
 
+    def test_parse_args_accepts_failure_policy_overrides(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "run",
+                "notes",
+                "--max-attempts",
+                "3",
+                "--per-file-timeout-seconds",
+                "900",
+                "--chunk-max-attempts",
+                "4",
+                "--reduce-max-attempts",
+                "1",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.max_attempts, 3)
+        self.assertEqual(args.per_file_timeout_seconds, 900)
+        self.assertEqual(args.chunk_max_attempts, 4)
+        self.assertEqual(args.reduce_max_attempts, 1)
+
     def test_parse_args_accepts_farm_tokenizer_status(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "tokenizer", "status", "--model", "qwen3:4b"]):
             args = qwen.parse_args()

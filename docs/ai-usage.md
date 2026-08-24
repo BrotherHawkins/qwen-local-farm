@@ -155,6 +155,7 @@ python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --para
 python qwen.py farm run input-folder --mode summarize --chunk-strategy token
 python qwen.py farm run input-folder --mode summarize --snippets auto
 python qwen.py farm run input-folder --mode summarize --resource-mode cpu
+python qwen.py farm run input-folder --mode summarize --max-attempts 1 --chunk-max-attempts 1
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
@@ -162,6 +163,8 @@ python qwen.py farm run input-folder --mode summarize --resource-mode cpu
 For actual same-model parallel processing, the user's Ollama server may need external setup such as `OLLAMA_NUM_PARALLEL=2`, and memory use scales with context/KV cache. Assistants should treat this as an environment choice, not something the farm silently changes. Recommend small tests such as `--parallel-jobs 2` before increasing concurrency.
 
 Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.qwen-farm.json` for the user, then the farm writes the final effective settings into every run.
+
+Failure-policy knobs follow the same precedence path. Use `failure_policy.max_attempts` or `--max-attempts` to control whole-file retries. Use `chunk_max_attempts` and `reduce_max_attempts` for chunked summarize model-call retries. `per_file_timeout_seconds` preserves the existing public timeout setting, but currently applies to each local model call rather than enforcing a true wall-clock cap over all retries/chunks for a file.
 
 Use character chunking when:
 
@@ -280,6 +283,12 @@ Example `.qwen-farm.json`:
   "concurrency": {
     "jobs": 1,
     "chunks": 1
+  },
+  "failure_policy": {
+    "max_attempts": 2,
+    "per_file_timeout_seconds": 600,
+    "chunk_max_attempts": 2,
+    "reduce_max_attempts": 2
   }
 }
 ```

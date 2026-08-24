@@ -21,7 +21,7 @@ Status values:
 | BL-0006 | Open | 0001 | CLI spelling for future non-MVP modes | Revisit before adding `extract`, `classify`, or `review`. |
 | BL-0007 | Implemented | 0001, 0016 | Full schema files for status/result validation | 0016 implemented tracked schemas and model-free validation coverage for key farm JSON artifacts. |
 | BL-0008 | Open | 0001 | Skip-list overrides | Include/exclude controls for farm file discovery. |
-| BL-0009 | Open | 0001 | Caller-provided retry/timeout behavior | Make failure policy configurable per run/request. |
+| BL-0009 | Implemented | 0001, 0025 | Caller-provided retry/timeout behavior | 0025 implemented configurable failure-policy fields for attempts and model-call timeout behavior. |
 | BL-0010 | Implemented | 0001, 0024 | `farm collect` | 0024 implemented a general post-run helper for flattening and indexing existing job result artifacts. |
 | BL-0011 | Open | 0001 | Queue-only execution | Submit work without processing immediately. |
 | BL-0012 | Open | 0001 | Drop-folder scanning | Manual `farm scan` first, watcher later. |
@@ -29,7 +29,7 @@ Status values:
 | BL-0014 | Implemented | 0002, 0003, 0006 | Tokenizer-aware chunk sizing | Implemented by 0006 as opt-in exact local tokenizer-aware summarize chunk sizing. |
 | BL-0015 | Open | 0002 | Markdown heading ancestry preservation | Preserve heading context in chunk inputs and outputs. |
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
-| BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |
+| BL-0017 | Implemented | 0002, 0025 | Chunk retries separate from file retries | 0025 implemented independent chunk and reduce retry controls for chunked summarize jobs. |
 | BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
 | BL-0019 | Implemented | 0002, 0013 | `farm status --json` | 0013 implemented machine-readable JSON output for farm overview and single-run inspection. |
 | BL-0020 | Implemented | 0003, 0006, 0015 | `farm doctor` for machine, Ollama, and tokenizer inspection | 0015 implemented read-only human/JSON setup reports with tokenizer readiness and next-step guidance for less technical users. |
@@ -37,12 +37,12 @@ Status values:
 | BL-0022 | Implemented | 0003, 0006, 0015, 0021 | Automatic config writing from recommendation output | 0021 implemented a safe preview/write workflow for applying recommendation JSON to `.qwen-farm.json`; doctor and recommend remain read-only by default. |
 | BL-0023 | Open | 0003, 0015 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity; 0015 only reports current setup and next commands. |
 | BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
-| BL-0025 | Open | 0003 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures. |
+| BL-0025 | Open | 0003, 0025 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures; 0025 only drafts fixed retry policy knobs. |
 | BL-0026 | Open | 0003 | Remote/frontier model profiles | Allow profile-style config for non-local model execution if supported later. |
 | BL-0027 | Implemented | 0004 | Bounded file-job scheduler concurrency | Implemented by 0004. |
 | BL-0028 | Implemented | 0004, 0015, 0020 | Safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL` | 0020 implemented conservative recommendations for farm worker slots and Ollama request parallelism. |
 | BL-0029 | Open | 0004, 0015 | CLI helpers for starting Ollama with recommended concurrency env vars | Keep separate from scheduler behavior; 0015 does not start services or set environment variables. |
-| BL-0030 | Open | 0004 | Dynamic scheduler backoff after memory or timeout failures | Related to BL-0025, but scheduler-specific. |
+| BL-0030 | Open | 0004, 0025 | Dynamic scheduler backoff after memory or timeout failures | Related to BL-0025, but scheduler-specific; 0025 keeps dynamic backoff deferred. |
 | BL-0031 | Open | 0004 | Cross-run scheduling and background workers | Coordinate work across multiple submitted runs. |
 | BL-0032 | Open | 0004 | Chunk-level parallelism using `concurrency.chunks` | Run chunks concurrently after file-level concurrency is stable. |
 | BL-0033 | Open | 0004 | Multiple Ollama server pools | Advanced manual/managed routing across multiple local servers. |
@@ -87,7 +87,7 @@ Status values:
 | BL-0072 | Implemented | 0020, 0022 | Resource-aware runtime mode and routing | 0022 implemented first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes in config, CLI, resolved artifacts, doctor, recommend, and recommendation apply. |
 | BL-0073 | Open | 0022 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |
 | BL-0074 | Open | 0022 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
-| BL-0075 | Open | 0022 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
+| BL-0075 | Open | 0022, 0025 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
 | BL-0076 | Open | 0022 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
 | BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
 | BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
@@ -96,6 +96,12 @@ Status values:
 | BL-0081 | Open | 0024 | Explicit raw/source artifact collection | Add opt-in flags for raw model responses, logs, source input files, or chunk artifacts once privacy and size tradeoffs are clear. |
 | BL-0082 | Open | 0024 | Collection filters and templates | Let callers choose artifact types or manifest fields after the first fixed collection shape is stable. |
 | BL-0083 | Open | 0024 | Cross-run collections | Merge collected outputs across multiple farm runs after single-run collection behavior is stable. |
+| BL-0084 | Open | 0025 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy is stable. |
+| BL-0085 | Open | 0025 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
+| BL-0086 | Open | 0025 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
+| BL-0087 | Open | 0025 | Retry failed files from a previous run | Add a post-run or run command path for rerunning failed jobs without rebuilding the whole input set. |
+| BL-0088 | Open | 0025 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
+| BL-0089 | Open | 0025 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
 
 ## Notes
 

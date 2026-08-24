@@ -34,16 +34,23 @@ When a mode is not chunk-safe, the farm should explain what happened and suggest
 
 ## First Useful Version
 
-The first implementation should support:
+The first useful version now supports:
 
 - readable text files
 - size/context detection
-- Markdown-aware splitting by headings
 - fallback paragraph splitting
 - per-chunk outputs
 - a reduce pass for final summary/extraction output
-- provenance from final results back to source chunks
-- status updates at file and chunk level
+- token-aware chunk sizing for supported Qwen/Ollama tokenizers
+- timing metrics and configurable retries for chunk map and reduce calls
+
+Still missing from the first useful version:
+
+- Markdown-aware splitting by headings
+- heading ancestry preserved in chunk inputs and outputs
+- optional overlap between adjacent chunks
+- richer provenance from final results back to source chunks
+- in-progress status updates at chunk and reduce level
 
 Example output:
 
@@ -96,21 +103,24 @@ Example:
 
 ## Chunking Strategies
 
-Start simple and conservative:
+Current strategy:
 
-1. Split Markdown by headings.
+1. Preserve source path and chunk ordinal.
+2. Keep chunks under a target character or token budget.
+3. Use paragraph splitting when possible.
+4. Fall back to hard splitting only as a last resort.
+
+Next strategy improvements:
+
+1. Split Markdown by headings where possible.
 2. Preserve heading ancestry in every chunk.
-3. Preserve source path and chunk ordinal.
-4. Keep chunks under a target character budget.
-5. Fall back to paragraph splitting when headings are too large.
-6. Fall back to hard character splitting only as a last resort.
+3. Add optional chunk overlap with explicit metadata.
+4. Keep tokenizer-aware budgets compatible with heading and overlap behavior.
 
 Later strategies:
 
-- tokenizer-aware chunk sizing
 - code-aware splitting by symbols/functions/classes
 - frontmatter-aware note splitting
-- sliding-window overlap
 - semantic chunking
 - repository-aware grouping
 
@@ -165,27 +175,27 @@ Default policy:
 - retry failed chunk
 - preserve raw failed output
 - mark chunk failed if retry fails
-- continue remaining chunks when safe
-- mark file result `partial` if some chunks failed
+- current implementation fails the file attempt when a required chunk or reduce call exhausts retries
+- continue remaining chunks and produce partial file output only after a partial-output contract is specified
 - mark run `partial` if any file is partial or failed
 
-Caller-provided failure policies should come later.
+Caller-provided fixed retry policies now exist. Dynamic recovery, cross-run chunk resume, and partial reduce remain backlog work.
 
 ## Open Questions
 
-1. Should the first chunker use character estimates only, or add tokenizer support immediately?
-2. How much overlap should chunks have by default?
-3. Should chunk artifacts be visible in normal output, or tucked under a debug/intermediate folder?
-4. Should reduce prompts see all chunk outputs at once, or reduce progressively?
+1. Should heading ancestry and overlap ship together or as separate changes?
+2. How much overlap should chunks have by default, and should default overlap be off?
+3. Should chunk artifacts stay under job internals or become easier to collect/export?
+4. Should in-progress status expose every chunk, or only compact current/completed/failed counts?
 5. Should chunking behavior be configured per mode, per agent, or per request?
 6. Should review mode ever auto-chunk, or should it require explicit caller instructions?
 
 ## Likely Implementation PRs
 
-1. Add text-size detection and chunk-planning only.
-2. Add Markdown heading chunker.
-3. Add per-chunk summarization outputs.
-4. Add reduce pass for final file summary.
-5. Add chunk-aware `farm-status.json`.
+1. Add Markdown heading ancestry.
+2. Add optional chunk overlap.
+3. Add in-progress chunk/reduce status visibility.
+4. Add failed-file retry from prior runs.
+5. Add cross-run chunk resume after failed-file retry is stable.
 6. Add extract/classify chunk support.
-7. Explore code-aware and tokenizer-aware chunking.
+7. Explore code-aware and semantic chunking.

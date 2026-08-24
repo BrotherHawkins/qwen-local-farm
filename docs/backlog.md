@@ -9,6 +9,19 @@ Status values:
 - `Implemented`: landed in code/docs/tests.
 - `Deprecated`: no longer desired.
 
+## Groomed Near-Term Punchlist
+
+This section is advisory. Specs and accepted plans still define what gets implemented, but this shortlist keeps the next product conversation from starting cold.
+
+| Rank | Backlog | Candidate Next Work | Why Now |
+| ---: | --- | --- | --- |
+| 1 | BL-0015, BL-0035 | Markdown heading ancestry plus optional chunk overlap | Improves summarize quality on long Markdown/article inputs before adding new modes. |
+| 2 | BL-0038 | In-progress chunk and reduce status visibility | Makes long dogfood runs easier for a primary AI or human to inspect while they are still running. |
+| 3 | BL-0087 | Retry failed files from a previous run | Builds directly on configurable failure policy and reduces wasted reruns after partial failures. |
+| 4 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
+| 5 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
+| 6 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+
 ## Spec-Deferred Items
 
 | ID | Status | Source | Item | Notes |
@@ -108,3 +121,4 @@ Status values:
 - If a new spec defers work, add or update backlog rows in the same PR.
 - If a later spec implements an item, update its backlog status instead of leaving the old row stale.
 - If several specs defer the same thing, reuse the existing backlog item and mention the additional source in notes.
+- Treat the groomed punchlist as a living conversation aid, not a second source of truth.

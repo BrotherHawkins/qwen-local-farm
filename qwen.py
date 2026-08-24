@@ -465,6 +465,9 @@ def handle_farm(args: argparse.Namespace) -> None:
         return
 
     if args.farm_command == "status":
+        if args.json:
+            print(json.dumps(qwen_farm.status_json(ROOT, args.run_id), ensure_ascii=False, indent=2))
+            return
         print(qwen_farm.status_text(ROOT, args.run_id))
         return
 
@@ -515,6 +518,7 @@ def parse_args() -> argparse.Namespace:
 
     farm_status = farm_subparsers.add_parser("status")
     farm_status.add_argument("run_id", nargs="?")
+    farm_status.add_argument("--json", action="store_true")
 
     farm_dogfood = farm_subparsers.add_parser("dogfood")
     farm_dogfood_subparsers = farm_dogfood.add_subparsers(dest="dogfood_command", required=True)

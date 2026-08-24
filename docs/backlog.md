@@ -31,7 +31,7 @@ Status values:
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
 | BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |
 | BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
-| BL-0019 | Open | 0002 | `farm status --json` | Machine-oriented status command for primary AI inspection. |
+| BL-0019 | Implemented | 0002, 0013 | `farm status --json` | 0013 implemented machine-readable JSON output for farm overview and single-run inspection. |
 | BL-0020 | Open | 0003, 0006 | `farm doctor` for machine, Ollama, and tokenizer inspection | Should produce human-readable and AI-readable setup reports, including tokenizer dependency/cache readiness and next-step guidance for less technical users. |
 | BL-0021 | Open | 0003, 0006 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance. |
 | BL-0022 | Open | 0003, 0006 | Automatic config writing from doctor output | Let an assistant or user safely write `.qwen-farm.json`, including tokenizer-aware chunk settings when ready. |

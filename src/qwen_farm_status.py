@@ -184,6 +184,26 @@ def render_farm_overview(runs: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def farm_overview_json(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "scope": "overview",
+        "counts": {
+            "runs": len(runs),
+        },
+        "runs": runs,
+    }
+
+
+def run_status_json(status: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "scope": "run",
+        "run_id": status.get("run_id"),
+        "run": status,
+    }
+
+
 def render_run_list(runs: list[dict[str, Any]]) -> str:
     if not runs:
         return "No farm runs found."

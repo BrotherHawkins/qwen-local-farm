@@ -44,9 +44,11 @@ from src.qwen_farm_status import (
     count_jobs,
     final_run_status,
     load_run_status,
+    farm_overview_json,
     render_farm_overview,
     render_run_list,
     render_status_markdown,
+    run_status_json,
     run_status_path,
     write_json,
     write_status,
@@ -1362,3 +1364,9 @@ def status_text(root: Path, run_id: str | None = None) -> str:
     if run_id:
         return render_status_markdown(load_run_status(find_run_dir(root, run_id)))
     return render_farm_overview(load_runs(root))
+
+
+def status_json(root: Path, run_id: str | None = None) -> dict[str, Any]:
+    if run_id:
+        return run_status_json(load_run_status(find_run_dir(root, run_id)))
+    return farm_overview_json(load_runs(root))

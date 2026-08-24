@@ -278,6 +278,47 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("## Runtime", one_run)
             self.assertIn("Profile: `local-8gb`", one_run)
 
+    def test_status_json_returns_empty_overview_envelope(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            status = qwen_farm.status_json(root)
+
+            self.assertEqual(status["scope"], "overview")
+            self.assertEqual(status["counts"], {"runs": 0})
+            self.assertEqual(status["runs"], [])
+
+    def test_status_json_returns_overview_and_single_run_envelopes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+
+            run_status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            overview = qwen_farm.status_json(root)
+            one_run = qwen_farm.status_json(root, run_status["run_id"])
+
+            self.assertEqual(overview["schema_version"], 1)
+            self.assertEqual(overview["scope"], "overview")
+            self.assertEqual(overview["counts"], {"runs": 1})
+            self.assertEqual(overview["runs"][0]["run_id"], run_status["run_id"])
+            self.assertEqual(one_run["schema_version"], 1)
+            self.assertEqual(one_run["scope"], "run")
+            self.assertEqual(one_run["run_id"], run_status["run_id"])
+            self.assertEqual(one_run["run"]["run_id"], run_status["run_id"])
+
     def test_list_finds_runs_written_to_custom_output_folder(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

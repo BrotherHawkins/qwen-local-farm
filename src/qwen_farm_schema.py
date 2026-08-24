@@ -74,6 +74,18 @@ def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
         and {"resource_mode", "profile", "concurrency", "summarize", "evidence", "next_actions"}.issubset(artifact)
     ):
         matches.append("schemas/farm-recommendation.schema.json")
+    if (
+        schema_version == 1
+        and {
+            "dry_run",
+            "recommendation_path",
+            "config_path",
+            "proposed_config",
+            "changes",
+            "not_applied",
+        }.issubset(artifact)
+    ):
+        matches.append("schemas/farm-config-apply.schema.json")
     if schema_version == "0.1" and {"run_id", "jobs", "counts", "skipped_files"}.issubset(artifact):
         matches.append("schemas/farm-status.schema.json")
     if schema_version == "0.1" and {"job_id", "structured_valid", "result", "artifacts"}.issubset(artifact):

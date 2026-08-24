@@ -102,6 +102,21 @@ python qwen.py farm schema validate .run/recommendations/farm-recommendation.jso
 
 `farm recommend` writes `.run/recommendations/farm-recommendation.json` and `.run/recommendations/FARM_RECOMMENDATION.md`. It performs a tiny user-invoked Ollama probe when the selected model is ready, then recommends a conservative profile, resource mode, `parallel_jobs`, `OLLAMA_NUM_PARALLEL`, and summarize chunk settings. It does not edit `.qwen-farm.json`, start services, pull models, or change Ollama environment variables.
 
+Preview applying those settings to farm config:
+
+```bash
+python qwen.py farm recommend apply
+python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
+```
+
+Apply requires an explicit write flag:
+
+```bash
+python qwen.py farm recommend apply --write
+```
+
+`farm recommend apply` writes `.run/recommendations/farm-config-apply.json` and `.run/recommendations/FARM_CONFIG_APPLY.md`. Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first, then writes only supported farm config fields. Resource mode and `OLLAMA_NUM_PARALLEL` remain guidance because they are not current `.qwen-farm.json` fields.
+
 Resource mode recommendations use this vocabulary:
 
 | Mode | Meaning |
@@ -150,6 +165,7 @@ python qwen.py farm schema validate .run/reports/setup-doctor.json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
 python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
 python qwen.py farm schema validate <run-dir>/timing-summary.json
 ```
 

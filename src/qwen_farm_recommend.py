@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import shutil
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable
 
 from src import qwen_farm
 from src.qwen_farm_files import utc_timestamp
-from src.qwen_farm_profiles import compact_runtime_config, derive_token_budget
+from src.qwen_farm_profiles import compact_runtime_config, derive_token_budget, normalize_config_data, read_config_file
+from src.qwen_farm_schema import EXIT_VALID, validate_artifact
 from src.qwen_farm_tokenizer import SUPPORTED_QWEN_TOKENIZERS, tokenizer_status
 
 
@@ -15,6 +18,8 @@ RECOMMENDATION_SCHEMA_VERSION = 1
 DEFAULT_OUTPUT_DIR = ".run/recommendations"
 DEFAULT_REPORT_JSON = "farm-recommendation.json"
 DEFAULT_REPORT_MD = "FARM_RECOMMENDATION.md"
+DEFAULT_APPLY_JSON = "farm-config-apply.json"
+DEFAULT_APPLY_MD = "FARM_CONFIG_APPLY.md"
 STALE_AFTER_DAYS = 14
 
 FindOllama = Callable[[], str | None]
@@ -30,6 +35,13 @@ def recommendation_paths(output_dir: Path) -> dict[str, str]:
     return {
         "json": str(output_dir / DEFAULT_REPORT_JSON),
         "markdown": str(output_dir / DEFAULT_REPORT_MD),
+    }
+
+
+def apply_report_paths(output_dir: Path) -> dict[str, str]:
+    return {
+        "json": str(output_dir / DEFAULT_APPLY_JSON),
+        "markdown": str(output_dir / DEFAULT_APPLY_MD),
     }
 
 
@@ -469,6 +481,324 @@ def write_recommendation_report(report: dict[str, Any]) -> tuple[Path, Path]:
     json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     markdown_path.write_text(render_recommendation_markdown(report), encoding="utf-8")
     return json_path, markdown_path
+
+
+def build_config_apply_report(
+    *,
+    root: Path,
+    recommendation_path: Path | None = None,
+    config_path: Path | None = None,
+    output_dir: Path | None = None,
+    write: bool = False,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    report_dir = output_dir or default_output_dir(root)
+    recommendation_source = recommendation_path or latest_recommendation_path(root)
+    target_config = config_path or root / ".qwen-farm.json"
+    dry_run = not write
+    generated = generated_at or utc_timestamp()
+
+    recommendation_validation = validate_artifact(
+        root,
+        recommendation_source,
+        "schemas/farm-recommendation.schema.json",
+    )
+    if int(recommendation_validation["exit_code"]) != EXIT_VALID:
+        raise ValueError("Recommendation JSON failed schema validation: " + "; ".join(recommendation_validation["errors"]))
+
+    recommendation = load_json_object(recommendation_source)
+    recommendation_status = str(recommendation.get("status") or "unknown")
+    warnings = [str(item) for item in recommendation.get("warnings") or []]
+    next_actions: list[dict[str, Any]] = []
+    if recommendation_status == "needs_setup":
+        raise ValueError("Recommendation status is needs_setup; fix setup and rerun farm recommend before applying config.")
+    if recommendation_status == "ready_with_warnings":
+        warnings.append("Recommendation status is ready_with_warnings; review caveats before using the applied config.")
+
+    existing_config, existing_error = load_existing_config(target_config)
+    if existing_error:
+        raise ValueError(existing_error)
+
+    recommended_config = config_from_recommendation(recommendation)
+    proposed_config = merge_configs(existing_config, recommended_config)
+    proposed_config = normalize_config_data(proposed_config)
+    changes = diff_configs(existing_config, proposed_config)
+    not_applied = not_applied_guidance(recommendation)
+    backup_path = None
+    status = "preview"
+
+    if dry_run:
+        next_actions.append(
+            action(
+                "config.apply",
+                "optional",
+                "Apply the proposed config after reviewing the preview.",
+                apply_command(recommendation_source, target_config, report_dir, write=True),
+            )
+        )
+    else:
+        backup_path = write_config_with_backup(target_config, proposed_config)
+        status = "applied"
+        next_actions.append(
+            action(
+                "config.verify",
+                "optional",
+                "Verify the resolved setup after applying config.",
+                "python qwen.py farm doctor",
+            )
+        )
+
+    report = {
+        "schema_version": 1,
+        "generated_at": generated,
+        "status": status,
+        "dry_run": dry_run,
+        "recommendation_path": str(recommendation_source),
+        "config_path": str(target_config),
+        "backup_path": str(backup_path) if backup_path else None,
+        "recommendation": {
+            "status": recommendation.get("status"),
+            "agent": recommendation.get("agent"),
+            "model": recommendation.get("model"),
+            "generated_at": recommendation.get("generated_at"),
+        },
+        "existing_config": existing_config,
+        "proposed_config": proposed_config,
+        "changes": changes,
+        "not_applied": not_applied,
+        "warnings": dedupe_strings(warnings),
+        "next_actions": next_actions,
+        "report_paths": apply_report_paths(report_dir),
+    }
+    return report
+
+
+def write_config_apply_report(report: dict[str, Any]) -> tuple[Path, Path]:
+    paths = report.get("report_paths", {}) if isinstance(report.get("report_paths"), dict) else {}
+    json_path = Path(str(paths.get("json") or DEFAULT_APPLY_JSON))
+    markdown_path = Path(str(paths.get("markdown") or DEFAULT_APPLY_MD))
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    markdown_path.write_text(render_config_apply_markdown(report), encoding="utf-8")
+    return json_path, markdown_path
+
+
+def load_json_object(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a JSON object.")
+    return data
+
+
+def load_existing_config(path: Path) -> tuple[dict[str, Any], str | None]:
+    if not path.exists():
+        return {}, None
+    try:
+        return read_config_file(path), None
+    except Exception as exc:
+        return {}, f"Existing farm config is invalid and was not changed: {exc}"
+
+
+def config_from_recommendation(recommendation: dict[str, Any]) -> dict[str, Any]:
+    profile = recommendation.get("profile") if isinstance(recommendation.get("profile"), dict) else {}
+    summarize = recommendation.get("summarize") if isinstance(recommendation.get("summarize"), dict) else {}
+    concurrency = recommendation.get("concurrency") if isinstance(recommendation.get("concurrency"), dict) else {}
+    parallel_jobs = concurrency.get("parallel_jobs") if isinstance(concurrency.get("parallel_jobs"), dict) else {}
+
+    config: dict[str, Any] = {}
+    if profile.get("recommended"):
+        config["profile"] = profile["recommended"]
+    if recommendation.get("model"):
+        config["model"] = recommendation["model"]
+
+    summarize_config: dict[str, Any] = {}
+    if summarize.get("chunk_strategy"):
+        summarize_config["chunk_strategy"] = summarize["chunk_strategy"]
+    for key in ("chunk_tokens", "reduce_tokens", "chunk_chars", "reduce_chars", "token_safety_margin"):
+        if summarize.get(key) is not None:
+            summarize_config[key] = summarize[key]
+    if summarize_config:
+        config["summarize"] = summarize_config
+
+    concurrency_config: dict[str, Any] = {}
+    if parallel_jobs.get("recommended") is not None:
+        concurrency_config["jobs"] = parallel_jobs["recommended"]
+    concurrency_config["chunks"] = 1
+    config["concurrency"] = concurrency_config
+    return normalize_config_data(config)
+
+
+def merge_configs(existing: dict[str, Any], recommended: dict[str, Any]) -> dict[str, Any]:
+    merged = deepcopy(existing)
+    for key in ("profile", "model"):
+        if key in recommended:
+            merged[key] = recommended[key]
+    if "summarize" in recommended:
+        current = merged.get("summarize") if isinstance(merged.get("summarize"), dict) else {}
+        merged["summarize"] = {**current, **recommended["summarize"]}
+    if "concurrency" in recommended:
+        current = merged.get("concurrency") if isinstance(merged.get("concurrency"), dict) else {}
+        merged["concurrency"] = {**current, **recommended["concurrency"]}
+    return merged
+
+
+def diff_configs(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in sorted(set(flatten_config(before)) | set(flatten_config(after))):
+        before_present, before_value = config_value_at(before, path)
+        after_present, after_value = config_value_at(after, path)
+        if before_present and after_present and before_value == after_value:
+            continue
+        if before_present and after_present:
+            action_name = "update"
+        elif after_present:
+            action_name = "add"
+        else:
+            action_name = "remove"
+        rows.append(
+            {
+                "path": path,
+                "before": before_value if before_present else None,
+                "after": after_value if after_present else None,
+                "action": action_name,
+            }
+        )
+    return rows
+
+
+def flatten_config(config: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    flattened: dict[str, Any] = {}
+    for key, value in config.items():
+        path = f"{prefix}.{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            flattened.update(flatten_config(value, path))
+        else:
+            flattened[path] = value
+    return flattened
+
+
+def config_value_at(config: dict[str, Any], path: str) -> tuple[bool, Any]:
+    current: Any = config
+    parts = path.split(".")
+    for part in parts:
+        if not isinstance(current, dict) or part not in current:
+            return False, None
+        current = current[part]
+    return True, current
+
+
+def not_applied_guidance(recommendation: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    resource_mode = recommendation.get("resource_mode") if isinstance(recommendation.get("resource_mode"), dict) else {}
+    if resource_mode.get("recommended"):
+        rows.append(
+            {
+                "path": "resource_mode",
+                "value": str(resource_mode["recommended"]),
+                "reason": "Resource mode is recommendation guidance, not a current .qwen-farm.json field.",
+            }
+        )
+    concurrency = recommendation.get("concurrency") if isinstance(recommendation.get("concurrency"), dict) else {}
+    ollama_parallel = (
+        concurrency.get("ollama_num_parallel")
+        if isinstance(concurrency.get("ollama_num_parallel"), dict)
+        else {}
+    )
+    if ollama_parallel.get("recommended") is not None:
+        rows.append(
+            {
+                "path": "OLLAMA_NUM_PARALLEL",
+                "value": str(ollama_parallel["recommended"]),
+                "reason": "OLLAMA_NUM_PARALLEL is an Ollama service environment setting, not a farm config field.",
+            }
+        )
+    return rows
+
+
+def write_config_with_backup(path: Path, config: dict[str, Any]) -> Path | None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup_path = None
+    if path.exists():
+        backup_path = path.with_name(f"{path.name}.{safe_timestamp()}.bak")
+        shutil.copy2(path, backup_path)
+    temp_path = path.with_name(f"{path.name}.tmp")
+    temp_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(path)
+    return backup_path
+
+
+def safe_timestamp() -> str:
+    return utc_timestamp().replace(":", "").replace("-", "").replace("T", "-").replace("Z", "")
+
+
+def apply_command(recommendation_path: Path, config_path: Path, output_dir: Path, *, write: bool) -> str:
+    pieces = ["python qwen.py farm recommend apply", str(recommendation_path)]
+    pieces.extend(["--config", str(config_path)])
+    pieces.extend(["--output", str(output_dir)])
+    if write:
+        pieces.append("--write")
+    return " ".join(pieces)
+
+
+def render_config_apply_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Farm Config Apply",
+        "",
+        f"Status: `{report.get('status', '')}`",
+        f"Generated: `{report.get('generated_at', '')}`",
+        f"Dry run: `{bool(report.get('dry_run'))}`",
+        f"Recommendation: `{report.get('recommendation_path', '')}`",
+        f"Config: `{report.get('config_path', '')}`",
+        f"Backup: `{report.get('backup_path') or ''}`",
+        "",
+        "## Changes",
+        "",
+    ]
+    changes = [item for item in report.get("changes") or [] if isinstance(item, dict)]
+    if changes:
+        lines.extend(["| Path | Action | Before | After |", "| --- | --- | --- | --- |"])
+        for item in changes:
+            lines.append(
+                f"| `{item.get('path', '')}` | `{item.get('action', '')}` | "
+                f"`{markdown_value(item.get('before'))}` | `{markdown_value(item.get('after'))}` |"
+            )
+    else:
+        lines.append("No config changes.")
+
+    lines.extend(["", "## Not Applied", ""])
+    not_applied = [item for item in report.get("not_applied") or [] if isinstance(item, dict)]
+    if not_applied:
+        for item in not_applied:
+            lines.append(f"- `{item.get('path')}` = `{item.get('value', '')}`: {item.get('reason')}")
+    else:
+        lines.append("No guidance-only fields.")
+
+    lines.extend(["", "## Warnings", ""])
+    warnings = [str(item) for item in report.get("warnings") or []]
+    if warnings:
+        lines.extend(f"- {item}" for item in warnings)
+    else:
+        lines.append("No warnings.")
+
+    lines.extend(["", "## Next Actions", ""])
+    actions = [item for item in report.get("next_actions") or [] if isinstance(item, dict)]
+    if actions:
+        for item in actions:
+            command = f" Command: `{item.get('command')}`" if item.get("command") else ""
+            lines.append(f"- `{item.get('priority')}` {item.get('message')}{command}")
+    else:
+        lines.append("No next actions.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def markdown_value(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return str(value)
 
 
 def action(action_id: str, priority: str, message: str, command: str | None = None) -> dict[str, Any]:

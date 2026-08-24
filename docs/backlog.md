@@ -34,7 +34,7 @@ Status values:
 | BL-0019 | Implemented | 0002, 0013 | `farm status --json` | 0013 implemented machine-readable JSON output for farm overview and single-run inspection. |
 | BL-0020 | Implemented | 0003, 0006, 0015 | `farm doctor` for machine, Ollama, and tokenizer inspection | 0015 implemented read-only human/JSON setup reports with tokenizer readiness and next-step guidance for less technical users. |
 | BL-0021 | Implemented | 0003, 0006, 0015, 0020 | Benchmark-based profile recommendation | 0020 implemented measured local profile, chunking, resource-mode, and concurrency recommendations. |
-| BL-0022 | Open | 0003, 0006, 0015 | Automatic config writing from doctor output | Let an assistant or user safely write `.qwen-farm.json`, including tokenizer-aware chunk settings when ready; 0015 remains read-only. |
+| BL-0022 | Implemented | 0003, 0006, 0015, 0021 | Automatic config writing from recommendation output | 0021 implemented a safe preview/write workflow for applying recommendation JSON to `.qwen-farm.json`; doctor and recommend remain read-only by default. |
 | BL-0023 | Open | 0003, 0015 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity; 0015 only reports current setup and next commands. |
 | BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
 | BL-0025 | Open | 0003 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures. |

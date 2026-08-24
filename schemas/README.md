@@ -14,6 +14,7 @@ The schemas are JSON Schema-compatible and intentionally permissive around optio
 | `farm-status-run.schema.json` | `python qwen.py farm status <run-id> --json` output. |
 | `farm-doctor.schema.json` | `python qwen.py farm doctor --json` and `.run/reports/setup-doctor.json`. |
 | `farm-recommendation.schema.json` | Benchmark-based profile/concurrency/chunking recommendation JSON from `python qwen.py farm recommend`. |
+| `farm-config-apply.schema.json` | Preview/write report from `python qwen.py farm recommend apply`. |
 | `farm-timing-summary.schema.json` | Persisted timing summary files named `timing-summary.json`. |
 | `farm-snippet-pack.schema.json` | Snippet pack JSON from `python qwen.py farm snippets pack`. |
 | `farm-synthesis-bundle.schema.json` | Synthesis bundle JSON from `python qwen.py farm synthesis bundle`, including budget metadata. |
@@ -39,6 +40,7 @@ python qwen.py farm schema validate .run/reports/setup-doctor.json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --json
 python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
 python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
 ```
 
 Without `--schema`, the command auto-detects the current core farm JSON artifacts and post-run package JSON artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means command/input/schema resolution failed.

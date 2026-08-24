@@ -58,6 +58,20 @@ def ready_ollama(method: str, url: str, **_kwargs: object) -> dict[str, Any]:
     raise AssertionError(f"Unexpected request: {method} {url}")
 
 
+def write_recommendation_fixture(path: Path) -> dict[str, Any]:
+    recommendation = qwen_farm_recommend.build_recommendation_report(
+        root=ROOT,
+        default_model="qwen3.5:4b",
+        ollama_base_url="http://127.0.0.1:11434",
+        generated_at="2026-08-24T00:00:00Z",
+        find_ollama_fn=lambda: "ollama",
+        request_json_fn=ready_ollama,
+        tokenizer_status_fn=ready_tokenizers,
+    )
+    path.write_text(json.dumps(recommendation), encoding="utf-8")
+    return recommendation
+
+
 def load_schema(name: str) -> dict[str, Any]:
     return qwen_farm_schema.load_json_object(SCHEMAS / name)
 
@@ -301,6 +315,22 @@ class FarmSchemaTests(unittest.TestCase):
 
             self.assertValid(report, "farm-recommendation.schema.json")
 
+    def test_generated_config_apply_report_validates(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            recommendation_path = root / "farm-recommendation.json"
+            write_recommendation_fixture(recommendation_path)
+
+            report = qwen_farm_recommend.build_config_apply_report(
+                root=ROOT,
+                recommendation_path=recommendation_path,
+                config_path=root / ".qwen-farm.json",
+                output_dir=root / "reports",
+                generated_at="2026-08-24T00:00:01Z",
+            )
+
+            self.assertValid(report, "farm-config-apply.schema.json")
+
     def test_generated_post_run_packages_validate(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -446,6 +476,18 @@ class FarmSchemaTests(unittest.TestCase):
             (
                 {
                     "schema_version": 1,
+                    "dry_run": True,
+                    "recommendation_path": "farm-recommendation.json",
+                    "config_path": ".qwen-farm.json",
+                    "proposed_config": {},
+                    "changes": [],
+                    "not_applied": [],
+                },
+                "schemas/farm-config-apply.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
                     "limits": {"source": "selected"},
                     "snippets": [],
                     "diagnostics": {},
@@ -538,6 +580,27 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertEqual(result["schema"]["path"], "schemas/farm-recommendation.schema.json")
             self.assertTrue(result["schema"]["detected"])
 
+    def test_validate_artifact_auto_detects_config_apply_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            recommendation_path = root / "farm-recommendation.json"
+            artifact = root / "farm-config-apply.json"
+            write_recommendation_fixture(recommendation_path)
+            report = qwen_farm_recommend.build_config_apply_report(
+                root=ROOT,
+                recommendation_path=recommendation_path,
+                config_path=root / ".qwen-farm.json",
+                output_dir=root / "reports",
+                generated_at="2026-08-24T00:00:01Z",
+            )
+            artifact.write_text(json.dumps(report), encoding="utf-8")
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["schema"]["path"], "schemas/farm-config-apply.schema.json")
+            self.assertTrue(result["schema"]["detected"])
+
     def test_validate_artifact_accepts_recommendation_schema_path_and_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "farm-recommendation.json"
@@ -567,6 +630,37 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertTrue(by_id["valid"])
             self.assertEqual(by_path["schema"]["path"], "schemas/farm-recommendation.schema.json")
             self.assertEqual(by_id["schema"]["path"], "schemas/farm-recommendation.schema.json")
+
+    def test_validate_artifact_accepts_config_apply_schema_path_and_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            recommendation_path = root / "farm-recommendation.json"
+            artifact = root / "farm-config-apply.json"
+            write_recommendation_fixture(recommendation_path)
+            report = qwen_farm_recommend.build_config_apply_report(
+                root=ROOT,
+                recommendation_path=recommendation_path,
+                config_path=root / ".qwen-farm.json",
+                output_dir=root / "reports",
+                generated_at="2026-08-24T00:00:01Z",
+            )
+            artifact.write_text(json.dumps(report), encoding="utf-8")
+
+            by_path = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "schemas/farm-config-apply.schema.json",
+            )
+            by_id = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
+            )
+
+            self.assertTrue(by_path["valid"])
+            self.assertTrue(by_id["valid"])
+            self.assertEqual(by_path["schema"]["path"], "schemas/farm-config-apply.schema.json")
+            self.assertEqual(by_id["schema"]["path"], "schemas/farm-config-apply.schema.json")
 
     def test_validate_artifact_accepts_package_schema_path_and_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -639,6 +733,43 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertFalse(result["valid"])
             self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
             self.assertIn("$.resource_mode.recommended: expected one of", "\n".join(result["errors"]))
+
+    def test_validate_artifact_reports_malformed_config_apply_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "farm-config-apply.json"
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "generated_at": "2026-08-24T00:00:00Z",
+                        "status": "maybe",
+                        "dry_run": True,
+                        "recommendation_path": "farm-recommendation.json",
+                        "config_path": ".qwen-farm.json",
+                        "backup_path": None,
+                        "recommendation": {
+                            "status": "ready",
+                            "agent": "default",
+                            "model": "qwen3.5:4b",
+                            "generated_at": "2026-08-24T00:00:00Z",
+                        },
+                        "existing_config": {},
+                        "proposed_config": {},
+                        "changes": [],
+                        "not_applied": [],
+                        "warnings": [],
+                        "next_actions": [],
+                        "report_paths": {"json": "x.json", "markdown": "x.md"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertIn("$.status: expected one of", "\n".join(result["errors"]))
 
     def test_validate_artifact_reports_malformed_package_schema_errors(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

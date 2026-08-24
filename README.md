@@ -140,7 +140,7 @@ When the downstream model needs summary context plus evidence, create a synthesi
 python qwen.py farm synthesis bundle <run-ref> --label research-bundle
 ```
 
-Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls.
+Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls. Bundle JSON includes character and estimated-token budget metadata. Use `--max-chars <n>` for an exact Markdown size cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate based on `--chars-per-token` (default `4.0`).
 
 To compare dogfood runs over time, record compact local quality history with `python qwen.py farm dogfood record <run-ref>` and compare records with `python qwen.py farm dogfood compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and privacy rules.
 

@@ -250,6 +250,12 @@ class ParseArgsTests(unittest.TestCase):
                 "12",
                 "--per-file",
                 "3",
+                "--max-chars",
+                "60000",
+                "--max-estimated-tokens",
+                "15000",
+                "--chars-per-token",
+                "4.5",
             ],
         ):
             args = qwen.parse_args()
@@ -262,6 +268,9 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/synthesis_bundles")
         self.assertEqual(args.max_snippets, 12)
         self.assertEqual(args.per_file, 3)
+        self.assertEqual(args.max_chars, 60000)
+        self.assertEqual(args.max_estimated_tokens, 15000)
+        self.assertEqual(args.chars_per_token, 4.5)
 
 
 class FarmHandlerTests(unittest.TestCase):
@@ -324,6 +333,9 @@ class FarmHandlerTests(unittest.TestCase):
             label="label",
             max_snippets=5,
             per_file=2,
+            max_chars=60000,
+            max_estimated_tokens=15000,
+            chars_per_token=4.5,
         )
 
         with (
@@ -342,6 +354,9 @@ class FarmHandlerTests(unittest.TestCase):
 
         resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+        self.assertEqual(build.call_args.kwargs["max_chars"], 60000)
+        self.assertEqual(build.call_args.kwargs["max_estimated_tokens"], 15000)
+        self.assertEqual(build.call_args.kwargs["chars_per_token"], 4.5)
 
     def test_dogfood_record_resolves_run_reference_before_building_record(self) -> None:
         resolved = Path("resolved-run")

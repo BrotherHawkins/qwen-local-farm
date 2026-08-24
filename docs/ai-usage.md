@@ -208,9 +208,13 @@ When the downstream synthesis model needs both orientation and evidence, prefer 
 
 ```bash
 python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
+python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
+python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
 ```
 
 Synthesis bundles read the same existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/synthesis_bundles/` by default. Use them when summaries alone are too thin and snippet-only packs lack enough article context. They include summary-only jobs when no snippets were selected, so the downstream model can still see every successful summarize result.
+
+Every synthesis bundle records character count and estimated tokens in its JSON `budget` object and Markdown header. Use `--max-chars` when a downstream prompt has a hard character budget. Use `--max-estimated-tokens` for rough frontier-model planning; it uses a deterministic character/token estimate, not an exact downstream tokenizer. When capped, the bundle drops optional whole snippets, open questions, bullets, and summary-only items in a stable order rather than truncating text mid-snippet.
 
 For dogfood comparisons, use `python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
 

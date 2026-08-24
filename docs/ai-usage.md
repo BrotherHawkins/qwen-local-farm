@@ -152,6 +152,10 @@ python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
 python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
 ```
 
+`--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
+
+For actual same-model parallel processing, the user's Ollama server may need external setup such as `OLLAMA_NUM_PARALLEL=2`, and memory use scales with context/KV cache. Assistants should treat this as an environment choice, not something the farm silently changes. Recommend small tests such as `--parallel-jobs 2` before increasing concurrency.
+
 Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.qwen-farm.json` for the user, then the farm writes the final effective settings into every run.
 
 Example `.qwen-farm.json`:

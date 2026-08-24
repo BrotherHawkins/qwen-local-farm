@@ -8,6 +8,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 
 - [AI usage and delegation](ai-usage.md): how GPT, Claude, Codex, scripts, and other callers should decide when to use the farm.
 - [Chunking roadmap](chunking-roadmap.md): how the farm should eventually handle files or folders that exceed a model's context window.
+- [Backlog](backlog.md): durable follow-up items deferred from specs and roadmap discussions.
 
 ## Implemented Baseline
 
@@ -150,6 +151,8 @@ Future fields may include:
   "blocking_questions": []
 }
 ```
+
+Timing should become part of the normal status contract, not a separate benchmark-only path. Runs, jobs, chunk map calls, and reduce calls should record start/finish timestamps and durations so dogfood runs can be compared over time and performance regressions can be investigated.
 
 ## 3. Structured Output
 
@@ -406,10 +409,12 @@ Current state:
 - Hybrid and CPU/RAM modes are manually selected.
 - Runtime profiles now make model, summarize chunk sizing, and concurrency assumptions explicit for each run.
 - Every run writes `farm-config.resolved.json`.
+- File-job scheduler concurrency can use `concurrency.jobs` as a bounded worker-slot limit.
 
 Roadmap:
 
 - Use runtime profiles as the stable configuration layer for both power users and AI-assisted setup.
+- Implemented: bounded file-job scheduler concurrency using `concurrency.jobs`.
 - Add model routing rules that consider speed, VRAM pressure, job type, and expected quality.
 - Add a simple worker scheduler:
   - max concurrent jobs
@@ -421,9 +426,10 @@ Roadmap:
 
 Open questions:
 
-- Should the worker farm run one model at a time to avoid memory contention?
+- How should `farm doctor` recommend safe `parallel_jobs` and Ollama `OLLAMA_NUM_PARALLEL` values?
 - Should heavy 14B jobs require an explicit queue/mode label?
 - Should GPU use be opt-in for background jobs?
+- Should advanced users manage multiple Ollama server pools themselves, or should the farm eventually provide a pool abstraction?
 
 Likely next PR:
 
@@ -507,6 +513,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 ### Milestone 4: Worker Farm
 
 - Implemented: runtime profiles and resolved run config artifacts.
+- Implemented: bounded file-job scheduler concurrency from resolved profile settings.
 - Worker configuration.
 - Resource-aware routing.
 - Multiple processing modes.

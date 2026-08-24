@@ -166,3 +166,11 @@ Examples:
 Keep [SPEC_DASHBOARD.md](SPEC_DASHBOARD.md) updated when adding or changing specs.
 
 The dashboard is intentionally manual for now. Future tooling can regenerate or audit it.
+
+## Deferred Work Backlog
+
+Every item listed under `## Deferred To Roadmap` must be captured in [../backlog.md](../backlog.md) in the same PR.
+
+If the deferred work is new, add a backlog row. If it already exists, update the existing row or note the additional source. Do not rely on an individual spec's deferred section as the only durable record of follow-up work.
+
+When a later spec implements or deprecates a backlog item, update the backlog status in the same PR.

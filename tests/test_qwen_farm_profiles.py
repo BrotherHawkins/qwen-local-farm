@@ -23,6 +23,8 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["chunk_strategy"], "character")
             self.assertEqual(config["summarize"]["chunk_chars"], 8000)
             self.assertEqual(config["summarize"]["token_safety_margin"], 0.10)
+            self.assertEqual(config["summarize"]["snippet_policy"], "off")
+            self.assertIsNone(config["summarize"]["snippet_count"])
             self.assertEqual(config["concurrency"]["jobs"], 1)
 
     def test_all_built_in_profiles_resolve(self) -> None:
@@ -165,6 +167,70 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["chunk_tokens"], 4000)
             self.assertEqual(config["summarize"]["reduce_tokens"], 3500)
             self.assertEqual(config["summarize"]["token_safety_margin"], 0.15)
+
+    def test_snippet_auto_config_is_valid(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps(
+                    {
+                        "summarize": {
+                            "snippet_policy": "auto",
+                            "snippet_count": None,
+                            "snippet_min_count": 2,
+                            "snippet_max_count": 6,
+                            "snippet_max_chars": 500,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+            self.assertEqual(config["summarize"]["snippet_policy"], "auto")
+            self.assertIsNone(config["summarize"]["snippet_count"])
+            self.assertEqual(config["summarize"]["snippet_max_count"], 6)
+            self.assertEqual(config["summarize"]["snippet_max_chars"], 500)
+
+    def test_snippets_override_can_disable_project_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"summarize": {"snippet_policy": "fixed", "snippet_count": 4}}),
+                encoding="utf-8",
+            )
+
+            config = resolve_runtime_config(
+                root=root,
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(snippets="off"),
+            )
+
+            self.assertEqual(config["summarize"]["snippet_policy"], "off")
+            self.assertIsNone(config["summarize"]["snippet_count"])
+
+    def test_snippets_override_accepts_fixed_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = resolve_runtime_config(
+                root=Path(temp_dir),
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(snippets="3"),
+            )
+
+            self.assertEqual(config["summarize"]["snippet_policy"], "fixed")
+            self.assertEqual(config["summarize"]["snippet_count"], 3)
+
+    def test_invalid_snippet_policy_count_combination_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"summarize": {"snippet_policy": "auto", "snippet_count": 3}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "snippet_count"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
 
     def test_invalid_chunk_strategy_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

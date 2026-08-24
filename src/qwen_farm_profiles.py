@@ -6,6 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.qwen_farm_snippets import (
+    DEFAULT_SNIPPET_MAX_CHARS,
+    DEFAULT_SNIPPET_MAX_COUNT,
+    DEFAULT_SNIPPET_MIN_COUNT,
+    DEFAULT_SNIPPET_POLICY,
+    SNIPPET_POLICIES,
+)
+
 
 CONFIG_FILE_NAME = ".qwen-farm.json"
 PROFILE_NAMES = ["cpu-small", "local-4gb", "local-8gb", "local-12gb", "local-24gb", "custom"]
@@ -20,6 +28,11 @@ SUMMARIZE_FIELDS = {
     "chunk_tokens",
     "reduce_tokens",
     "token_safety_margin",
+    "snippet_policy",
+    "snippet_count",
+    "snippet_min_count",
+    "snippet_max_count",
+    "snippet_max_chars",
 }
 CONCURRENCY_FIELDS = {"jobs", "chunks"}
 DEFAULT_CHUNK_STRATEGY = "character"
@@ -38,8 +51,24 @@ class RuntimeOverrides:
     chunk_tokens: int | None = None
     reduce_tokens: int | None = None
     token_safety_margin: float | None = None
+    snippets: str | None = None
+    snippet_policy: str | None = None
+    snippet_count: int | None = None
+    snippet_min_count: int | None = None
+    snippet_max_count: int | None = None
+    snippet_max_chars: int | None = None
     parallel_jobs: int | None = None
     parallel_chunks: int | None = None
+
+
+def default_snippet_fields() -> dict[str, Any]:
+    return {
+        "snippet_policy": DEFAULT_SNIPPET_POLICY,
+        "snippet_count": None,
+        "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+        "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+        "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
+    }
 
 
 def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
@@ -55,6 +84,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 4_000,
                 "reduce_chars": 4_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
@@ -66,6 +100,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 6_000,
                 "reduce_chars": 6_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
@@ -77,6 +116,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 8_000,
                 "reduce_chars": 8_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
@@ -88,6 +132,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 12_000,
                 "reduce_chars": 12_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
@@ -99,6 +148,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 20_000,
                 "reduce_chars": 20_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 2, "chunks": 2},
         },
@@ -110,6 +164,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
                 "chunk_chars": 8_000,
                 "reduce_chars": 8_000,
                 "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+                "snippet_policy": DEFAULT_SNIPPET_POLICY,
+                "snippet_count": None,
+                "snippet_min_count": DEFAULT_SNIPPET_MIN_COUNT,
+                "snippet_max_count": DEFAULT_SNIPPET_MAX_COUNT,
+                "snippet_max_chars": DEFAULT_SNIPPET_MAX_CHARS,
             },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
@@ -143,6 +202,66 @@ def validate_chunk_strategy(value: Any) -> str:
         allowed = ", ".join(sorted(CHUNK_STRATEGIES))
         raise ValueError(f"summarize.chunk_strategy must be one of: {allowed}.")
     return strategy
+
+
+def validate_non_negative_int(value: Any, field_path: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{field_path} must be a non-negative integer.")
+    return value
+
+
+def validate_snippet_policy(value: Any) -> str:
+    policy = str(value).strip().lower()
+    if policy not in SNIPPET_POLICIES:
+        allowed = ", ".join(sorted(SNIPPET_POLICIES))
+        raise ValueError(f"summarize.snippet_policy must be one of: {allowed}.")
+    return policy
+
+
+def validate_snippet_count(value: Any, field_path: str) -> int | None:
+    if value is None:
+        return None
+    return validate_non_negative_int(value, field_path)
+
+
+def parse_snippets_override(value: str) -> dict[str, Any]:
+    text = value.strip().lower()
+    if text in {"off", "none", "false", "0"}:
+        return {"snippet_policy": "off", "snippet_count": None}
+    if text == "auto":
+        return {"snippet_policy": "auto", "snippet_count": None}
+    try:
+        count = int(text)
+    except ValueError as exc:
+        raise ValueError("--snippets must be off, auto, 0, or a non-negative integer.") from exc
+    if count < 0:
+        raise ValueError("--snippets must be off, auto, 0, or a non-negative integer.")
+    if count == 0:
+        return {"snippet_policy": "off", "snippet_count": None}
+    return {"snippet_policy": "fixed", "snippet_count": count}
+
+
+def validate_snippet_settings(summarize: dict[str, Any]) -> None:
+    policy = validate_snippet_policy(summarize.get("snippet_policy", DEFAULT_SNIPPET_POLICY))
+    count = validate_snippet_count(summarize.get("snippet_count"), "summarize.snippet_count")
+    min_count = validate_non_negative_int(
+        summarize.get("snippet_min_count", DEFAULT_SNIPPET_MIN_COUNT),
+        "summarize.snippet_min_count",
+    )
+    max_count = validate_non_negative_int(
+        summarize.get("snippet_max_count", DEFAULT_SNIPPET_MAX_COUNT),
+        "summarize.snippet_max_count",
+    )
+    validate_positive_int(
+        summarize.get("snippet_max_chars", DEFAULT_SNIPPET_MAX_CHARS),
+        "summarize.snippet_max_chars",
+    )
+    if max_count < min_count:
+        raise ValueError("summarize.snippet_max_count must be greater than or equal to snippet_min_count.")
+    if policy == "fixed" and count is None:
+        raise ValueError("summarize.snippet_count is required when snippet_policy is fixed.")
+    if policy in {"auto", "off"} and count is not None:
+        raise ValueError("summarize.snippet_count must be null when snippet_policy is auto or off.")
 
 
 def validate_safety_margin(value: Any, field_path: str) -> float:
@@ -197,6 +316,25 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
             normalized["summarize"]["token_safety_margin"] = validate_safety_margin(
                 summarize["token_safety_margin"], "summarize.token_safety_margin"
             )
+        if "snippet_policy" in summarize:
+            normalized["summarize"]["snippet_policy"] = validate_snippet_policy(summarize["snippet_policy"])
+        if "snippet_count" in summarize:
+            normalized["summarize"]["snippet_count"] = validate_snippet_count(
+                summarize["snippet_count"], "summarize.snippet_count"
+            )
+        if "snippet_min_count" in summarize:
+            normalized["summarize"]["snippet_min_count"] = validate_non_negative_int(
+                summarize["snippet_min_count"], "summarize.snippet_min_count"
+            )
+        if "snippet_max_count" in summarize:
+            normalized["summarize"]["snippet_max_count"] = validate_non_negative_int(
+                summarize["snippet_max_count"], "summarize.snippet_max_count"
+            )
+        if "snippet_max_chars" in summarize:
+            normalized["summarize"]["snippet_max_chars"] = validate_positive_int(
+                summarize["snippet_max_chars"], "summarize.snippet_max_chars"
+            )
+        validate_snippet_settings({**default_snippet_fields(), **normalized["summarize"]})
     if "concurrency" in data:
         concurrency = data["concurrency"]
         if not isinstance(concurrency, dict):
@@ -253,6 +391,22 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
         summarize["token_safety_margin"] = validate_safety_margin(
             overrides.token_safety_margin, "--token-safety-margin"
         )
+    if overrides.snippets is not None:
+        summarize.update(parse_snippets_override(overrides.snippets))
+    if overrides.snippet_policy is not None:
+        summarize["snippet_policy"] = validate_snippet_policy(overrides.snippet_policy)
+    if overrides.snippet_count is not None:
+        summarize["snippet_count"] = validate_non_negative_int(overrides.snippet_count, "--snippets")
+    if overrides.snippet_min_count is not None:
+        summarize["snippet_min_count"] = validate_non_negative_int(
+            overrides.snippet_min_count, "--snippet-min-count"
+        )
+    if overrides.snippet_max_count is not None:
+        summarize["snippet_max_count"] = validate_non_negative_int(
+            overrides.snippet_max_count, "--snippet-max-count"
+        )
+    if overrides.snippet_max_chars is not None:
+        summarize["snippet_max_chars"] = validate_positive_int(overrides.snippet_max_chars, "--snippet-max-chars")
     if summarize:
         data["summarize"] = summarize
 
@@ -340,6 +494,7 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
         summarize.get("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN),
         "summarize.token_safety_margin",
     )
+    validate_snippet_settings(summarize)
     concurrency = config.get("concurrency")
     if not isinstance(concurrency, dict):
         raise ValueError("resolved concurrency config must be an object.")
@@ -379,6 +534,7 @@ def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dic
     summarize = updated["summarize"]
     summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
     summarize.setdefault("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN)
+    summarize.update({**default_snippet_fields(), **summarize})
     if summarize["chunk_strategy"] == "token":
         if summarize.get("chunk_tokens") is None or summarize.get("reduce_tokens") is None:
             num_ctx = agent_context_tokens(agent)
@@ -403,6 +559,17 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
             "reduce_tokens": runtime_config["summarize"].get("reduce_tokens"),
             "token_safety_margin": runtime_config["summarize"].get(
                 "token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN
+            ),
+            "snippet_policy": runtime_config["summarize"].get("snippet_policy", DEFAULT_SNIPPET_POLICY),
+            "snippet_count": runtime_config["summarize"].get("snippet_count"),
+            "snippet_min_count": runtime_config["summarize"].get(
+                "snippet_min_count", DEFAULT_SNIPPET_MIN_COUNT
+            ),
+            "snippet_max_count": runtime_config["summarize"].get(
+                "snippet_max_count", DEFAULT_SNIPPET_MAX_COUNT
+            ),
+            "snippet_max_chars": runtime_config["summarize"].get(
+                "snippet_max_chars", DEFAULT_SNIPPET_MAX_CHARS
             ),
         },
         "concurrency": {

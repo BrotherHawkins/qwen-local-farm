@@ -96,7 +96,12 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
     "chunk_strategy": "character",
     "chunk_chars": 12000,
     "reduce_chars": 12000,
-    "token_safety_margin": 0.1
+    "token_safety_margin": 0.1,
+    "snippet_policy": "off",
+    "snippet_count": null,
+    "snippet_min_count": 2,
+    "snippet_max_count": 8,
+    "snippet_max_chars": 600
   },
   "concurrency": {
     "jobs": 1,
@@ -108,6 +113,16 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
 For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
+
+When a later synthesis step needs a little more source evidence, ask summarize mode for verified verbatim snippets:
+
+```bash
+python qwen.py farm run notes --mode summarize --snippets auto
+python qwen.py farm run notes --mode summarize --snippets 3
+python qwen.py farm run notes --mode summarize --snippets off
+```
+
+`--snippets auto` calculates a per-file snippet count from token count, chunk count, or file size. Fixed counts are useful for reproducible runs. Snippets are copied into `result.json` and `result.md` only after the farm verifies that the passage appears exactly in the source text. Auto counts are best effort: status artifacts show verified/requested counts, and the farm filters obvious scaffolding such as front matter, source URLs, conversion headers, and bibliography lines.
 
 Token-aware chunking can also be configured in `.qwen-farm.json`:
 

@@ -8,6 +8,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 
 - [AI usage and delegation](ai-usage.md): how GPT, Claude, Codex, scripts, and other callers should decide when to use the farm.
 - [Chunking roadmap](chunking-roadmap.md): how the farm should eventually handle files or folders that exceed a model's context window.
+- [Dogfood quality history](dogfood-quality.md): how to record and compare local summary/snippet quality across farm runs.
 - [Dogfood timing history](dogfood-timing.md): how to record and compare local timing regressions across farm runs.
 - [Backlog](backlog.md): durable follow-up items deferred from specs and roadmap discussions.
 
@@ -23,12 +24,15 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
   - `python qwen.py farm status <run-id>`
   - Markdown, JSON, raw response, and run status artifacts.
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
+- Resource-aware runtime modes, doctor reports, recommendations, and safe recommendation config apply.
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 - Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
 - Opt-in verified source snippets for summarize results, including deterministic ranking and compact diagnostics.
+- Tracked schema contracts and public schema validation for core and post-run JSON artifacts.
 - Post-run farm collections that flatten ordinary job result artifacts into one inspectable folder.
 - Post-run cross-file snippet packs for downstream synthesis.
 - Post-run synthesis bundles that combine compact summaries with verified snippets.
+- Local dogfood quality records and comparisons for tracking summary/snippet value.
 - Local dogfood timing records and comparisons for spotting performance regressions.
 
 ## North Star
@@ -52,13 +56,12 @@ The human should be able to enable or disable farm availability, but should not 
 
 ## Near-Term Priorities
 
-1. Harden the worker-farm MVP after real use.
-2. Add chunking and map/reduce workflows for large inputs.
-3. Add source-grounded evidence snippets and stricter structured output conventions.
-4. Add AI-facing usage docs and skills.
-5. Explore processing modes beyond plain chat/summarization.
-6. Add observability for job status, model routing, failures, and output review.
-7. Add capability discovery and guided setup reports.
+1. Improve chunk quality for long Markdown/article inputs with heading ancestry, overlap, and clearer provenance.
+2. Make long-running work easier to observe and recover with in-progress chunk/reduce status and failed-run retry helpers.
+3. Give callers better file-discovery controls such as include/exclude overrides.
+4. Keep setup guidance improving for less-technical users through doctor, recommend, apply, and model-installation guidance.
+5. Mature post-run packages so summaries, snippets, and bundles are easier to feed into frontier-model workflows.
+6. Add new modes only after the summarize/chunk/status foundation stays pleasant under dogfood pressure.
 
 ## MVP Decisions
 
@@ -86,14 +89,13 @@ Current state:
 - The gateway exposes synchronous chat endpoints.
 - `python qwen.py farm run <input-folder> --mode summarize` processes readable text files into durable farm artifacts.
 - `python qwen.py farm list` and `python qwen.py farm status [run-id]` inspect farm state.
+- `python qwen.py farm collect <run-id>` flattens completed job results into an inspectable post-run folder.
 
 Roadmap:
 
 - Add queue-only runs for offline work with a simple first contract: "work these inputs here, put results over there."
-- Add a stable run/job object with `id`, `status`, `agent`, `model`, `input`, `output`, `created_at`, `started_at`, `finished_at`, and `error`.
-- Add commands:
-  - `python qwen.py farm collect <run-id>`
-  - `python qwen.py farm scan`
+- Continue hardening the stable run/job object and post-run helper contracts.
+- Add `python qwen.py farm scan` when drop-folder intake is ready.
 - Let immediate asks remain simple and separate from queued work.
 - Keep process-now as the default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
 
@@ -125,9 +127,11 @@ Open questions:
 - How configurable should run-folder naming and output layout be?
 - Should human labels live only in metadata, or optionally become part of run folder names later?
 
-Likely next PR:
+Near-term candidates:
 
-- Add chunking or schema hardening based on the first real farm usage.
+- Retry failed files from a previous run.
+- Queue-only runs.
+- Drop-folder scanning.
 
 ## 2. Status And Overview Artifacts
 
@@ -166,10 +170,11 @@ Timing is part of the normal status contract, not a separate benchmark-only path
 
 Current state:
 
-- Agent responses are plain model text.
-- Some benchmark scripts write JSON records, but normal agent outputs are not schema-driven yet.
-- The first tracked schema contracts exist for core farm status, job result, status CLI, and doctor JSON artifacts.
-- A public `farm schema validate` command validates core JSON artifacts against tracked schemas.
+- Immediate agent responses are plain model text.
+- Farm summarize outputs use a deterministic outer JSON envelope plus Markdown, raw response, timing, chunking, and snippet artifacts.
+- The farm owns parsing for the current summarize contract instead of relying on strict model JSON mode.
+- Tracked schema contracts exist for core farm artifacts, status JSON envelopes, doctor/recommend/apply reports, timing summaries, snippet packs, synthesis bundles, dogfood records, and farm collections.
+- A public `farm schema validate` command validates known JSON artifacts against tracked schemas.
 
 Roadmap:
 
@@ -184,9 +189,8 @@ Roadmap:
   - `result.md`
   - `result.json`
 - Let the farm own the deterministic outer JSON envelope.
-- Ask the model only for the mode-specific `result` payload.
-- If the model returns invalid JSON, retry once with a repair prompt.
-- If repair still fails, preserve raw output, mark `structured_valid: false`, and keep whatever Markdown artifact can be produced.
+- Ask the model for the smallest mode-specific payload that is useful, then have Python build the stable outer artifact shape.
+- For future modes that need strict structured fields, define the parser/repair policy in that mode's spec instead of assuming JSON-mode model output.
 
 Example envelope:
 
@@ -219,23 +223,25 @@ Example envelope:
 
 Open questions:
 
-- The first pass uses JSON Schema-compatible repo-native contracts plus a dependency-free validation helper.
-- Which output contracts should be first-class, and which should stay prompt-level conventions?
-
-Likely next PR:
-
-- Extend schemas to post-run package artifacts now that public schema validation exists.
+- Which output contracts should become first-class after `summarize`: `extract`, `classify`, or `review`?
+- Should strict schema mode reject unknown fields once artifact contracts mature?
+- Should generated schema docs come before additional mode schemas?
 
 ## 4. Chunking Larger Context
 
 Current state:
 
-- Current scripts assume the input fits inside the selected model context.
-- 8B and 14B tests used a `4096` token context.
+- Summarize mode auto-chunks oversized readable text inputs.
+- Character chunking uses paragraph-aware splitting with map/reduce summarization.
+- Token-aware chunking is opt-in for supported Qwen/Ollama tokenizers.
+- Chunk and reduce model calls have timing metrics and configurable retry limits.
 
 Roadmap:
 
 - Treat chunking as its own sub-feature with its own roadmap: [docs/chunking-roadmap.md](chunking-roadmap.md).
+- Preserve Markdown heading ancestry in chunk inputs and outputs.
+- Add optional chunk overlap to reduce boundary loss.
+- Surface in-progress chunk and reduce status before a job finishes.
 - Auto-chunk only for modes where chunking is naturally safe:
   - `summarize`
   - `extract`
@@ -248,9 +254,11 @@ Roadmap:
   - comparison across distant sections
 - Fail clearly or ask for an explicit chunking strategy when a mode is not chunk-safe.
 
-Likely next PR:
+Near-term candidates:
 
-- Add `docs/chunking-roadmap.md` first, then a Markdown chunker and summarization map/reduce benchmark path.
+- Markdown heading ancestry plus optional chunk overlap.
+- In-progress chunk and reduce status visibility.
+- Failed-file or failed-chunk retry helpers.
 
 ## 5. Modes As Rails
 
@@ -281,9 +289,10 @@ Later sub-roadmap modes:
 | `transform` | Rewrite the input into another shape. | Output shape can vary widely. |
 | `research-pack` | Turn a pile of material into an organized bundle. | Multi-step flow: summarize, index, synthesize, gap-find. |
 
-Likely next PR:
+Near-term candidates:
 
-- Add a few mode templates as agent configs and document how to choose between them.
+- Keep `extract`, `classify`, and `review` as roadmap items until summarize/chunk recovery and status visibility feel solid.
+- When a new mode starts, define its output contract, chunk-safety policy, and parser/repair behavior in the spec.
 
 ## 6. Caller Instructions
 
@@ -428,16 +437,15 @@ Possible meanings:
 Current state:
 
 - Model choice is explicit through agent configs.
-- Implemented: first-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes in config/CLI/resolved artifacts.
+- First-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes exist in config/CLI/resolved artifacts.
 - Runtime profiles now make model, summarize chunk sizing, and concurrency assumptions explicit for each run.
 - Every run writes `farm-config.resolved.json`.
 - File-job scheduler concurrency can use `concurrency.jobs` as a bounded worker-slot limit.
+- Failure policy now exposes fixed retry and timeout knobs for whole-file, chunk, and reduce work.
 
 Roadmap:
 
 - Use runtime profiles as the stable configuration layer for both power users and AI-assisted setup.
-- Implemented: bounded file-job scheduler concurrency using `concurrency.jobs`.
-- Implemented: resource intent can be selected without silently changing agent id or model id.
 - Add model routing rules that consider speed, VRAM pressure, job type, and expected quality.
 - Add a simple worker scheduler:
   - max concurrent jobs
@@ -454,9 +462,11 @@ Open questions:
 - Should GPU use be opt-in for background jobs?
 - Should advanced users manage multiple Ollama server pools themselves, or should the farm eventually provide a pool abstraction?
 
-Likely next PR:
+Near-term candidates:
 
-- Decide whether to tackle automatic agent/model routing, multi-server pools, or resource fallback retries first.
+- Retry failed files from a previous run before attempting dynamic routing.
+- Add dynamic scheduler backoff only after failure classes are reliable enough to act on.
+- Keep automatic agent/model switching explicit until quality and performance tradeoffs are better specified.
 
 ## 12. Capability Discovery And Setup Guidance
 
@@ -508,7 +518,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: `farm run`, `farm list`, and `farm status`.
 - Implemented: `FARM_STATUS.md` plus `farm-status.json`.
 - Implemented: per-job Markdown, JSON, and raw response artifacts.
-- Deferred: `farm collect`.
+- Implemented: `farm collect` for post-run result collection.
 - Deferred: queue-only runs.
 - Deferred: long-running worker loop.
 
@@ -533,19 +543,22 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 - Implemented: paragraph-aware chunking for summarize mode.
 - Implemented: map/reduce summarization for oversized summarize inputs.
-- Markdown heading-aware chunking.
-- Provenance tracking.
-- Rerun failed chunks.
+- Implemented: opt-in tokenizer-aware chunk sizing for supported Qwen/Ollama agents.
+- Implemented: configurable chunk/reduce retry limits.
+- Next: Markdown heading ancestry.
+- Next: optional chunk overlap.
+- Next: in-progress chunk and reduce status visibility.
+- Later: rerun failed chunks from prior runs.
 
 ### Milestone 4: Worker Farm
 
 - Implemented: runtime profiles and resolved run config artifacts.
 - Implemented: bounded file-job scheduler concurrency from resolved profile settings.
 - Implemented: first-class resource modes with deterministic `auto` resolution and CPU enforcement.
-- Worker configuration.
-- Resource-aware routing.
-- Multiple processing modes.
-- Watch-folder or batch-folder workflows.
+- Implemented: fixed failure-policy retry/timeout knobs.
+- Next: failed-file retry from prior runs.
+- Later: dynamic scheduler backoff and resource fallback.
+- Later: queue-only, background workers, and watch-folder workflows.
 
 ### Milestone 5: AI Skill Layer
 
@@ -557,19 +570,19 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ### Milestone 6: Guided Setup And Resource Fit
 
-- `doctor` command.
-- Machine capability report.
-- Model/profile recommendations.
-- Human-readable and AI-readable setup reports.
+- Implemented: `doctor` command.
+- Implemented: machine capability and readiness report.
+- Implemented: benchmark-based model/profile/concurrency recommendations.
+- Implemented: safe recommendation config apply.
+- Next: hardware-specific model installation guidance.
 
-## Immediate Next Decisions
+## Groomed Next Decisions
 
-These are the decisions to make before implementation gets too deep:
+These are the active product decisions after the first 26 change specs:
 
-1. Job storage layout: exact folder/file names under `.run/farm/`.
-2. Output schema: first `summarize` JSON result shape.
-3. Custom prompt contract: how much structure is required when mode is prompt-driven.
-4. Chunking strategy: Markdown heading chunks first, tokenizer-aware chunks later?
-5. Worker behavior beyond MVP: manually run workers only, or background scheduler?
-6. AI integration: docs-only first, or generate reusable skill/instruction files immediately?
-7. Capability discovery: static JSON first, runtime endpoint first, or both together?
+1. Should `0026` combine Markdown heading ancestry with optional chunk overlap, or keep overlap as its own later spec?
+2. What should in-progress chunk/reduce status expose without making `farm-status.json` noisy?
+3. Should failed-file retry be a post-run helper, a `farm run --retry-failed <run-id>` mode, or both?
+4. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
+5. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
+6. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?

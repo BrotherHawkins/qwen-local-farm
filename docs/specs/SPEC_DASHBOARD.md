@@ -2,7 +2,7 @@
 
 This dashboard tracks living specs and change specs.
 
-The dashboard is manual for now. Update it when adding, accepting, implementing, or deprecating specs.
+The dashboard is manually maintained and CI-guarded. Update it when adding, accepting, implementing, or deprecating specs.
 
 ## Counts
 
@@ -35,6 +35,16 @@ None.
 ## Accepted Not Implemented
 
 None.
+
+## Current Groomed Focus
+
+This is advisory, not a lifecycle state. See [../backlog.md](../backlog.md) for durable backlog rows.
+
+| Rank | Candidate | Backlog |
+| ---: | --- | --- |
+| 1 | Markdown heading ancestry plus optional chunk overlap | BL-0015, BL-0035 |
+| 2 | In-progress chunk and reduce status visibility | BL-0038 |
+| 3 | Retry failed files from a previous run | BL-0087 |
 
 ## Implemented Specs
 

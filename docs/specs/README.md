@@ -85,6 +85,20 @@ Do not mark a change spec `Accepted` without explicit human acceptance.
 Do not mark a change spec `Implemented` before the accepted implementation plan exists.
 Do not open an implementation PR for behavior-changing work unless it cites an accepted spec and plan, or explicitly uses `NO-SPEC`.
 
+## Planning Hygiene Loop
+
+After a cluster of specs merges, or whenever the next item feels unclear, do a short planning hygiene pass before drafting the next behavior spec.
+
+Use this numbered Q&A:
+
+1. What landed that the roadmap still describes as future work?
+2. Which backlog rows changed status or need clearer notes?
+3. Which deferred items are still real, and which should be split, merged, or deprecated?
+4. What is the next highest-leverage product risk: quality, speed, recovery, setup, visibility, or new modes?
+5. Does the spec process itself need a small guardrail, or would another rule create drag?
+
+Planning-only grooming may use `NO-SPEC`. If the dashboard changes, run the spec guard. If backlog priorities change, keep the groomed punchlist advisory and leave accepted behavior to specs and plans.
+
 ## Change Types
 
 Change specs should identify one of:
@@ -165,7 +179,7 @@ Examples:
 
 Keep [SPEC_DASHBOARD.md](SPEC_DASHBOARD.md) updated when adding or changing specs.
 
-The dashboard is intentionally manual for now. Future tooling can regenerate it. The current CI guard audits it:
+The dashboard is intentionally human-maintained and CI-guarded. Future tooling can regenerate it. The current guard audits it:
 
 ```powershell
 python -m src.qwen_spec_guard

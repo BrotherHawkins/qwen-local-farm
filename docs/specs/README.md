@@ -165,7 +165,13 @@ Examples:
 
 Keep [SPEC_DASHBOARD.md](SPEC_DASHBOARD.md) updated when adding or changing specs.
 
-The dashboard is intentionally manual for now. Future tooling can regenerate or audit it.
+The dashboard is intentionally manual for now. Future tooling can regenerate it. The current CI guard audits it:
+
+```powershell
+python -m src.qwen_spec_guard
+```
+
+The guard checks dashboard counts, change-spec rows, allowed status/type values, plan links, and missing implementation plans for accepted/implemented change specs after documented legacy exemptions.
 
 ## Deferred Work Backlog
 

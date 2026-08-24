@@ -13,8 +13,8 @@ Status values:
 
 | ID | Status | Source | Item | Notes |
 | --- | --- | --- | --- | --- |
-| BL-0001 | Open | 0000 | Linting and formatting checks | Add style gates only when they improve signal without slowing simple PRs too much. |
-| BL-0002 | Open | 0000 | Generated spec/dashboard consistency checks | Could validate dashboard counts, status values, and missing plans/spec links. |
+| BL-0001 | Open | 0000, 0023 | Linting and formatting checks | Add style, Markdown, or prose gates only when they improve signal without slowing simple PRs too much. |
+| BL-0002 | Implemented | 0000, 0023 | Generated spec/dashboard consistency checks | 0023 implemented a model-free CI guard for dashboard counts, change-spec rows, status/type values, missing plans, and plan links. |
 | BL-0003 | Open | 0000 | Run CI on Windows and macOS hosted runners | Keep hardware/model-free assumptions intact. |
 | BL-0004 | Open | 0000 | Optional local Ollama/model integration tests | Should stay opt-in/local unless runner hardware is known. |
 | BL-0005 | Open | 0000 | Scheduled benchmark checks on known hardware | Requires stable machine profile and benchmark corpus. |
@@ -89,6 +89,9 @@ Status values:
 | BL-0074 | Open | 0022 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
 | BL-0075 | Open | 0022 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
 | BL-0076 | Open | 0022 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
+| BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
+| BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
+| BL-0079 | Open | 0023 | Cross-file documentation link checking | Check broader docs links outside the spec/plans/dashboard surface. |
 
 ## Notes
 

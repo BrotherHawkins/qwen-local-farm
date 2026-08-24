@@ -552,6 +552,9 @@ def handle_farm(args: argparse.Namespace) -> None:
             chunk_tokens=args.chunk_tokens,
             reduce_tokens=args.reduce_tokens,
             token_safety_margin=args.token_safety_margin,
+            preserve_heading_ancestry=args.preserve_heading_ancestry,
+            chunk_overlap_chars=args.chunk_overlap_chars,
+            chunk_overlap_tokens=args.chunk_overlap_tokens,
             snippets=args.snippets,
             snippet_max_chars=args.snippet_max_chars,
             parallel_jobs=args.parallel_jobs,
@@ -673,6 +676,9 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--chunk-tokens", type=int)
     farm_run.add_argument("--reduce-tokens", type=int)
     farm_run.add_argument("--token-safety-margin", type=float)
+    farm_run.add_argument("--preserve-heading-ancestry", action=argparse.BooleanOptionalAction, default=None)
+    farm_run.add_argument("--chunk-overlap-chars", type=int)
+    farm_run.add_argument("--chunk-overlap-tokens", type=int)
     farm_run.add_argument("--snippets")
     farm_run.add_argument("--snippet-max-chars", type=int)
     farm_run.add_argument("--parallel-jobs", type=int)

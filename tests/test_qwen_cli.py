@@ -90,6 +90,28 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.reduce_tokens, 6400)
         self.assertEqual(args.token_safety_margin, 0.15)
 
+    def test_parse_args_accepts_heading_and_overlap_overrides(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "run",
+                "notes",
+                "--no-preserve-heading-ancestry",
+                "--chunk-overlap-chars",
+                "500",
+                "--chunk-overlap-tokens",
+                "120",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertFalse(args.preserve_heading_ancestry)
+        self.assertEqual(args.chunk_overlap_chars, 500)
+        self.assertEqual(args.chunk_overlap_tokens, 120)
+
     def test_parse_args_accepts_snippet_overrides(self) -> None:
         with patch.object(
             sys,

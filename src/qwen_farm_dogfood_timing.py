@@ -26,6 +26,9 @@ COMPARABILITY_FIELDS = (
     ("runtime.summarize.reduce_chars", "summarize.reduce_chars"),
     ("runtime.summarize.chunk_tokens", "summarize.chunk_tokens"),
     ("runtime.summarize.reduce_tokens", "summarize.reduce_tokens"),
+    ("runtime.summarize.preserve_heading_ancestry", "summarize.preserve_heading_ancestry"),
+    ("runtime.summarize.chunk_overlap_chars", "summarize.chunk_overlap_chars"),
+    ("runtime.summarize.chunk_overlap_tokens", "summarize.chunk_overlap_tokens"),
     ("runtime.summarize.snippet_policy", "summarize.snippet_policy"),
 )
 
@@ -120,6 +123,9 @@ def compact_runtime(status: dict[str, Any]) -> dict[str, Any]:
             "reduce_chars": summarize.get("reduce_chars"),
             "chunk_tokens": summarize.get("chunk_tokens"),
             "reduce_tokens": summarize.get("reduce_tokens"),
+            "preserve_heading_ancestry": summarize.get("preserve_heading_ancestry"),
+            "chunk_overlap_chars": summarize.get("chunk_overlap_chars"),
+            "chunk_overlap_tokens": summarize.get("chunk_overlap_tokens"),
             "snippet_policy": summarize.get("snippet_policy"),
             "snippet_count": summarize.get("snippet_count"),
             "snippet_max_chars": summarize.get("snippet_max_chars"),

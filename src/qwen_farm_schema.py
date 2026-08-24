@@ -6,6 +6,10 @@ from typing import Any
 
 
 SCHEMA_DIR = Path("schemas")
+SCHEMA_VALIDATION_SCHEMA_VERSION = 1
+EXIT_VALID = 0
+EXIT_INVALID = 1
+EXIT_ERROR = 2
 
 
 def load_json_object(path: Path) -> dict[str, Any]:
@@ -23,6 +27,149 @@ def validate(instance: Any, schema: dict[str, Any]) -> list[str]:
 
 def validate_file(instance_path: Path, schema_path: Path) -> list[str]:
     return validate(load_json_object(instance_path), load_json_object(schema_path))
+
+
+def load_schema_index(root: Path) -> dict[str, Any]:
+    return load_json_object(root / SCHEMA_DIR / "index.json")
+
+
+def schema_records(root: Path) -> list[dict[str, Any]]:
+    index = load_schema_index(root)
+    records = index.get("schemas") or []
+    return [item for item in records if isinstance(item, dict)]
+
+
+def resolve_schema_reference(root: Path, reference: str) -> dict[str, Any]:
+    for record in schema_records(root):
+        if reference == record.get("id") or reference == record.get("path"):
+            return _schema_record(root, record, detected=False)
+
+    schema_path = Path(reference)
+    if not schema_path.is_absolute():
+        schema_path = root / schema_path
+    if not schema_path.exists():
+        raise FileNotFoundError(f"Schema not found: {reference}")
+
+    schema = load_json_object(schema_path)
+    return {
+        "id": schema.get("$id"),
+        "path": _display_path(root, schema_path),
+        "detected": False,
+    }
+
+
+def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
+    matches: list[str] = []
+    schema_version = artifact.get("schema_version")
+
+    if schema_version == 1 and artifact.get("scope") == "overview":
+        matches.append("schemas/farm-status-overview.schema.json")
+    if schema_version == 1 and artifact.get("scope") == "run":
+        matches.append("schemas/farm-status-run.schema.json")
+    if {"environment", "ollama", "checks", "recommendations", "report_paths"}.issubset(artifact):
+        matches.append("schemas/farm-doctor.schema.json")
+    if schema_version == "0.1" and {"run_id", "jobs", "counts", "skipped_files"}.issubset(artifact):
+        matches.append("schemas/farm-status.schema.json")
+    if schema_version == "0.1" and {"job_id", "structured_valid", "result", "artifacts"}.issubset(artifact):
+        matches.append("schemas/farm-job-result.schema.json")
+
+    if not matches:
+        raise ValueError("Could not infer a schema for this artifact. Pass --schema to choose one explicitly.")
+    if len(matches) > 1:
+        raise ValueError(f"Artifact matches multiple schemas: {', '.join(matches)}. Pass --schema to choose one.")
+
+    wanted = matches[0]
+    for record in schema_records(root):
+        if record.get("path") == wanted:
+            return _schema_record(root, record, detected=True)
+    raise FileNotFoundError(f"Detected schema is not listed in schemas/index.json: {wanted}")
+
+
+def validate_artifact(root: Path, artifact_path: Path, schema_reference: str | None = None) -> dict[str, Any]:
+    artifact_display = _display_path(root, artifact_path)
+    schema_info: dict[str, Any] | None = None
+    try:
+        artifact = load_json_object(artifact_path)
+        schema_info = (
+            resolve_schema_reference(root, schema_reference)
+            if schema_reference
+            else detect_schema(root, artifact)
+        )
+        schema_path = root / str(schema_info["path"])
+        errors = validate(artifact, load_json_object(schema_path))
+        return validation_result(
+            valid=not errors,
+            artifact_path=artifact_display,
+            schema=schema_info,
+            errors=errors,
+            exit_code=EXIT_VALID if not errors else EXIT_INVALID,
+        )
+    except json.JSONDecodeError as exc:
+        return validation_result(
+            valid=False,
+            artifact_path=artifact_display,
+            schema=schema_info,
+            errors=[f"Invalid JSON: {exc.msg} at line {exc.lineno} column {exc.colno}."],
+            exit_code=EXIT_ERROR,
+        )
+    except Exception as exc:
+        return validation_result(
+            valid=False,
+            artifact_path=artifact_display,
+            schema=schema_info,
+            errors=[str(exc)],
+            exit_code=EXIT_ERROR,
+        )
+
+
+def validation_result(
+    *,
+    valid: bool,
+    artifact_path: str,
+    schema: dict[str, Any] | None,
+    errors: list[str],
+    exit_code: int,
+) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VALIDATION_SCHEMA_VERSION,
+        "valid": valid,
+        "artifact_path": artifact_path,
+        "schema": schema,
+        "errors": errors,
+        "exit_code": exit_code,
+    }
+
+
+def render_validation_result(result: dict[str, Any]) -> str:
+    status = "Valid" if result.get("valid") else "Invalid"
+    schema = result.get("schema") if isinstance(result.get("schema"), dict) else {}
+    lines = [
+        f"{status}: {result.get('artifact_path', '')}",
+        f"Schema: {schema.get('path') or ''}",
+        f"Errors: {len(result.get('errors') or [])}",
+    ]
+    for error in result.get("errors") or []:
+        lines.append(f"- {error}")
+    return "\n".join(lines)
+
+
+def _schema_record(root: Path, record: dict[str, Any], *, detected: bool) -> dict[str, Any]:
+    path = str(record.get("path") or "")
+    schema_path = root / path
+    if not schema_path.exists():
+        raise FileNotFoundError(f"Schema listed in index does not exist: {path}")
+    return {
+        "id": record.get("id"),
+        "path": _display_path(root, schema_path),
+        "detected": detected,
+    }
+
+
+def _display_path(root: Path, path: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _validate_value(value: Any, schema: dict[str, Any], path: str, errors: list[str]) -> None:

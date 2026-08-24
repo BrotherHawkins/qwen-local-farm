@@ -125,6 +125,16 @@ For machine-readable inspection, use `python qwen.py farm status --json` for a r
 
 Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, and doctor reports. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
 
+Validate a JSON artifact before handing it to a script or downstream AI workflow:
+
+```bash
+python qwen.py farm schema validate .run/reports/setup-doctor.json
+python qwen.py farm schema validate .run/reports/setup-doctor.json --json
+python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+```
+
+Without `--schema`, validation auto-detects the current core farm artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means the artifact/schema could not be read or inferred.
+
 For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
 
 When a later synthesis step needs a little more source evidence, ask summarize mode for verified verbatim snippets:

@@ -142,6 +142,30 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.agent, "default")
         self.assertEqual(args.profile, "local-8gb")
 
+    def test_parse_args_accepts_farm_schema_validate(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "schema",
+                "validate",
+                "artifact.json",
+                "--schema",
+                "schemas/farm-doctor.schema.json",
+                "--json",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "schema")
+        self.assertEqual(args.schema_command, "validate")
+        self.assertEqual(args.json_path, "artifact.json")
+        self.assertEqual(args.schema, "schemas/farm-doctor.schema.json")
+        self.assertTrue(args.json)
+
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
             args = qwen.parse_args()
@@ -300,6 +324,89 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class FarmHandlerTests(unittest.TestCase):
+    def test_schema_validate_json_prints_result(self) -> None:
+        args = argparse.Namespace(
+            farm_command="schema",
+            schema_command="validate",
+            json_path="artifact.json",
+            schema="schemas/farm-doctor.schema.json",
+            json=True,
+        )
+        result = {"schema_version": 1, "valid": True, "exit_code": 0, "errors": []}
+
+        with (
+            patch("src.qwen_farm_schema.validate_artifact", return_value=result) as validate_artifact,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        validate_artifact.assert_called_once_with(
+            root=qwen.ROOT,
+            artifact_path=Path("artifact.json"),
+            schema_reference="schemas/farm-doctor.schema.json",
+        )
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), result)
+
+    def test_schema_validate_markdown_prints_result(self) -> None:
+        args = argparse.Namespace(
+            farm_command="schema",
+            schema_command="validate",
+            json_path="artifact.json",
+            schema=None,
+            json=False,
+        )
+        result = {"schema_version": 1, "valid": True, "exit_code": 0, "errors": []}
+
+        with (
+            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
+            patch("src.qwen_farm_schema.render_validation_result", return_value="Valid: artifact.json") as render,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        render.assert_called_once_with(result)
+        printed.assert_called_once_with("Valid: artifact.json")
+
+    def test_schema_validate_exits_on_validation_failure(self) -> None:
+        args = argparse.Namespace(
+            farm_command="schema",
+            schema_command="validate",
+            json_path="artifact.json",
+            schema=None,
+            json=False,
+        )
+        result = {"schema_version": 1, "valid": False, "exit_code": 1, "errors": ["bad"]}
+
+        with (
+            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
+            patch("src.qwen_farm_schema.render_validation_result", return_value="Invalid: artifact.json"),
+            patch("builtins.print"),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                qwen.handle_farm(args)
+
+        self.assertEqual(raised.exception.code, 1)
+
+    def test_schema_validate_exits_on_input_error(self) -> None:
+        args = argparse.Namespace(
+            farm_command="schema",
+            schema_command="validate",
+            json_path="missing.json",
+            schema=None,
+            json=True,
+        )
+        result = {"schema_version": 1, "valid": False, "exit_code": 2, "errors": ["missing"]}
+
+        with (
+            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
+            patch("builtins.print"),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                qwen.handle_farm(args)
+
+        self.assertEqual(raised.exception.code, 2)
+
     def test_farm_doctor_json_prints_json_report(self) -> None:
         args = argparse.Namespace(
             farm_command="doctor",

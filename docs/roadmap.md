@@ -166,6 +166,7 @@ Current state:
 - Agent responses are plain model text.
 - Some benchmark scripts write JSON records, but normal agent outputs are not schema-driven yet.
 - The first tracked schema contracts exist for core farm status, job result, status CLI, and doctor JSON artifacts.
+- A public `farm schema validate` command validates core JSON artifacts against tracked schemas.
 
 Roadmap:
 
@@ -220,7 +221,7 @@ Open questions:
 
 Likely next PR:
 
-- Extend schemas to post-run package artifacts, or add a public schema validation CLI once the core contracts prove useful.
+- Extend schemas to post-run package artifacts now that public schema validation exists.
 
 ## 4. Chunking Larger Context
 
@@ -503,7 +504,8 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: verified verbatim source snippets for `summarize`, with deterministic ranking and compact diagnostics.
 - Implemented: first AI-facing usage doc.
 - Implemented: first output schema folder and model-free validation helper.
-- Next: post-run package schemas or public schema validation CLI.
+- Implemented: public schema validation CLI.
+- Next: post-run package schemas.
 
 ### Milestone 2a: Early Mode Rollout
 

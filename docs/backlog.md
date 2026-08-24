@@ -80,7 +80,7 @@ Status values:
 | BL-0065 | Open | 0014 | Reserved prompt-wrapper budget | Let callers reserve prompt space around a bundle so total downstream prompt size, not just bundle size, fits. |
 | BL-0066 | Open | 0014 | Budget planning for snippet packs | Add similar size estimation and optional caps to snippet-only packs. |
 | BL-0067 | Open | 0016 | Schemas for post-run package artifacts | Add schemas for timing summaries, snippet packs, synthesis bundles, dogfood history, and comparison outputs after the core status/result contracts land. |
-| BL-0068 | Open | 0016 | Public schema validation CLI | Add `farm schema validate <path>` or similar if first-pass schemas land without a public validator command. |
+| BL-0068 | Implemented | 0016, 0017 | Public schema validation CLI | 0017 implemented `farm schema validate <path>` with explicit schema selection, auto-detection, JSON output, and script-friendly exit codes. |
 | BL-0069 | Open | 0016 | Schema version migration guidance | Define compatibility and migration guidance across persisted farm artifact versions and newer CLI/report envelope versions. |
 | BL-0070 | Open | 0016 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize. |
 | BL-0071 | Open | 0016 | Strict schema mode | Add a stricter validation mode that rejects unknown/additional fields after artifact contracts mature. |

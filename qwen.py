@@ -361,6 +361,25 @@ def handle_farm(args: argparse.Namespace) -> None:
             print(qwen_farm_doctor.render_doctor_markdown(report))
         return
 
+    if args.farm_command == "schema":
+        from src import qwen_farm_schema
+
+        if args.schema_command == "validate":
+            result = qwen_farm_schema.validate_artifact(
+                root=ROOT,
+                artifact_path=Path(args.json_path),
+                schema_reference=args.schema,
+            )
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(qwen_farm_schema.render_validation_result(result))
+            if int(result["exit_code"]) != 0:
+                raise SystemExit(int(result["exit_code"]))
+            return
+
+        raise RuntimeError(f"Unknown farm schema command: {args.schema_command}")
+
     if args.farm_command == "dogfood":
         from src import qwen_farm_dogfood
 
@@ -517,6 +536,14 @@ def parse_args() -> argparse.Namespace:
     farm_doctor.add_argument("--output")
     farm_doctor.add_argument("--agent", default="default")
     farm_doctor.add_argument("--profile")
+
+    farm_schema = farm_subparsers.add_parser("schema")
+    farm_schema_subparsers = farm_schema.add_subparsers(dest="schema_command", required=True)
+
+    schema_validate = farm_schema_subparsers.add_parser("validate")
+    schema_validate.add_argument("json_path")
+    schema_validate.add_argument("--schema")
+    schema_validate.add_argument("--json", action="store_true")
 
     farm_run = farm_subparsers.add_parser("run")
     farm_run.add_argument("input_folder")

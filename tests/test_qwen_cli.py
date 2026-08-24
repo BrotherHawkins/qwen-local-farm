@@ -142,6 +142,32 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.agent, "default")
         self.assertEqual(args.profile, "local-8gb")
 
+    def test_parse_args_accepts_farm_recommend(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "recommend",
+                "--json",
+                "--output",
+                ".run/recommendations",
+                "--agent",
+                "qwen8",
+                "--profile",
+                "local-12gb",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "recommend")
+        self.assertTrue(args.json)
+        self.assertEqual(args.output, ".run/recommendations")
+        self.assertEqual(args.agent, "qwen8")
+        self.assertEqual(args.profile, "local-12gb")
+
     def test_parse_args_accepts_farm_schema_validate(self) -> None:
         with patch.object(
             sys,
@@ -504,6 +530,58 @@ class FarmHandlerTests(unittest.TestCase):
 
         render.assert_called_once_with(report)
         printed.assert_called_once_with("# Farm Doctor")
+
+    def test_farm_recommend_json_prints_json_report(self) -> None:
+        args = argparse.Namespace(
+            farm_command="recommend",
+            json=True,
+            output="out",
+            agent="default",
+            profile="local-8gb",
+        )
+        report = {"schema_version": 1, "status": "ready"}
+
+        with (
+            patch("src.qwen_farm_recommend.build_recommendation_report", return_value=report) as build,
+            patch("src.qwen_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))) as write,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["agent_id"], "default")
+        self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
+        self.assertEqual(build.call_args.kwargs["output_dir"], Path("out"))
+        write.assert_called_once_with(report)
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), report)
+
+    def test_farm_recommend_markdown_prints_paths(self) -> None:
+        args = argparse.Namespace(
+            farm_command="recommend",
+            json=False,
+            output=None,
+            agent="default",
+            profile=None,
+        )
+        report = {"schema_version": 1, "status": "ready"}
+
+        with (
+            patch("src.qwen_farm_recommend.build_recommendation_report", return_value=report),
+            patch("src.qwen_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))),
+            patch("src.qwen_farm_recommend.render_recommendation_markdown", return_value="# Farm Recommendation") as render,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        render.assert_called_once_with(report)
+        printed.assert_has_calls(
+            [
+                call("# Farm Recommendation"),
+                call("Recommendation JSON: rec.json"),
+                call("Recommendation Markdown: rec.md"),
+            ]
+        )
 
     def test_status_json_prints_json_envelope(self) -> None:
         args = argparse.Namespace(farm_command="status", run_id="farm-run-1", json=True)

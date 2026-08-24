@@ -33,14 +33,14 @@ Status values:
 | BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
 | BL-0019 | Implemented | 0002, 0013 | `farm status --json` | 0013 implemented machine-readable JSON output for farm overview and single-run inspection. |
 | BL-0020 | Implemented | 0003, 0006, 0015 | `farm doctor` for machine, Ollama, and tokenizer inspection | 0015 implemented read-only human/JSON setup reports with tokenizer readiness and next-step guidance for less technical users. |
-| BL-0021 | Open | 0003, 0006, 0015 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance; 0015 only reports conservative static guidance. |
+| BL-0021 | Implemented | 0003, 0006, 0015, 0020 | Benchmark-based profile recommendation | 0020 implemented measured local profile, chunking, resource-mode, and concurrency recommendations. |
 | BL-0022 | Open | 0003, 0006, 0015 | Automatic config writing from doctor output | Let an assistant or user safely write `.qwen-farm.json`, including tokenizer-aware chunk settings when ready; 0015 remains read-only. |
 | BL-0023 | Open | 0003, 0015 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity; 0015 only reports current setup and next commands. |
 | BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
 | BL-0025 | Open | 0003 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures. |
 | BL-0026 | Open | 0003 | Remote/frontier model profiles | Allow profile-style config for non-local model execution if supported later. |
 | BL-0027 | Implemented | 0004 | Bounded file-job scheduler concurrency | Implemented by 0004. |
-| BL-0028 | Open | 0004, 0015 | Safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL` | Likely belongs with `farm doctor`; 0015 may include conservative static guidance but no benchmark-based recommendation. |
+| BL-0028 | Implemented | 0004, 0015, 0020 | Safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL` | 0020 implemented conservative recommendations for farm worker slots and Ollama request parallelism. |
 | BL-0029 | Open | 0004, 0015 | CLI helpers for starting Ollama with recommended concurrency env vars | Keep separate from scheduler behavior; 0015 does not start services or set environment variables. |
 | BL-0030 | Open | 0004 | Dynamic scheduler backoff after memory or timeout failures | Related to BL-0025, but scheduler-specific. |
 | BL-0031 | Open | 0004 | Cross-run scheduling and background workers | Coordinate work across multiple submitted runs. |
@@ -84,6 +84,7 @@ Status values:
 | BL-0069 | Open | 0016 | Schema version migration guidance | Define compatibility and migration guidance across persisted farm artifact versions and newer CLI/report envelope versions. |
 | BL-0070 | Open | 0016 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize. |
 | BL-0071 | Open | 0016 | Strict schema mode | Add a stricter validation mode that rejects unknown/additional fields after artifact contracts mature. |
+| BL-0072 | Open | 0020 | Resource-aware runtime mode and routing | Add first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes that can select or enforce agent/model placement after 0020 establishes recommendation vocabulary. |
 
 ## Notes
 

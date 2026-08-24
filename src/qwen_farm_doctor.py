@@ -256,6 +256,7 @@ def build_doctor_report(
         "runtime": runtime,
         "tokenizers": tokenizer,
         "runs": recent_runs(root),
+        "profile_recommendation": latest_profile_recommendation(root),
         "checks": checks,
         "recommendations": recommendations,
         "report_paths": {
@@ -348,6 +349,29 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
             continue
         lines.append(f"- `{run.get('run_id')}`: `{run.get('status')}` `{run.get('mode')}` `{run.get('updated_at')}`")
 
+    profile_recommendation = (
+        report.get("profile_recommendation")
+        if isinstance(report.get("profile_recommendation"), dict)
+        else {}
+    )
+    lines.extend(["", "## Profile Recommendation", ""])
+    if profile_recommendation.get("exists"):
+        lines.extend(
+            [
+                f"- Status: `{profile_recommendation.get('status')}`",
+                f"- Generated: `{profile_recommendation.get('generated_at') or ''}`",
+                f"- Profile: `{profile_recommendation.get('profile') or ''}`",
+                f"- Resource mode: `{profile_recommendation.get('resource_mode') or ''}`",
+                f"- Parallel jobs: `{profile_recommendation.get('parallel_jobs') or ''}`",
+                f"- `OLLAMA_NUM_PARALLEL`: `{profile_recommendation.get('ollama_num_parallel') or ''}`",
+                f"- JSON: `{profile_recommendation.get('path') or ''}`",
+            ]
+        )
+    else:
+        lines.append(
+            f"- Missing measured recommendation. Run: `{profile_recommendation.get('command') or 'python qwen.py farm recommend'}`"
+        )
+
     lines.extend(["", "## Checks", "", "| Check | Status | Message |", "| --- | --- | --- |"])
     for item in report.get("checks") or []:
         if not isinstance(item, dict):
@@ -385,3 +409,59 @@ def write_doctor_report(report: dict[str, Any]) -> tuple[Path, Path]:
     markdown_path.write_text(render_doctor_markdown(report), encoding="utf-8")
     json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return markdown_path, json_path
+
+
+def latest_profile_recommendation(root: Path) -> dict[str, Any]:
+    path = root / ".run" / "recommendations" / "farm-recommendation.json"
+    if not path.exists():
+        return {
+            "exists": False,
+            "path": str(path),
+            "status": "missing",
+            "generated_at": None,
+            "command": "python qwen.py farm recommend",
+        }
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "exists": True,
+            "path": str(path),
+            "status": "unreadable",
+            "generated_at": None,
+            "error": str(exc),
+            "command": "python qwen.py farm recommend",
+        }
+    if not isinstance(data, dict):
+        return {
+            "exists": True,
+            "path": str(path),
+            "status": "unreadable",
+            "generated_at": None,
+            "error": "Recommendation JSON must contain an object.",
+            "command": "python qwen.py farm recommend",
+        }
+
+    profile = data.get("profile") if isinstance(data.get("profile"), dict) else {}
+    resource_mode = data.get("resource_mode") if isinstance(data.get("resource_mode"), dict) else {}
+    concurrency = data.get("concurrency") if isinstance(data.get("concurrency"), dict) else {}
+    parallel_jobs = concurrency.get("parallel_jobs") if isinstance(concurrency.get("parallel_jobs"), dict) else {}
+    ollama_parallel = (
+        concurrency.get("ollama_num_parallel")
+        if isinstance(concurrency.get("ollama_num_parallel"), dict)
+        else {}
+    )
+    return {
+        "exists": True,
+        "path": str(path),
+        "status": data.get("status"),
+        "generated_at": data.get("generated_at"),
+        "agent": data.get("agent"),
+        "model": data.get("model"),
+        "profile": profile.get("recommended"),
+        "resource_mode": resource_mode.get("recommended"),
+        "parallel_jobs": parallel_jobs.get("recommended"),
+        "ollama_num_parallel": ollama_parallel.get("recommended"),
+        "command": "python qwen.py farm recommend",
+    }

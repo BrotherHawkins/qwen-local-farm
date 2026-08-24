@@ -178,6 +178,27 @@ When token budgets are omitted, the farm uses conservative derived budgets and c
 
 For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
 
+For measured local settings guidance, use the recommendation workflow:
+
+```bash
+python qwen.py farm doctor --json
+python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+```
+
+`farm doctor` stays read-only and fast. It reports whether a latest recommendation exists and points to `farm recommend` when missing. `farm recommend` writes `.run/recommendations/farm-recommendation.json` plus Markdown, runs only a tiny user-invoked Ollama probe when the selected model is ready, and never edits config or service environment variables.
+
+Primary AIs should read the recommendation JSON before suggesting settings. Treat `parallel_jobs` as farm worker slots and `OLLAMA_NUM_PARALLEL` as a separate Ollama service setting. Resource mode is recommendation vocabulary:
+
+| Mode | Meaning |
+| --- | --- |
+| `gpu` | Prefer speed through GPU placement. |
+| `hybrid` | Use GPU when available, while allowing CPU/RAM fallback or partial offload. |
+| `cpu` | Avoid VRAM pressure and accept slower runs. |
+| `auto` | More local evidence is needed before choosing a concrete mode. |
+
+If `status` is not `ready`, explain the warnings and next actions rather than treating the settings as measured truth. If confidence is low, run a small dogfood folder before changing `.qwen-farm.json`.
+
 Use snippets when:
 
 - a terse summary will be fed to a frontier model for later synthesis

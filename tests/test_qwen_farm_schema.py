@@ -10,6 +10,7 @@ from src import (
     qwen_farm,
     qwen_farm_dogfood,
     qwen_farm_doctor,
+    qwen_farm_recommend,
     qwen_farm_schema,
     qwen_farm_snippet_packs,
     qwen_farm_status,
@@ -47,6 +48,14 @@ def ready_tokenizers(**_kwargs: object) -> dict[str, object]:
         "cache_dir": ".run/tokenizers/hf-cache",
         "models": [{"model": "qwen3.5:4b", "ready": True, "offline_verified": True}],
     }
+
+
+def ready_ollama(method: str, url: str, **_kwargs: object) -> dict[str, Any]:
+    if method == "GET" and url.endswith("/api/tags"):
+        return {"models": [{"name": "qwen3.5:4b"}]}
+    if method == "POST" and url.endswith("/api/chat"):
+        return {"message": {"content": "ready"}}
+    raise AssertionError(f"Unexpected request: {method} {url}")
 
 
 def load_schema(name: str) -> dict[str, Any]:
@@ -278,6 +287,20 @@ class FarmSchemaTests(unittest.TestCase):
 
             self.assertValid(report, "farm-doctor.schema.json")
 
+    def test_generated_recommendation_report_validates(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report = qwen_farm_recommend.build_recommendation_report(
+                root=Path(temp_dir),
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                generated_at="2026-08-24T00:00:00Z",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=ready_ollama,
+                tokenizer_status_fn=ready_tokenizers,
+            )
+
+            self.assertValid(report, "farm-recommendation.schema.json")
+
     def test_generated_post_run_packages_validate(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -411,6 +434,18 @@ class FarmSchemaTests(unittest.TestCase):
             (
                 {
                     "schema_version": 1,
+                    "resource_mode": {},
+                    "profile": {},
+                    "concurrency": {},
+                    "summarize": {},
+                    "evidence": {},
+                    "next_actions": [],
+                },
+                "schemas/farm-recommendation.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
                     "limits": {"source": "selected"},
                     "snippets": [],
                     "diagnostics": {},
@@ -483,6 +518,56 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertEqual(result["schema"]["path"], "schemas/farm-doctor.schema.json")
             self.assertTrue(result["schema"]["detected"])
 
+    def test_validate_artifact_auto_detects_recommendation_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "farm-recommendation.json"
+            report = qwen_farm_recommend.build_recommendation_report(
+                root=Path(temp_dir),
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                generated_at="2026-08-24T00:00:00Z",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=ready_ollama,
+                tokenizer_status_fn=ready_tokenizers,
+            )
+            artifact.write_text(json.dumps(report), encoding="utf-8")
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["schema"]["path"], "schemas/farm-recommendation.schema.json")
+            self.assertTrue(result["schema"]["detected"])
+
+    def test_validate_artifact_accepts_recommendation_schema_path_and_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "farm-recommendation.json"
+            report = qwen_farm_recommend.build_recommendation_report(
+                root=Path(temp_dir),
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                generated_at="2026-08-24T00:00:00Z",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=ready_ollama,
+                tokenizer_status_fn=ready_tokenizers,
+            )
+            artifact.write_text(json.dumps(report), encoding="utf-8")
+
+            by_path = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "schemas/farm-recommendation.schema.json",
+            )
+            by_id = qwen_farm_schema.validate_artifact(
+                ROOT,
+                artifact,
+                "https://qwen-local-farm.local/schemas/farm-recommendation.schema.json",
+            )
+
+            self.assertTrue(by_path["valid"])
+            self.assertTrue(by_id["valid"])
+            self.assertEqual(by_path["schema"]["path"], "schemas/farm-recommendation.schema.json")
+            self.assertEqual(by_id["schema"]["path"], "schemas/farm-recommendation.schema.json")
+
     def test_validate_artifact_accepts_package_schema_path_and_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -521,6 +606,39 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertFalse(result["valid"])
             self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
             self.assertIn("$.counts: missing required field 'runs'", result["errors"])
+
+    def test_validate_artifact_reports_malformed_recommendation_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "farm-recommendation.json"
+            artifact.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "generated_at": "2026-08-24T00:00:00Z",
+                        "status": "ready",
+                        "agent": "default",
+                        "model": "qwen3.5:4b",
+                        "resource_mode": {"recommended": "rocket", "confidence": "high", "reason": "bad"},
+                        "profile": {"recommended": "local-8gb", "confidence": "high", "reason": "ok"},
+                        "concurrency": {
+                            "parallel_jobs": {"recommended": 1, "confidence": "high", "reason": "ok"},
+                            "ollama_num_parallel": {"recommended": 1, "confidence": "high", "reason": "ok"},
+                        },
+                        "summarize": {"chunk_strategy": "token", "confidence": "high", "reason": "ok"},
+                        "evidence": {"benchmark": {}, "ollama": {}, "runtime": {}, "tokenizers": {}},
+                        "warnings": [],
+                        "next_actions": [],
+                        "report_paths": {"json": "x.json", "markdown": "x.md"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+
+            self.assertFalse(result["valid"])
+            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertIn("$.resource_mode.recommended: expected one of", "\n".join(result["errors"]))
 
     def test_validate_artifact_reports_malformed_package_schema_errors(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-recommendation.schema.json",
+  "title": "Qwen Local Farm Recommendation Report",
+  "description": "Benchmark-based local farm recommendation JSON written by python qwen.py farm recommend.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "status",
+    "agent",
+    "model",
+    "resource_mode",
+    "profile",
+    "concurrency",
+    "summarize",
+    "evidence",
+    "warnings",
+    "next_actions",
+    "report_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "ready_with_warnings", "needs_setup", "unknown"]
+    },
+    "agent": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "resource_mode": {
+      "type": "object",
+      "required": ["recommended", "confidence", "reason"],
+      "properties": {
+        "recommended": {
+          "type": "string",
+          "enum": ["gpu", "hybrid", "cpu", "auto"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["recommended", "confidence", "reason"],
+      "properties": {
+        "recommended": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "concurrency": {
+      "type": "object",
+      "required": ["parallel_jobs", "ollama_num_parallel"],
+      "properties": {
+        "parallel_jobs": {
+          "type": "object",
+          "required": ["recommended", "confidence", "reason"],
+          "properties": {
+            "recommended": {
+              "type": "integer"
+            },
+            "current": {
+              "type": ["integer", "null"]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": ["low", "medium", "high"]
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        },
+        "ollama_num_parallel": {
+          "type": "object",
+          "required": ["recommended", "confidence", "reason"],
+          "properties": {
+            "recommended": {
+              "type": "integer"
+            },
+            "current": {
+              "type": ["integer", "null"]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": ["low", "medium", "high"]
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "summarize": {
+      "type": "object",
+      "required": ["chunk_strategy", "confidence", "reason"],
+      "properties": {
+        "chunk_strategy": {
+          "type": "string",
+          "enum": ["character", "token"]
+        },
+        "chunk_tokens": {
+          "type": ["integer", "null"]
+        },
+        "reduce_tokens": {
+          "type": ["integer", "null"]
+        },
+        "chunk_chars": {
+          "type": ["integer", "null"]
+        },
+        "reduce_chars": {
+          "type": ["integer", "null"]
+        },
+        "token_safety_margin": {
+          "type": "number"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["benchmark", "ollama", "runtime", "tokenizers"],
+      "properties": {
+        "benchmark": {
+          "type": "object"
+        },
+        "ollama": {
+          "type": "object"
+        },
+        "runtime": {
+          "type": "object"
+        },
+        "tokenizers": {
+          "type": "object"
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "message"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["required", "recommended", "optional"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "report_paths": {
+      "type": "object",
+      "required": ["json", "markdown"],
+      "properties": {
+        "json": {
+          "type": "string"
+        },
+        "markdown": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

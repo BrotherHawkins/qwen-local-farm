@@ -56,12 +56,11 @@ The human should be able to enable or disable farm availability, but should not 
 
 ## Near-Term Priorities
 
-1. Improve chunk quality for long Markdown/article inputs with heading ancestry, overlap, and clearer provenance.
-2. Make long-running work easier to observe and recover with in-progress chunk/reduce status and failed-run retry helpers.
-3. Give callers better file-discovery controls such as include/exclude overrides.
-4. Keep setup guidance improving for less-technical users through doctor, recommend, apply, and model-installation guidance.
-5. Mature post-run packages so summaries, snippets, and bundles are easier to feed into frontier-model workflows.
-6. Add new modes only after the summarize/chunk/status foundation stays pleasant under dogfood pressure.
+1. Make partial failures easier to recover with failed-run retry helpers.
+2. Give callers better file-discovery controls such as include/exclude overrides.
+3. Keep setup guidance improving for less-technical users through doctor, recommend, apply, and model-installation guidance.
+4. Mature post-run packages so summaries, snippets, and bundles are easier to feed into frontier-model workflows.
+5. Add new modes only after the summarize/chunk/status foundation stays pleasant under dogfood pressure.
 
 ## MVP Decisions
 
@@ -235,13 +234,11 @@ Current state:
 - Character chunking uses paragraph-aware splitting with map/reduce summarization.
 - Token-aware chunking is opt-in for supported Qwen/Ollama tokenizers.
 - Chunk and reduce model calls have timing metrics and configurable retry limits.
+- Chunked summarize jobs expose active chunk map and reduce progress in normal status artifacts.
 
 Roadmap:
 
 - Treat chunking as its own sub-feature with its own roadmap: [docs/chunking-roadmap.md](chunking-roadmap.md).
-- Preserve Markdown heading ancestry in chunk inputs and outputs.
-- Add optional chunk overlap to reduce boundary loss.
-- Surface in-progress chunk and reduce status before a job finishes.
 - Auto-chunk only for modes where chunking is naturally safe:
   - `summarize`
   - `extract`
@@ -256,8 +253,6 @@ Roadmap:
 
 Near-term candidates:
 
-- Markdown heading ancestry plus optional chunk overlap.
-- In-progress chunk and reduce status visibility.
 - Failed-file or failed-chunk retry helpers.
 
 ## 5. Modes As Rails
@@ -545,9 +540,9 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: map/reduce summarization for oversized summarize inputs.
 - Implemented: opt-in tokenizer-aware chunk sizing for supported Qwen/Ollama agents.
 - Implemented: configurable chunk/reduce retry limits.
-- Next: Markdown heading ancestry.
-- Next: optional chunk overlap.
-- Next: in-progress chunk and reduce status visibility.
+- Implemented: Markdown heading ancestry.
+- Implemented: optional chunk overlap.
+- Implemented: in-progress chunk and reduce status visibility.
 - Later: rerun failed chunks from prior runs.
 
 ### Milestone 4: Worker Farm
@@ -578,11 +573,10 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ## Groomed Next Decisions
 
-These are the active product decisions after the first 26 change specs:
+These are the active product decisions after the first 27 change specs:
 
-1. Should `0026` combine Markdown heading ancestry with optional chunk overlap, or keep overlap as its own later spec?
-2. What should in-progress chunk/reduce status expose without making `farm-status.json` noisy?
-3. Should failed-file retry be a post-run helper, a `farm run --retry-failed <run-id>` mode, or both?
-4. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
-5. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
-6. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?
+1. Should failed-file retry be a post-run helper, a `farm run --retry-failed <run-id>` mode, or both?
+2. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
+3. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
+4. Which post-run package controls matter first: field filters, fitting policy, or snippet-pack budgets?
+5. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?

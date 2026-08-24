@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from src.qwen_farm_files import utc_timestamp
-from src.qwen_farm_timing import duration_label
+from src.qwen_farm_timing import duration_between, duration_label
 
 
 COUNT_STATUSES = [
@@ -66,6 +66,42 @@ def write_status(run_dir: Path, status: dict[str, Any]) -> None:
     status["updated_at"] = utc_timestamp()
     write_json(run_status_path(run_dir), status)
     run_status_markdown_path(run_dir).write_text(render_status_markdown(status), encoding="utf-8")
+
+
+def progress_summary(job: dict[str, Any]) -> str:
+    progress = job.get("progress") if isinstance(job.get("progress"), dict) else {}
+    if not progress:
+        return ""
+    phase = str(progress.get("phase") or "")
+    chunks = progress.get("chunks") if isinstance(progress.get("chunks"), dict) else {}
+    reduce = progress.get("reduce") if isinstance(progress.get("reduce"), dict) else {}
+    current_call = progress.get("current_call") if isinstance(progress.get("current_call"), dict) else {}
+    parts = [phase] if phase else []
+    total = chunks.get("total")
+    if isinstance(total, int) and total > 0:
+        complete = chunks.get("complete", 0)
+        running = chunks.get("current")
+        chunk_text = f"{complete}/{total} chunks complete"
+        if running:
+            chunk_text += f", {running} running"
+        parts.append(chunk_text)
+    if phase == "reduce":
+        generation = reduce.get("generation")
+        batch_index = reduce.get("batch_index")
+        batch_total = reduce.get("batch_total")
+        if generation is not None:
+            reduce_text = f"reduce generation {generation}"
+            if batch_index is not None and batch_total is not None:
+                reduce_text += f" batch {batch_index}/{batch_total}"
+            parts.append(reduce_text)
+    if current_call:
+        call_text = str(current_call.get("chunk_id") or current_call.get("kind") or "")
+        if call_text:
+            started_at = current_call.get("started_at")
+            duration = duration_between(str(started_at), utc_timestamp()) if started_at and current_call.get("status") == "running" else current_call.get("duration_ms")
+            label = duration_label(duration)
+            parts.append(f"{call_text}{f' {label}' if label else ''}")
+    return "; ".join(parts)
 
 
 def render_status_markdown(status: dict[str, Any]) -> str:
@@ -163,6 +199,24 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             f"`{duration_label(timing.get('queue_wait_ms'))}` | `{duration_label(timing.get('duration_ms'))}` | "
             f"`{result}` | {error} |"
         )
+
+    active_jobs = [job for job in status.get("jobs", []) if job.get("status") == "running" and job.get("progress")]
+    if active_jobs:
+        lines.extend(
+            [
+                "",
+                "## Active Jobs",
+                "",
+                "| Job | Phase | Progress |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for job in active_jobs:
+            progress = job.get("progress") if isinstance(job.get("progress"), dict) else {}
+            lines.append(
+                f"| `{job.get('job_id', '')}` | `{progress.get('phase', '')}` | "
+                f"{progress_summary(job)} |"
+            )
 
     skipped = status.get("skipped_files") or []
     if skipped:

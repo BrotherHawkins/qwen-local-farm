@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 27 |
+| Implemented | 28 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -42,9 +42,9 @@ This is advisory, not a lifecycle state. See [../backlog.md](../backlog.md) for 
 
 | Rank | Candidate | Backlog |
 | ---: | --- | --- |
-| 1 | Markdown heading ancestry plus optional chunk overlap | BL-0015, BL-0035 |
-| 2 | In-progress chunk and reduce status visibility | BL-0038 |
-| 3 | Retry failed files from a previous run | BL-0087 |
+| 1 | Retry failed files from a previous run | BL-0087 |
+| 2 | Skip-list overrides | BL-0008 |
+| 3 | Hardware-specific model installation guidance | BL-0023 |
 
 ## Implemented Specs
 
@@ -87,6 +87,7 @@ None.
 | 0024 | Implemented | Add | [0024-add-farm-collect.md](changes/0024-add-farm-collect.md) | Adds a post-run `farm collect` helper for flattening and indexing existing job result artifacts. |
 | 0025 | Implemented | Add | [0025-add-configurable-farm-failure-policy.md](changes/0025-add-configurable-farm-failure-policy.md) | Adds caller-configurable farm retry/timeout policy and independent chunk/reduce retries. |
 | 0026 | Implemented | Add | [0026-add-markdown-heading-ancestry-and-chunk-overlap.md](changes/0026-add-markdown-heading-ancestry-and-chunk-overlap.md) | Adds Markdown heading ancestry and opt-in chunk overlap to improve chunked summarize context. |
+| 0027 | Implemented | Add | [0027-add-in-progress-chunk-and-reduce-status.md](changes/0027-add-in-progress-chunk-and-reduce-status.md) | Adds active chunk map and reduce progress visibility to farm status artifacts. |
 
 ## Stale Drafts To Revisit
 

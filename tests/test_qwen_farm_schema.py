@@ -286,6 +286,104 @@ class FarmSchemaTests(unittest.TestCase):
         self.assertValid(overview, "farm-status-overview.schema.json")
         self.assertValid(run, "farm-status-run.schema.json")
 
+    def test_running_status_with_progress_validates(self) -> None:
+        status = {
+            "schema_version": "0.1",
+            "run_id": "farm-run-1",
+            "status": "running",
+            "mode": "summarize",
+            "agent": "default",
+            "model": "qwen-test:1b",
+            "runtime": {},
+            "input": {"path": "input", "kind": "folder"},
+            "output": {"path": "output"},
+            "counts": {
+                "queued": 0,
+                "running": 1,
+                "complete": 0,
+                "complete_with_warnings": 0,
+                "failed": 0,
+                "skipped": 0,
+                "total": 1,
+            },
+            "jobs": [
+                {
+                    "job_id": "job-0001",
+                    "status": "running",
+                    "input_path": "long.txt",
+                    "result_json": None,
+                    "result_md": None,
+                    "raw_response": None,
+                    "error": None,
+                    "warnings": [],
+                    "chunking": {"enabled": True, "strategy": "paragraph-token", "chunk_count": 3},
+                    "snippets": {},
+                    "timing": {
+                        "queued_at": "2026-08-24T00:00:00.000Z",
+                        "started_at": "2026-08-24T00:00:01.000Z",
+                        "completed_at": None,
+                        "queue_wait_ms": 1000,
+                        "duration_ms": None,
+                        "calls": [
+                            {
+                                "kind": "chunk_map",
+                                "file_path": "long.txt#chunk-0002",
+                                "chunk_id": "chunk-0002",
+                                "attempt": 1,
+                                "max_attempts": 2,
+                                "started_at": "2026-08-24T00:00:02.000Z",
+                                "completed_at": None,
+                                "duration_ms": None,
+                                "status": "running",
+                            }
+                        ],
+                    },
+                    "progress": {
+                        "phase": "chunk_map",
+                        "message": "Summarizing chunk 2 of 3.",
+                        "updated_at": "2026-08-24T00:00:02.000Z",
+                        "chunks": {
+                            "total": 3,
+                            "queued": 1,
+                            "running": 1,
+                            "complete": 1,
+                            "failed": 0,
+                            "current": "chunk-0002",
+                        },
+                        "reduce": {
+                            "generation": None,
+                            "batch_index": None,
+                            "batch_total": None,
+                            "complete": 0,
+                        },
+                        "current_call": {
+                            "kind": "chunk_map",
+                            "file_path": "long.txt#chunk-0002",
+                            "chunk_id": "chunk-0002",
+                            "attempt": 1,
+                            "max_attempts": 2,
+                            "started_at": "2026-08-24T00:00:02.000Z",
+                            "completed_at": None,
+                            "duration_ms": None,
+                            "status": "running",
+                        },
+                    },
+                }
+            ],
+            "skipped_files": [],
+            "created_at": "2026-08-24T00:00:00Z",
+            "updated_at": "2026-08-24T00:00:02Z",
+            "timing": {
+                "created_at": "2026-08-24T00:00:00.000Z",
+                "started_at": "2026-08-24T00:00:00.000Z",
+                "completed_at": None,
+                "duration_ms": None,
+            },
+        }
+
+        self.assertValid(status, "farm-status.schema.json")
+        self.assertValid(qwen_farm_status.run_status_json(status), "farm-status-run.schema.json")
+
     def test_generated_doctor_report_validates(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             report = qwen_farm_doctor.build_doctor_report(

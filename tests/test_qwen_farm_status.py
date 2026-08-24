@@ -67,6 +67,62 @@ class StatusCalculationTests(unittest.TestCase):
 
         self.assertIn("`2/3/4`", markdown)
 
+    def test_status_markdown_shows_active_job_progress(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-1",
+                "status": "running",
+                "mode": "summarize",
+                "agent": "default",
+                "model": "qwen-test",
+                "runtime": {
+                    "summarize": {},
+                    "concurrency": {},
+                },
+                "counts": {"total": 1, "running": 1},
+                "jobs": [
+                    {
+                        "job_id": "job-0001",
+                        "status": "running",
+                        "input_path": "input.txt",
+                        "result_md": None,
+                        "timing": {},
+                        "chunking": {"enabled": True, "strategy": "paragraph-token", "chunk_count": 4, "coverage": "full"},
+                        "snippets": {},
+                        "progress": {
+                            "phase": "chunk_map",
+                            "message": "Summarizing chunk 2 of 4.",
+                            "updated_at": "2026-08-24T12:00:00Z",
+                            "chunks": {
+                                "total": 4,
+                                "queued": 2,
+                                "running": 1,
+                                "complete": 1,
+                                "failed": 0,
+                                "current": "chunk-0002",
+                            },
+                            "reduce": {
+                                "generation": None,
+                                "batch_index": None,
+                                "batch_total": None,
+                                "complete": 0,
+                            },
+                            "current_call": {
+                                "kind": "chunk_map",
+                                "chunk_id": "chunk-0002",
+                                "started_at": "2026-08-24T12:00:00Z",
+                                "status": "running",
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertIn("## Active Jobs", markdown)
+        self.assertIn("chunk_map", markdown)
+        self.assertIn("1/4 chunks complete, chunk-0002 running", markdown)
+
     def test_farm_overview_json_wraps_runs(self) -> None:
         runs = [
             {
@@ -98,7 +154,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertEqual(envelope["runs"], [])
 
     def test_run_status_json_wraps_loaded_status(self) -> None:
-        status = {"run_id": "run-1", "status": "complete", "jobs": []}
+        status = {"run_id": "run-1", "status": "running", "jobs": [{"progress": {"phase": "reduce"}}]}
 
         envelope = qwen_farm_status.run_status_json(status)
 
@@ -106,3 +162,4 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertEqual(envelope["scope"], "run")
         self.assertEqual(envelope["run_id"], "run-1")
         self.assertEqual(envelope["run"], status)
+        self.assertEqual(envelope["run"]["jobs"][0]["progress"]["phase"], "reduce")

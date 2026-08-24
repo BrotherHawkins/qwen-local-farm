@@ -61,7 +61,13 @@ Status values:
 | BL-0046 | Open | 0007 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing. |
 | BL-0047 | Open | 0007 | Semantic snippet selection | Consider embedding-assisted or retrieval-assisted snippet selection after basic verified snippets work. |
 | BL-0048 | Open | 0007 | Snippet review states | Add accepted/rejected/superseded review state if snippet curation becomes a workflow. |
-| BL-0049 | Open | 0007, 0008 | Snippet quality benchmark history | 0008 implemented per-run diagnostics and dogfood comparison; durable historical dashboards remain open. |
+| BL-0049 | Implemented | 0007, 0008, 0009 | Snippet quality benchmark history | 0009 implemented local dogfood history records and baseline/candidate comparisons under `.run/dogfood_history/`. |
+| BL-0050 | Open | 0009 | Automatic frontier-model dogfood grading | Use a frontier model to assist scoring later, while keeping the first local history workflow manual and model-free. |
+| BL-0051 | Open | 0009 | Tracked aggregate dogfood history | Decide whether selected aggregate history should live in tracked docs once local records prove useful. |
+| BL-0052 | Open | 0009 | Dogfood quality dashboard or charts | Build charts or a small dashboard for quality and timing trends if JSON/Markdown comparisons become too hard to scan. |
+| BL-0053 | Open | 0009 | Statistical quality thresholds or CI gates | Define objective thresholds before adding pass/fail gates for subjective quality measures. |
+| BL-0054 | Open | 0009 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles. |
+| BL-0055 | Open | 0009 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows when additional farm modes mature. |
 
 ## Notes
 

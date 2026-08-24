@@ -120,3 +120,52 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
         self.assertEqual(args.run_id, "farm-run-1")
+
+    def test_parse_args_accepts_farm_dogfood_record(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "dogfood",
+                "record",
+                ".run/farm-results/run-1",
+                "--label",
+                "candidate",
+                "--notes",
+                "notes.json",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "dogfood")
+        self.assertEqual(args.dogfood_command, "record")
+        self.assertEqual(args.run_dir, ".run/farm-results/run-1")
+        self.assertEqual(args.label, "candidate")
+        self.assertEqual(args.notes, "notes.json")
+
+    def test_parse_args_accepts_farm_dogfood_compare(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "dogfood",
+                "compare",
+                "baseline.json",
+                "candidate.json",
+                "--output",
+                ".run/dogfood_history/comparisons",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "dogfood")
+        self.assertEqual(args.dogfood_command, "compare")
+        self.assertEqual(args.baseline_record, "baseline.json")
+        self.assertEqual(args.candidate_record, "candidate.json")
+        self.assertEqual(args.output, ".run/dogfood_history/comparisons")

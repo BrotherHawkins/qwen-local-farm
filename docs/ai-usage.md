@@ -196,6 +196,8 @@ python qwen.py farm run input-folder --mode summarize --snippets 3
 
 The farm ranks verified candidates before final selection. `result.md` stays clean and renders only selected snippets; `result.json` keeps score metadata on selected snippets. Inspect the `snippets` object in `result.json` or `farm-status.json` for selected/verified/requested counts plus compact drop diagnostics such as `unverified`, `low_signal`, `duplicate`, and `too_long`. Auto counts are best effort, while fixed counts remain strict.
 
+For dogfood comparisons, use `python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
+
 Example `.qwen-farm.json`:
 
 ```json

@@ -340,6 +340,27 @@ def stop_all() -> None:
 def handle_farm(args: argparse.Namespace) -> None:
     from src import qwen_farm
 
+    if args.farm_command == "doctor":
+        from src import qwen_farm_doctor
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "reports"
+        report = qwen_farm_doctor.build_doctor_report(
+            root=ROOT,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+            agent_id=args.agent,
+            profile=args.profile,
+            output_dir=output_dir,
+            find_ollama_fn=find_ollama,
+            request_json_fn=request_json,
+        )
+        qwen_farm_doctor.write_doctor_report(report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(qwen_farm_doctor.render_doctor_markdown(report))
+        return
+
     if args.farm_command == "dogfood":
         from src import qwen_farm_dogfood
 
@@ -490,6 +511,12 @@ def parse_args() -> argparse.Namespace:
 
     farm = subparsers.add_parser("farm")
     farm_subparsers = farm.add_subparsers(dest="farm_command", required=True)
+
+    farm_doctor = farm_subparsers.add_parser("doctor")
+    farm_doctor.add_argument("--json", action="store_true")
+    farm_doctor.add_argument("--output")
+    farm_doctor.add_argument("--agent", default="default")
+    farm_doctor.add_argument("--profile")
 
     farm_run = farm_subparsers.add_parser("run")
     farm_run.add_argument("input_folder")

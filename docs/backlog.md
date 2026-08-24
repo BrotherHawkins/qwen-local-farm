@@ -32,16 +32,16 @@ Status values:
 | BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |
 | BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
 | BL-0019 | Implemented | 0002, 0013 | `farm status --json` | 0013 implemented machine-readable JSON output for farm overview and single-run inspection. |
-| BL-0020 | Open | 0003, 0006 | `farm doctor` for machine, Ollama, and tokenizer inspection | Should produce human-readable and AI-readable setup reports, including tokenizer dependency/cache readiness and next-step guidance for less technical users. |
-| BL-0021 | Open | 0003, 0006 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance. |
-| BL-0022 | Open | 0003, 0006 | Automatic config writing from doctor output | Let an assistant or user safely write `.qwen-farm.json`, including tokenizer-aware chunk settings when ready. |
-| BL-0023 | Open | 0003 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity. |
+| BL-0020 | Implemented | 0003, 0006, 0015 | `farm doctor` for machine, Ollama, and tokenizer inspection | 0015 implemented read-only human/JSON setup reports with tokenizer readiness and next-step guidance for less technical users. |
+| BL-0021 | Open | 0003, 0006, 0015 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance; 0015 only reports conservative static guidance. |
+| BL-0022 | Open | 0003, 0006, 0015 | Automatic config writing from doctor output | Let an assistant or user safely write `.qwen-farm.json`, including tokenizer-aware chunk settings when ready; 0015 remains read-only. |
+| BL-0023 | Open | 0003, 0015 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity; 0015 only reports current setup and next commands. |
 | BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
 | BL-0025 | Open | 0003 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures. |
 | BL-0026 | Open | 0003 | Remote/frontier model profiles | Allow profile-style config for non-local model execution if supported later. |
 | BL-0027 | Implemented | 0004 | Bounded file-job scheduler concurrency | Implemented by 0004. |
-| BL-0028 | Open | 0004 | Safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL` | Likely belongs with `farm doctor`. |
-| BL-0029 | Open | 0004 | CLI helpers for starting Ollama with recommended concurrency env vars | Keep separate from scheduler behavior. |
+| BL-0028 | Open | 0004, 0015 | Safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL` | Likely belongs with `farm doctor`; 0015 may include conservative static guidance but no benchmark-based recommendation. |
+| BL-0029 | Open | 0004, 0015 | CLI helpers for starting Ollama with recommended concurrency env vars | Keep separate from scheduler behavior; 0015 does not start services or set environment variables. |
 | BL-0030 | Open | 0004 | Dynamic scheduler backoff after memory or timeout failures | Related to BL-0025, but scheduler-specific. |
 | BL-0031 | Open | 0004 | Cross-run scheduling and background workers | Coordinate work across multiple submitted runs. |
 | BL-0032 | Open | 0004 | Chunk-level parallelism using `concurrency.chunks` | Run chunks concurrently after file-level concurrency is stable. |

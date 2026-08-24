@@ -84,6 +84,15 @@ Tokenizer assets are cached under `.run/tokenizers/`, which is ignored by Git. V
 python qwen.py farm tokenizer status
 ```
 
+For read-only setup guidance, run:
+
+```bash
+python qwen.py farm doctor
+python qwen.py farm doctor --json
+```
+
+Doctor writes `.run/reports/setup-doctor.md` and `.run/reports/setup-doctor.json` for humans, scripts, and primary AIs. It inspects Python, Ollama, models, runtime config, tokenizer readiness, and recent runs without installing packages, downloading tokenizers, pulling models, starting services, or changing config.
+
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
 
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:

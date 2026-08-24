@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 15 |
+| Implemented | 16 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -65,6 +65,7 @@ None.
 | 0012 | Implemented | Add | [0012-add-run-id-lookup-for-post-run-helpers.md](changes/0012-add-run-id-lookup-for-post-run-helpers.md) | Lets post-run helper commands accept known farm run IDs as well as run directory paths. |
 | 0013 | Implemented | Add | [0013-add-farm-status-json.md](changes/0013-add-farm-status-json.md) | Adds machine-readable JSON output for `farm status` overview and single-run inspection. |
 | 0014 | Implemented | Add | [0014-add-synthesis-bundle-budget-planning.md](changes/0014-add-synthesis-bundle-budget-planning.md) | Adds size estimates and optional character/estimated-token caps for synthesis bundles. |
+| 0015 | Implemented | Add | [0015-add-farm-doctor.md](changes/0015-add-farm-doctor.md) | Adds a read-only farm doctor report for setup, model, runtime, tokenizer, and recent-run inspection. |
 
 ## Stale Drafts To Revisit
 

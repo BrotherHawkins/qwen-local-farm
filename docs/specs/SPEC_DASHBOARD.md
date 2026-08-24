@@ -21,7 +21,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 21 |
+| Implemented | 22 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -71,6 +71,7 @@ None.
 | 0018 | Implemented | Add | [0018-add-post-run-package-schemas.md](changes/0018-add-post-run-package-schemas.md) | Adds schemas and validator auto-detection for post-run timing, snippet, synthesis, and dogfood package artifacts. |
 | 0019 | Implemented | Add | [0019-add-dogfood-timing-history.md](changes/0019-add-dogfood-timing-history.md) | Adds local timing history records and comparisons for spotting dogfood performance regressions. |
 | 0020 | Implemented | Add | [0020-add-benchmark-based-profile-recommendations.md](changes/0020-add-benchmark-based-profile-recommendations.md) | Adds measured local profile, chunking, and concurrency recommendations for power users and doctor-guided setup. |
+| 0021 | Implemented | Add | [0021-add-safe-recommendation-config-apply.md](changes/0021-add-safe-recommendation-config-apply.md) | Adds a safe preview/write workflow for applying recommendation JSON to `.qwen-farm.json`. |
 
 ## Stale Drafts To Revisit
 

@@ -365,6 +365,23 @@ def handle_farm(args: argparse.Namespace) -> None:
         from src import qwen_farm_recommend
 
         output_dir = Path(args.output) if args.output else RUN_DIR / "recommendations"
+        if args.recommend_command == "apply":
+            report = qwen_farm_recommend.build_config_apply_report(
+                root=ROOT,
+                recommendation_path=Path(args.recommendation_path) if args.recommendation_path else None,
+                config_path=Path(args.config) if args.config else None,
+                output_dir=output_dir,
+                write=args.write,
+            )
+            json_path, markdown_path = qwen_farm_recommend.write_config_apply_report(report)
+            if args.json:
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+            else:
+                print(qwen_farm_recommend.render_config_apply_markdown(report))
+                print(f"Apply JSON: {json_path}")
+                print(f"Apply Markdown: {markdown_path}")
+            return
+
         report = qwen_farm_recommend.build_recommendation_report(
             root=ROOT,
             default_model=MODEL,
@@ -594,6 +611,14 @@ def parse_args() -> argparse.Namespace:
     farm_recommend.add_argument("--output")
     farm_recommend.add_argument("--agent", default="default")
     farm_recommend.add_argument("--profile")
+    farm_recommend_subparsers = farm_recommend.add_subparsers(dest="recommend_command", required=False)
+
+    farm_recommend_apply = farm_recommend_subparsers.add_parser("apply")
+    farm_recommend_apply.add_argument("recommendation_path", nargs="?")
+    farm_recommend_apply.add_argument("--config")
+    farm_recommend_apply.add_argument("--output")
+    farm_recommend_apply.add_argument("--write", action="store_true")
+    farm_recommend_apply.add_argument("--json", action="store_true")
 
     farm_schema = farm_subparsers.add_parser("schema")
     farm_schema_subparsers = farm_schema.add_subparsers(dest="schema_command", required=True)

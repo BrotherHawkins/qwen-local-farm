@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
+  "title": "Qwen Local Farm Config Apply Report",
+  "description": "Preview or write report from applying recommendation JSON to .qwen-farm.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "status",
+    "dry_run",
+    "recommendation_path",
+    "config_path",
+    "backup_path",
+    "recommendation",
+    "existing_config",
+    "proposed_config",
+    "changes",
+    "not_applied",
+    "warnings",
+    "next_actions",
+    "report_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["preview", "applied"]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "recommendation_path": {
+      "type": "string"
+    },
+    "config_path": {
+      "type": "string"
+    },
+    "backup_path": {
+      "type": ["string", "null"]
+    },
+    "recommendation": {
+      "type": "object",
+      "required": ["status", "agent", "model", "generated_at"],
+      "properties": {
+        "status": {
+          "type": ["string", "null"]
+        },
+        "agent": {
+          "type": ["string", "null"]
+        },
+        "model": {
+          "type": ["string", "null"]
+        },
+        "generated_at": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "existing_config": {
+      "type": "object"
+    },
+    "proposed_config": {
+      "type": "object"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "before", "after", "action"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "before": {},
+          "after": {},
+          "action": {
+            "type": "string",
+            "enum": ["add", "update", "remove"]
+          }
+        }
+      }
+    },
+    "not_applied": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "reason"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "message"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["required", "recommended", "optional"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "report_paths": {
+      "type": "object",
+      "required": ["json", "markdown"],
+      "properties": {
+        "json": {
+          "type": "string"
+        },
+        "markdown": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

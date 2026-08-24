@@ -167,6 +167,36 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/recommendations")
         self.assertEqual(args.agent, "qwen8")
         self.assertEqual(args.profile, "local-12gb")
+        self.assertIsNone(args.recommend_command)
+
+    def test_parse_args_accepts_farm_recommend_apply(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "recommend",
+                "apply",
+                ".run/recommendations/farm-recommendation.json",
+                "--config",
+                ".run/dogfood_0021/.qwen-farm.json",
+                "--output",
+                ".run/recommendations",
+                "--write",
+                "--json",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "recommend")
+        self.assertEqual(args.recommend_command, "apply")
+        self.assertEqual(args.recommendation_path, ".run/recommendations/farm-recommendation.json")
+        self.assertEqual(args.config, ".run/dogfood_0021/.qwen-farm.json")
+        self.assertEqual(args.output, ".run/recommendations")
+        self.assertTrue(args.write)
+        self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_schema_validate(self) -> None:
         with patch.object(
@@ -534,6 +564,7 @@ class FarmHandlerTests(unittest.TestCase):
     def test_farm_recommend_json_prints_json_report(self) -> None:
         args = argparse.Namespace(
             farm_command="recommend",
+            recommend_command=None,
             json=True,
             output="out",
             agent="default",
@@ -559,6 +590,7 @@ class FarmHandlerTests(unittest.TestCase):
     def test_farm_recommend_markdown_prints_paths(self) -> None:
         args = argparse.Namespace(
             farm_command="recommend",
+            recommend_command=None,
             json=False,
             output=None,
             agent="default",
@@ -580,6 +612,63 @@ class FarmHandlerTests(unittest.TestCase):
                 call("# Farm Recommendation"),
                 call("Recommendation JSON: rec.json"),
                 call("Recommendation Markdown: rec.md"),
+            ]
+        )
+
+    def test_farm_recommend_apply_json_prints_json_report(self) -> None:
+        args = argparse.Namespace(
+            farm_command="recommend",
+            recommend_command="apply",
+            recommendation_path="rec.json",
+            config="config.json",
+            output="out",
+            write=True,
+            json=True,
+        )
+        report = {"schema_version": 1, "status": "applied"}
+
+        with (
+            patch("src.qwen_farm_recommend.build_config_apply_report", return_value=report) as build,
+            patch("src.qwen_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))) as write,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["recommendation_path"], Path("rec.json"))
+        self.assertEqual(build.call_args.kwargs["config_path"], Path("config.json"))
+        self.assertEqual(build.call_args.kwargs["output_dir"], Path("out"))
+        self.assertTrue(build.call_args.kwargs["write"])
+        write.assert_called_once_with(report)
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), report)
+
+    def test_farm_recommend_apply_markdown_prints_paths(self) -> None:
+        args = argparse.Namespace(
+            farm_command="recommend",
+            recommend_command="apply",
+            recommendation_path=None,
+            config=None,
+            output=None,
+            write=False,
+            json=False,
+        )
+        report = {"schema_version": 1, "status": "preview"}
+
+        with (
+            patch("src.qwen_farm_recommend.build_config_apply_report", return_value=report),
+            patch("src.qwen_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))),
+            patch("src.qwen_farm_recommend.render_config_apply_markdown", return_value="# Farm Config Apply") as render,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        render.assert_called_once_with(report)
+        printed.assert_has_calls(
+            [
+                call("# Farm Config Apply"),
+                call("Apply JSON: apply.json"),
+                call("Apply Markdown: apply.md"),
             ]
         )
 

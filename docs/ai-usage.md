@@ -199,6 +199,21 @@ Primary AIs should read the recommendation JSON before suggesting settings. Trea
 
 If `status` is not `ready`, explain the warnings and next actions rather than treating the settings as measured truth. If confidence is low, run a small dogfood folder before changing `.qwen-farm.json`.
 
+To safely turn a recommendation into project config, preview first:
+
+```bash
+python qwen.py farm recommend apply
+python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
+```
+
+Only apply after inspecting the preview:
+
+```bash
+python qwen.py farm recommend apply --write
+```
+
+Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first and writes only supported farm config fields. The apply report JSON lists exact field-level changes plus `not_applied` guidance such as `resource_mode` and `OLLAMA_NUM_PARALLEL`, which are not current config fields. Primary AIs should explain those guidance-only settings separately instead of implying the farm changed Ollama service state.
+
 Use snippets when:
 
 - a terse summary will be fed to a frontier model for later synthesis

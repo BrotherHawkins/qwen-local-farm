@@ -38,6 +38,12 @@
       "status": "current"
     },
     {
+      "id": "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
+      "path": "schemas/farm-config-apply.schema.json",
+      "surface": "python qwen.py farm recommend apply",
+      "status": "current"
+    },
+    {
       "id": "https://qwen-local-farm.local/schemas/farm-timing-summary.schema.json",
       "path": "schemas/farm-timing-summary.schema.json",
       "surface": "persisted timing-summary.json",

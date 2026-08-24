@@ -30,7 +30,7 @@ Status values:
 | BL-0015 | Open | 0002 | Markdown heading ancestry preservation | Preserve heading context in chunk inputs and outputs. |
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
 | BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |
-| BL-0018 | Open | 0002, 0010 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 provides snippet packs as a possible input but does not synthesize. |
+| BL-0018 | Open | 0002, 0010, 0011 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 and 0011 provide packaged inputs but do not synthesize. |
 | BL-0019 | Open | 0002 | `farm status --json` | Machine-oriented status command for primary AI inspection. |
 | BL-0020 | Open | 0003, 0006 | `farm doctor` for machine, Ollama, and tokenizer inspection | Should produce human-readable and AI-readable setup reports, including tokenizer dependency/cache readiness and next-step guidance for less technical users. |
 | BL-0021 | Open | 0003, 0006 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance. |
@@ -71,7 +71,10 @@ Status values:
 | BL-0056 | Open | 0010 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable. |
 | BL-0057 | Open | 0010 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough. |
 | BL-0058 | Open | 0010 | Run-ID lookup for post-run helpers | Let commands such as `farm snippets pack` accept a known run ID instead of requiring the full run directory path. |
-| BL-0059 | Open | 0010 | Summary-plus-snippet synthesis bundles | Optionally package compact per-file summaries alongside snippets for downstream synthesis prompts. |
+| BL-0059 | Implemented | 0010, 0011 | Summary-plus-snippet synthesis bundles | 0011 implemented post-run Markdown/JSON bundles that combine compact per-file summaries with selected verified snippets. |
+| BL-0060 | Open | 0011 | Summary bundle field filters and templates | Let callers choose which summary fields appear in synthesis bundles. |
+| BL-0061 | Open | 0011 | Bundle token or character budget planning | Estimate or cap bundle size so downstream frontier prompts stay within a target budget. |
+| BL-0062 | Open | 0011 | Cross-run synthesis bundles | Merge summary/snippet evidence across separate farm runs after single-run bundles are stable. |
 
 ## Notes
 

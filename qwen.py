@@ -388,6 +388,26 @@ def handle_farm(args: argparse.Namespace) -> None:
 
         raise RuntimeError(f"Unknown farm snippets command: {args.snippets_command}")
 
+    if args.farm_command == "synthesis":
+        from src import qwen_farm_synthesis_bundles
+
+        if args.synthesis_command == "bundle":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "synthesis_bundles"
+            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=Path(args.run_dir),
+                label=args.label,
+                max_snippets=args.max_snippets,
+                per_file=args.per_file,
+            )
+            json_path, markdown_path = qwen_farm_synthesis_bundles.write_synthesis_bundle(bundle, output_dir)
+            print(f"Synthesis bundle written: {json_path}")
+            print(f"Markdown: {markdown_path}")
+            print(f"Items: {bundle['counts']['items']}")
+            print(f"Selected snippets: {bundle['counts']['snippets_selected']}")
+            return
+
+        raise RuntimeError(f"Unknown farm synthesis command: {args.synthesis_command}")
+
     if args.farm_command == "run":
         agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
             root=ROOT,
@@ -519,6 +539,16 @@ def parse_args() -> argparse.Namespace:
     snippets_pack.add_argument("--label")
     snippets_pack.add_argument("--max-snippets", type=int, default=24)
     snippets_pack.add_argument("--per-file", type=int, default=4)
+
+    farm_synthesis = farm_subparsers.add_parser("synthesis")
+    farm_synthesis_subparsers = farm_synthesis.add_subparsers(dest="synthesis_command", required=True)
+
+    synthesis_bundle = farm_synthesis_subparsers.add_parser("bundle")
+    synthesis_bundle.add_argument("run_dir")
+    synthesis_bundle.add_argument("--output")
+    synthesis_bundle.add_argument("--label")
+    synthesis_bundle.add_argument("--max-snippets", type=int, default=24)
+    synthesis_bundle.add_argument("--per-file", type=int, default=4)
 
     args = parser.parse_args()
     if not args.command:

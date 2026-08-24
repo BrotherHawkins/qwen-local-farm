@@ -89,7 +89,7 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 }
 ```
 
-Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings.
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, model, chunk sizing, and concurrency settings. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
 Apply custom instructions to every readable text file:
 
@@ -117,7 +117,9 @@ Each run writes:
 ```text
 farm-status.json
 farm-config.resolved.json
+timing-summary.json
 FARM_STATUS.md
+TIMING_SUMMARY.md
 jobs/job-0001/input.json
 jobs/job-0001/result.md
 jobs/job-0001/result.json

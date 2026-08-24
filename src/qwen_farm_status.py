@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from src.qwen_farm_files import utc_timestamp
+from src.qwen_farm_timing import duration_label
 
 
 COUNT_STATUSES = [
@@ -81,6 +82,12 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Agent: `{status.get('agent', '')}`",
         f"Model: `{status.get('model', '')}`",
         "",
+        "## Timing",
+        "",
+        f"Started: `{(status.get('timing') or {}).get('started_at') or ''}`",
+        f"Completed: `{(status.get('timing') or {}).get('completed_at') or ''}`",
+        f"Duration: `{duration_label((status.get('timing') or {}).get('duration_ms'))}`",
+        "",
         "## Runtime",
         "",
         f"Profile: `{runtime.get('profile', '')}`",
@@ -103,14 +110,15 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             "",
             "## Jobs",
             "",
-            "| Job | Status | Input | Chunking | Result | Error |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| Job | Status | Input | Chunking | Queue Wait | Duration | Result | Error |",
+            "| --- | --- | --- | --- | ---: | ---: | --- | --- |",
         ]
     )
 
     for job in status.get("jobs", []):
         result = job.get("result_md") or ""
         error = (job.get("error") or "").replace("\n", " ")
+        timing = job.get("timing") or {}
         chunking = job.get("chunking") or {}
         if chunking.get("enabled"):
             chunking_text = f"{chunking.get('chunk_count', 0)} chunks/{chunking.get('coverage', '')}"
@@ -118,7 +126,9 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             chunking_text = "single-pass"
         lines.append(
             f"| `{job.get('job_id', '')}` | `{job.get('status', '')}` | "
-            f"`{job.get('input_path', '')}` | `{chunking_text}` | `{result}` | {error} |"
+            f"`{job.get('input_path', '')}` | `{chunking_text}` | "
+            f"`{duration_label(timing.get('queue_wait_ms'))}` | `{duration_label(timing.get('duration_ms'))}` | "
+            f"`{result}` | {error} |"
         )
 
     skipped = status.get("skipped_files") or []

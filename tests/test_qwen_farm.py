@@ -42,6 +42,12 @@ def warning_processor(**kwargs: object) -> FarmModelResult:
 
 
 class FarmRunTests(unittest.TestCase):
+    def assertTimingComplete(self, timing: dict[str, object]) -> None:
+        self.assertIsInstance(timing.get("started_at"), str)
+        self.assertIsInstance(timing.get("completed_at"), str)
+        self.assertIsInstance(timing.get("duration_ms"), int)
+        self.assertGreaterEqual(int(timing["duration_ms"]), 0)
+
     def test_run_farm_happy_path_creates_status_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -69,6 +75,8 @@ class FarmRunTests(unittest.TestCase):
             self.assertTrue((run_dir / "farm-status.json").exists())
             self.assertTrue((run_dir / "FARM_STATUS.md").exists())
             self.assertTrue((run_dir / "farm-config.resolved.json").exists())
+            self.assertTrue((run_dir / "timing-summary.json").exists())
+            self.assertTrue((run_dir / "TIMING_SUMMARY.md").exists())
             self.assertTrue((run_dir / "jobs/job-0001/result.md").exists())
             self.assertTrue((run_dir / "jobs/job-0001/result.json").exists())
             self.assertTrue((run_dir / "jobs/job-0001/raw-response.txt").exists())
@@ -76,6 +84,17 @@ class FarmRunTests(unittest.TestCase):
             self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
             self.assertEqual(status["runtime"]["profile"], "local-8gb")
             self.assertEqual(status["runtime"]["model"], "qwen-test:1b")
+            self.assertTimingComplete(status["timing"])
+            self.assertIsInstance(status["jobs"][0]["timing"].get("queued_at"), str)
+            self.assertTimingComplete(status["jobs"][0]["timing"])
+
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            self.assertEqual(result["timing"]["calls"][0]["kind"], "single")
+            self.assertTimingComplete(result["timing"]["calls"][0])
+
+            timing_summary = qwen_farm.read_json(run_dir / "timing-summary.json")
+            self.assertEqual(timing_summary["run_id"], status["run_id"])
+            self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -153,6 +172,7 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn(status["run_id"], listing)
             self.assertIn("# Farm Overview", overview)
             self.assertIn(f"# Farm Run {status['run_id']}", one_run)
+            self.assertIn("## Timing", one_run)
             self.assertIn("## Runtime", one_run)
             self.assertIn("Profile: `local-8gb`", one_run)
 
@@ -246,6 +266,7 @@ class FarmRunTests(unittest.TestCase):
             run_dir = Path(status["output"]["path"])
             job = status["jobs"][0]
             result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            chunk_result = qwen_farm.read_json(run_dir / "jobs/job-0001/chunk-results/chunk-0001/result.json")
 
             self.assertEqual(status["status"], "complete")
             self.assertTrue(job["chunking"]["enabled"])
@@ -256,6 +277,11 @@ class FarmRunTests(unittest.TestCase):
             self.assertTrue(result["chunking"]["enabled"])
             self.assertEqual(result["chunking"]["coverage"], "full")
             self.assertEqual(result["result"]["title"], "long.txt")
+            kinds = [call["kind"] for call in result["timing"]["calls"]]
+            self.assertIn("chunk_map", kinds)
+            self.assertIn("reduce", kinds)
+            self.assertEqual(chunk_result["timing"]["kind"], "chunk_map")
+            self.assertTimingComplete(chunk_result["timing"])
 
     def test_summarize_uses_resolved_chunk_budget(self) -> None:
         observed_inputs: list[tuple[int, int]] = []
@@ -521,6 +547,10 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["counts"]["complete"], 2)
             self.assertEqual(status["counts"]["failed"], 1)
             self.assertEqual([job["job_id"] for job in status["jobs"]], ["job-0001", "job-0002", "job-0003"])
+            failed_job = status["jobs"][1]
+            self.assertTimingComplete(failed_job["timing"])
+            self.assertEqual(failed_job["timing"]["calls"][0]["status"], "failed")
+            self.assertIn("planned failure", failed_job["timing"]["calls"][0]["error"])
             self.assertTrue((run_dir / "jobs/job-0001/result.json").exists())
             self.assertTrue((run_dir / "jobs/job-0002/log.md").exists())
             self.assertTrue((run_dir / "jobs/job-0003/result.json").exists())

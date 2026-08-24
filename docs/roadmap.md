@@ -22,6 +22,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
   - `python qwen.py farm status <run-id>`
   - Markdown, JSON, raw response, and run status artifacts.
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
+- First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 
 ## North Star
 
@@ -152,7 +153,7 @@ Future fields may include:
 }
 ```
 
-Timing should become part of the normal status contract, not a separate benchmark-only path. Runs, jobs, chunk map calls, and reduce calls should record start/finish timestamps and durations so dogfood runs can be compared over time and performance regressions can be investigated.
+Timing is part of the normal status contract, not a separate benchmark-only path. Runs, jobs, chunk map calls, and reduce calls record start/finish timestamps and durations so dogfood runs can be compared over time and performance regressions can be investigated.
 
 ## 3. Structured Output
 

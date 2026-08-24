@@ -116,6 +116,32 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.tokenizer_command, "status")
         self.assertEqual(args.model, ["qwen3:4b"])
 
+    def test_parse_args_accepts_farm_doctor(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "doctor",
+                "--json",
+                "--output",
+                ".run/reports",
+                "--agent",
+                "default",
+                "--profile",
+                "local-8gb",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "doctor")
+        self.assertTrue(args.json)
+        self.assertEqual(args.output, ".run/reports")
+        self.assertEqual(args.agent, "default")
+        self.assertEqual(args.profile, "local-8gb")
+
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
             args = qwen.parse_args()
@@ -274,6 +300,51 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class FarmHandlerTests(unittest.TestCase):
+    def test_farm_doctor_json_prints_json_report(self) -> None:
+        args = argparse.Namespace(
+            farm_command="doctor",
+            json=True,
+            output="out",
+            agent="default",
+            profile="local-8gb",
+        )
+        report = {"schema_version": 1, "status": "ready"}
+
+        with (
+            patch("src.qwen_farm_doctor.build_doctor_report", return_value=report) as build,
+            patch("src.qwen_farm_doctor.write_doctor_report") as write,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["agent_id"], "default")
+        self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
+        write.assert_called_once_with(report)
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), report)
+
+    def test_farm_doctor_markdown_prints_markdown_report(self) -> None:
+        args = argparse.Namespace(
+            farm_command="doctor",
+            json=False,
+            output=None,
+            agent="default",
+            profile=None,
+        )
+        report = {"schema_version": 1, "status": "ready"}
+
+        with (
+            patch("src.qwen_farm_doctor.build_doctor_report", return_value=report),
+            patch("src.qwen_farm_doctor.write_doctor_report"),
+            patch("src.qwen_farm_doctor.render_doctor_markdown", return_value="# Farm Doctor") as render,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        render.assert_called_once_with(report)
+        printed.assert_called_once_with("# Farm Doctor")
+
     def test_status_json_prints_json_envelope(self) -> None:
         args = argparse.Namespace(farm_command="status", run_id="farm-run-1", json=True)
         envelope = {"schema_version": 1, "scope": "run", "run_id": "farm-run-1", "run": {"run_id": "farm-run-1"}}

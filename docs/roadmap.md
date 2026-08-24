@@ -444,12 +444,13 @@ Likely next PR:
 
 The farm should be easy for both technical and non-technical users, but the expected non-technical surface is often a primary AI such as GPT, Claude, or Codex.
 
-Future discovery paths:
+Discovery paths:
 
 - Static docs for humans.
 - AI-facing docs for primary assistants.
 - Machine-readable capabilities file such as `farm-capabilities.json`.
-- Runtime endpoint such as `GET /farm/capabilities`.
+- Implemented first doctor command for local setup reports.
+- Future runtime endpoint such as `GET /farm/capabilities`.
 
 Capability discovery should report:
 
@@ -466,10 +467,10 @@ Capability discovery should report:
 - tokenizer dependency and cache readiness.
 - output schemas.
 
-Likely future command:
+Implemented first command:
 
 ```bash
-python qwen.py doctor
+python qwen.py farm doctor
 ```
 
 Possible outputs:

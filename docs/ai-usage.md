@@ -253,7 +253,7 @@ local-24gb
 custom
 ```
 
-Hardware probing and automatic recommendation are deferred to a future `farm doctor` workflow. Until then, AI assistants should choose conservative profiles and leave visible config files behind.
+`farm doctor` provides read-only setup and readiness guidance. Hardware probing and automatic recommendation are still deferred; until then, AI assistants should choose conservative profiles and leave visible config files behind.
 
 Custom prompt invocation:
 
@@ -428,12 +428,13 @@ Later modes:
 
 ## Setup Guidance For Non-Technical Users
 
-The farm should eventually support an AI-guided setup path.
+The farm supports a first read-only AI-guided setup path.
 
-Future command:
+Command:
 
 ```bash
-python qwen.py doctor
+python qwen.py farm doctor
+python qwen.py farm doctor --json
 ```
 
 Expected outputs:
@@ -452,6 +453,8 @@ The doctor report should let a primary AI explain:
 - whether tokenizer-aware chunking is available locally
 - whether tokenizer dependencies or cache setup are still needed
 - whether more setup is needed
+
+Doctor is read-only. It should not install packages, download tokenizers, pull models, start services, stop services, or write `.qwen-farm.json`. Use its recommendations as next-step guidance for a human or primary AI.
 
 This keeps the experience approachable for non-technical users while still giving power users direct control.
 

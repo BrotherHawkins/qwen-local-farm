@@ -12,16 +12,32 @@ PROFILE_NAMES = ["cpu-small", "local-4gb", "local-8gb", "local-12gb", "local-24g
 DEFAULT_PROFILE = "local-8gb"
 
 TOP_LEVEL_FIELDS = {"profile", "model", "summarize", "concurrency"}
-SUMMARIZE_FIELDS = {"chunk_chars", "reduce_chars"}
+CHUNK_STRATEGIES = {"character", "token"}
+SUMMARIZE_FIELDS = {
+    "chunk_strategy",
+    "chunk_chars",
+    "reduce_chars",
+    "chunk_tokens",
+    "reduce_tokens",
+    "token_safety_margin",
+}
 CONCURRENCY_FIELDS = {"jobs", "chunks"}
+DEFAULT_CHUNK_STRATEGY = "character"
+DEFAULT_TOKEN_SAFETY_MARGIN = 0.10
+DEFAULT_TOKEN_PROMPT_RESERVE = 1_024
+DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP = 4_096
 
 
 @dataclass(frozen=True)
 class RuntimeOverrides:
     profile: str | None = None
     model: str | None = None
+    chunk_strategy: str | None = None
     chunk_chars: int | None = None
     reduce_chars: int | None = None
+    chunk_tokens: int | None = None
+    reduce_tokens: int | None = None
+    token_safety_margin: float | None = None
     parallel_jobs: int | None = None
     parallel_chunks: int | None = None
 
@@ -34,37 +50,67 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
         "cpu-small": {
             "profile": "cpu-small",
             "model": default_model,
-            "summarize": {"chunk_chars": 4_000, "reduce_chars": 4_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 4_000,
+                "reduce_chars": 4_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
         "local-4gb": {
             "profile": "local-4gb",
             "model": default_model,
-            "summarize": {"chunk_chars": 6_000, "reduce_chars": 6_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 6_000,
+                "reduce_chars": 6_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
         "local-8gb": {
             "profile": "local-8gb",
             "model": default_model,
-            "summarize": {"chunk_chars": 8_000, "reduce_chars": 8_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 8_000,
+                "reduce_chars": 8_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
         "local-12gb": {
             "profile": "local-12gb",
             "model": default_model,
-            "summarize": {"chunk_chars": 12_000, "reduce_chars": 12_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 12_000,
+                "reduce_chars": 12_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
         "local-24gb": {
             "profile": "local-24gb",
             "model": default_model,
-            "summarize": {"chunk_chars": 20_000, "reduce_chars": 20_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 20_000,
+                "reduce_chars": 20_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 2, "chunks": 2},
         },
         "custom": {
             "profile": "custom",
             "model": default_model,
-            "summarize": {"chunk_chars": 8_000, "reduce_chars": 8_000},
+            "summarize": {
+                "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+                "chunk_chars": 8_000,
+                "reduce_chars": 8_000,
+                "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+            },
             "concurrency": {"jobs": 1, "chunks": 1},
         },
     }
@@ -91,6 +137,23 @@ def validate_model(value: Any) -> str:
     return model
 
 
+def validate_chunk_strategy(value: Any) -> str:
+    strategy = str(value).strip().lower()
+    if strategy not in CHUNK_STRATEGIES:
+        allowed = ", ".join(sorted(CHUNK_STRATEGIES))
+        raise ValueError(f"summarize.chunk_strategy must be one of: {allowed}.")
+    return strategy
+
+
+def validate_safety_margin(value: Any, field_path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_path} must be a number from 0 to 0.75.")
+    margin = float(value)
+    if margin < 0 or margin > 0.75:
+        raise ValueError(f"{field_path} must be a number from 0 to 0.75.")
+    return margin
+
+
 def reject_unknown_fields(data: dict[str, Any], allowed: set[str], label: str) -> None:
     unknown = sorted(set(data) - allowed)
     if unknown:
@@ -112,6 +175,8 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("summarize must be an object.")
         reject_unknown_fields(summarize, SUMMARIZE_FIELDS, "summarize")
         normalized["summarize"] = {}
+        if "chunk_strategy" in summarize:
+            normalized["summarize"]["chunk_strategy"] = validate_chunk_strategy(summarize["chunk_strategy"])
         if "chunk_chars" in summarize:
             normalized["summarize"]["chunk_chars"] = validate_positive_int(
                 summarize["chunk_chars"], "summarize.chunk_chars"
@@ -119,6 +184,18 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
         if "reduce_chars" in summarize:
             normalized["summarize"]["reduce_chars"] = validate_positive_int(
                 summarize["reduce_chars"], "summarize.reduce_chars"
+            )
+        if "chunk_tokens" in summarize:
+            normalized["summarize"]["chunk_tokens"] = validate_positive_int(
+                summarize["chunk_tokens"], "summarize.chunk_tokens"
+            )
+        if "reduce_tokens" in summarize:
+            normalized["summarize"]["reduce_tokens"] = validate_positive_int(
+                summarize["reduce_tokens"], "summarize.reduce_tokens"
+            )
+        if "token_safety_margin" in summarize:
+            normalized["summarize"]["token_safety_margin"] = validate_safety_margin(
+                summarize["token_safety_margin"], "summarize.token_safety_margin"
             )
     if "concurrency" in data:
         concurrency = data["concurrency"]
@@ -162,10 +239,20 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
         data["model"] = validate_model(overrides.model)
 
     summarize: dict[str, Any] = {}
+    if overrides.chunk_strategy is not None:
+        summarize["chunk_strategy"] = validate_chunk_strategy(overrides.chunk_strategy)
     if overrides.chunk_chars is not None:
         summarize["chunk_chars"] = validate_positive_int(overrides.chunk_chars, "--chunk-chars")
     if overrides.reduce_chars is not None:
         summarize["reduce_chars"] = validate_positive_int(overrides.reduce_chars, "--reduce-chars")
+    if overrides.chunk_tokens is not None:
+        summarize["chunk_tokens"] = validate_positive_int(overrides.chunk_tokens, "--chunk-tokens")
+    if overrides.reduce_tokens is not None:
+        summarize["reduce_tokens"] = validate_positive_int(overrides.reduce_tokens, "--reduce-tokens")
+    if overrides.token_safety_margin is not None:
+        summarize["token_safety_margin"] = validate_safety_margin(
+            overrides.token_safety_margin, "--token-safety-margin"
+        )
     if summarize:
         data["summarize"] = summarize
 
@@ -242,8 +329,17 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
     summarize = config.get("summarize")
     if not isinstance(summarize, dict):
         raise ValueError("resolved summarize config must be an object.")
+    validate_chunk_strategy(summarize.get("chunk_strategy", DEFAULT_CHUNK_STRATEGY))
     validate_positive_int(summarize.get("chunk_chars"), "summarize.chunk_chars")
     validate_positive_int(summarize.get("reduce_chars"), "summarize.reduce_chars")
+    if summarize.get("chunk_tokens") is not None:
+        validate_positive_int(summarize.get("chunk_tokens"), "summarize.chunk_tokens")
+    if summarize.get("reduce_tokens") is not None:
+        validate_positive_int(summarize.get("reduce_tokens"), "summarize.reduce_tokens")
+    validate_safety_margin(
+        summarize.get("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN),
+        "summarize.token_safety_margin",
+    )
     concurrency = config.get("concurrency")
     if not isinstance(concurrency, dict):
         raise ValueError("resolved concurrency config must be an object.")
@@ -263,13 +359,51 @@ def set_effective_model(runtime_config: dict[str, Any], model: str) -> dict[str,
     return updated
 
 
+def agent_context_tokens(agent: dict[str, Any]) -> int | None:
+    options = agent.get("options") or {}
+    if not isinstance(options, dict):
+        return None
+    num_ctx = options.get("num_ctx")
+    if isinstance(num_ctx, bool) or not isinstance(num_ctx, int) or num_ctx <= 0:
+        return None
+    return num_ctx
+
+
+def derive_token_budget(num_ctx: int, safety_margin: float) -> int:
+    after_margin = int(num_ctx * (1 - safety_margin))
+    return max(1, min(DEFAULT_SUMMARIZE_TOKEN_BUDGET_CAP, after_margin - DEFAULT_TOKEN_PROMPT_RESERVE))
+
+
+def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
+    updated = deepcopy(runtime_config)
+    summarize = updated["summarize"]
+    summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
+    summarize.setdefault("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN)
+    if summarize["chunk_strategy"] == "token":
+        if summarize.get("chunk_tokens") is None or summarize.get("reduce_tokens") is None:
+            num_ctx = agent_context_tokens(agent)
+            if num_ctx is None:
+                raise ValueError("Token-aware chunking requires agent options.num_ctx or explicit token budgets.")
+            budget = derive_token_budget(num_ctx, float(summarize["token_safety_margin"]))
+            summarize.setdefault("chunk_tokens", budget)
+            summarize.setdefault("reduce_tokens", budget)
+    validate_resolved_config(updated)
+    return updated
+
+
 def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
     return {
         "profile": runtime_config["profile"],
         "model": runtime_config["model"],
         "summarize": {
+            "chunk_strategy": runtime_config["summarize"].get("chunk_strategy", DEFAULT_CHUNK_STRATEGY),
             "chunk_chars": runtime_config["summarize"]["chunk_chars"],
             "reduce_chars": runtime_config["summarize"]["reduce_chars"],
+            "chunk_tokens": runtime_config["summarize"].get("chunk_tokens"),
+            "reduce_tokens": runtime_config["summarize"].get("reduce_tokens"),
+            "token_safety_margin": runtime_config["summarize"].get(
+                "token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN
+            ),
         },
         "concurrency": {
             "jobs": runtime_config["concurrency"]["jobs"],

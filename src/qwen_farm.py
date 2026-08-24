@@ -5,7 +5,15 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from src.qwen_farm_chunks import CHUNK_STRATEGY, TextChunk, chunk_text, render_chunk_input, render_reduce_input
+from src.qwen_farm_chunks import (
+    CHUNK_STRATEGY,
+    TOKEN_CHUNK_STRATEGY,
+    TextChunk,
+    chunk_text,
+    chunk_text_by_tokens,
+    render_chunk_input,
+    render_reduce_input,
+)
 from src.qwen_farm_files import (
     FARM_SCHEMA_VERSION,
     create_run_dir,
@@ -15,10 +23,18 @@ from src.qwen_farm_files import (
     relative_to,
     utc_timestamp,
 )
-from src.qwen_farm_model import SUMMARY_MAX_INPUT_CHARS, FarmModelResult, OllamaChatClient, process_file_with_model
+from src.qwen_farm_model import (
+    SUMMARY_MAX_INPUT_CHARS,
+    SUMMARY_NUM_BATCH,
+    SUMMARY_NUM_PREDICT,
+    FarmModelResult,
+    OllamaChatClient,
+    process_file_with_model,
+)
 from src.qwen_farm_profiles import (
     RuntimeOverrides,
     compact_runtime_config,
+    finalize_runtime_config_for_agent,
     model_is_explicit,
     resolve_runtime_config,
     set_effective_model,
@@ -35,6 +51,7 @@ from src.qwen_farm_status import (
     write_status,
 )
 from src.qwen_farm_timing import duration_between, finish_timing, timestamp_now, utc_now, write_timing_summary
+from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
 
 
 DEFAULT_MAX_ATTEMPTS = 2
@@ -42,6 +59,7 @@ DEFAULT_PER_FILE_TIMEOUT_SECONDS = 600
 SUPPORTED_MODES = {"summarize", "prompt"}
 
 ModelProcessor = Callable[..., FarmModelResult]
+TokenCounterLoader = Callable[..., ExactTokenCounter]
 
 
 def run_index_path(root: Path) -> Path:
@@ -182,13 +200,32 @@ def result_status(result: FarmModelResult) -> str:
     return "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
 
 
-def single_pass_chunking() -> dict[str, Any]:
-    return {
+def single_pass_chunking(
+    *,
+    chunk_strategy: str | None = None,
+    chars: int | None = None,
+    tokens: int | None = None,
+    chunk_tokens: int | None = None,
+    tokenizer: str | None = None,
+) -> dict[str, Any]:
+    chunking: dict[str, Any] = {
         "enabled": False,
         "strategy": "single-pass",
         "chunk_count": 1,
         "coverage": "full",
     }
+    if chunk_strategy == "token":
+        chunking.update(
+            {
+                "strategy": "single-pass-token",
+                "chars": chars,
+                "tokens": tokens,
+                "chunk_tokens": chunk_tokens,
+                "tokenizer": tokenizer,
+                "counts_are_estimated": False,
+            }
+        )
+    return chunking
 
 
 def chunk_body_budget(source_path: str, max_input_chars: int) -> int:
@@ -198,12 +235,17 @@ def chunk_body_budget(source_path: str, max_input_chars: int) -> int:
 
 
 def compact_chunking(chunking: dict[str, Any]) -> dict[str, Any]:
-    return {
+    compact = {
         "enabled": bool(chunking.get("enabled")),
         "strategy": str(chunking.get("strategy", "")),
         "chunk_count": int(chunking.get("chunk_count", 0)),
         "coverage": str(chunking.get("coverage", "")),
     }
+    if chunking.get("tokenizer"):
+        compact["tokenizer"] = chunking.get("tokenizer")
+    if chunking.get("counts_are_estimated") is not None:
+        compact["counts_are_estimated"] = bool(chunking.get("counts_are_estimated"))
+    return compact
 
 
 def chunk_result_envelope(
@@ -291,7 +333,11 @@ def default_model_processor(
     timeout: int,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
 ) -> FarmModelResult:
-    client = OllamaChatClient(ollama_base_url, str(agent["model"]), agent.get("options", {}))
+    options = dict(agent.get("options", {}))
+    if mode == "summarize":
+        options.setdefault("num_predict", SUMMARY_NUM_PREDICT)
+        options.setdefault("num_batch", SUMMARY_NUM_BATCH)
+    client = OllamaChatClient(ollama_base_url, str(agent["model"]), options)
     return process_file_with_model(
         client=client,
         mode=mode,
@@ -403,6 +449,37 @@ def reduce_payload_batches(
     return batches
 
 
+def reduce_payload_batches_by_tokens(
+    source_path: str,
+    payloads: list[dict[str, Any]],
+    max_tokens: int,
+    token_counter: ExactTokenCounter,
+) -> list[list[dict[str, Any]]]:
+    batches: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+
+    for payload in payloads:
+        candidate = [*current, payload]
+        if token_counter.count_tokens(render_reduce_input(source_path, candidate)) <= max_tokens:
+            current = candidate
+            continue
+        if current:
+            batches.append(current)
+            current = [payload]
+        else:
+            raise ValueError(
+                f"Reduce input for `{source_path}` exceeds reduce token budget of {max_tokens} tokens."
+            )
+
+    if current:
+        if token_counter.count_tokens(render_reduce_input(source_path, current)) > max_tokens:
+            raise ValueError(
+                f"Reduce input for `{source_path}` exceeds reduce token budget of {max_tokens} tokens."
+            )
+        batches.append(current)
+    return batches
+
+
 def reduce_summary_payloads(
     *,
     source_path: str,
@@ -412,6 +489,9 @@ def reduce_summary_payloads(
     ollama_base_url: str,
     timeout: int,
     reduce_chars: int,
+    reduce_tokens: int | None,
+    chunk_strategy: str,
+    token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, list[str]]:
@@ -421,7 +501,18 @@ def reduce_summary_payloads(
 
     while True:
         reduce_input = render_reduce_input(source_path, pending)
-        if len(reduce_input) <= reduce_chars or len(pending) <= 1:
+        if chunk_strategy == "token":
+            if token_counter is None or reduce_tokens is None:
+                raise ValueError("Token-aware reduce requires an exact token counter and reduce token budget.")
+            reduce_fits = token_counter.count_tokens(reduce_input) <= reduce_tokens
+        else:
+            reduce_fits = len(reduce_input) <= reduce_chars
+
+        if reduce_fits or len(pending) <= 1:
+            if chunk_strategy == "token" and not reduce_fits:
+                raise ValueError(
+                    f"Reduce input for `{source_path}` exceeds reduce token budget of {reduce_tokens} tokens."
+                )
             result = timed_model_call(
                 call_timings=call_timings,
                 kind="reduce",
@@ -432,7 +523,7 @@ def reduce_summary_payloads(
                 agent=agent,
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
-                summary_max_input_chars=reduce_chars,
+                summary_max_input_chars=len(reduce_input) if chunk_strategy == "token" else reduce_chars,
                 model_processor=model_processor,
                 reduce_generation=generation,
             )
@@ -440,18 +531,26 @@ def reduce_summary_payloads(
             return result, warnings
 
         next_pending: list[dict[str, Any]] = []
-        for batch_index, batch in enumerate(reduce_payload_batches(source_path, pending, max_chars=reduce_chars), start=1):
+        if chunk_strategy == "token":
+            if token_counter is None or reduce_tokens is None:
+                raise ValueError("Token-aware reduce requires an exact token counter and reduce token budget.")
+            batches = reduce_payload_batches_by_tokens(source_path, pending, reduce_tokens, token_counter)
+        else:
+            batches = reduce_payload_batches(source_path, pending, max_chars=reduce_chars)
+
+        for batch_index, batch in enumerate(batches, start=1):
+            batch_input = render_reduce_input(source_path, batch)
             result = timed_model_call(
                 call_timings=call_timings,
                 kind="reduce",
                 mode="summarize",
                 file_path=f"{source_path}#reduce-{generation:02d}-{batch_index:04d}",
-                content=render_reduce_input(source_path, batch),
+                content=batch_input,
                 instructions=reduce_instructions_for(instructions),
                 agent=agent,
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
-                summary_max_input_chars=reduce_chars,
+                summary_max_input_chars=len(batch_input) if chunk_strategy == "token" else reduce_chars,
                 model_processor=model_processor,
                 reduce_generation=generation,
                 reduce_batch_index=batch_index,
@@ -473,6 +572,9 @@ def run_single_pass_job(
     ollama_base_url: str,
     timeout: int,
     chunk_chars: int,
+    chunk_strategy: str,
+    chunk_tokens: int | None,
+    token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, dict[str, Any]]:
@@ -486,10 +588,17 @@ def run_single_pass_job(
         agent=agent,
         ollama_base_url=ollama_base_url,
         timeout=timeout,
-        summary_max_input_chars=chunk_chars,
+        summary_max_input_chars=len(content) if chunk_strategy == "token" else chunk_chars,
         model_processor=model_processor,
     )
-    return result, single_pass_chunking()
+    tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
+    return result, single_pass_chunking(
+        chunk_strategy=chunk_strategy,
+        chars=len(content),
+        tokens=tokens,
+        chunk_tokens=chunk_tokens,
+        tokenizer=token_counter.tokenizer_id if token_counter is not None else None,
+    )
 
 
 def run_chunked_summary_job(
@@ -504,10 +613,26 @@ def run_chunked_summary_job(
     timeout: int,
     chunk_chars: int,
     reduce_chars: int,
+    chunk_strategy: str,
+    chunk_tokens: int | None,
+    reduce_tokens: int | None,
+    token_counter: ExactTokenCounter | None,
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    chunks = chunk_text(content, max_chars=chunk_body_budget(job["input_path"], chunk_chars))
+    if chunk_strategy == "token":
+        if token_counter is None or chunk_tokens is None:
+            raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
+        chunks = chunk_text_by_tokens(
+            content,
+            max_input_tokens=chunk_tokens,
+            token_counter=token_counter,
+            source_path=job["input_path"],
+        )
+        strategy_name = TOKEN_CHUNK_STRATEGY
+    else:
+        chunks = chunk_text(content, max_chars=chunk_body_budget(job["input_path"], chunk_chars))
+        strategy_name = CHUNK_STRATEGY
     chunks_dir = job_dir / "chunks"
     chunk_results_dir = job_dir / "chunk-results"
     chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -520,18 +645,19 @@ def run_chunked_summary_job(
     for chunk in chunks:
         chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
         chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
+        chunk_input = chunk_input_path.read_text(encoding="utf-8")
 
         chunk_result = timed_model_call(
             call_timings=call_timings,
             kind="chunk_map",
             mode="summarize",
             file_path=f"{job['input_path']}#{chunk.chunk_id}",
-            content=chunk_input_path.read_text(encoding="utf-8"),
+            content=chunk_input,
             instructions=instructions,
             agent=agent,
             ollama_base_url=ollama_base_url,
             timeout=timeout,
-            summary_max_input_chars=chunk_chars,
+            summary_max_input_chars=len(chunk_input) if chunk_strategy == "token" else chunk_chars,
             model_processor=model_processor,
             chunk_id=chunk.chunk_id,
         )
@@ -562,6 +688,8 @@ def run_chunked_summary_job(
         chunk_records.append(
             {
                 "chunk_id": chunk.chunk_id,
+                "chars": chunk.chars or len(chunk.text),
+                "tokens": chunk.tokens,
                 "input": relative_to(chunk_input_path, run_dir),
                 "result_json": relative_to(json_path, run_dir),
                 "result_md": relative_to(markdown_path, run_dir),
@@ -578,6 +706,9 @@ def run_chunked_summary_job(
         ollama_base_url=ollama_base_url,
         timeout=timeout,
         reduce_chars=reduce_chars,
+        reduce_tokens=reduce_tokens,
+        chunk_strategy=chunk_strategy,
+        token_counter=token_counter,
         model_processor=model_processor,
         call_timings=call_timings,
     )
@@ -591,9 +722,15 @@ def run_chunked_summary_job(
     )
     chunking = {
         "enabled": True,
-        "strategy": CHUNK_STRATEGY,
+        "strategy": strategy_name,
         "chunk_count": len(chunks),
         "coverage": "full",
+        "chunk_chars": chunk_chars if chunk_strategy == "character" else None,
+        "reduce_chars": reduce_chars if chunk_strategy == "character" else None,
+        "chunk_tokens": chunk_tokens if chunk_strategy == "token" else None,
+        "reduce_tokens": reduce_tokens if chunk_strategy == "token" else None,
+        "tokenizer": token_counter.tokenizer_id if token_counter is not None else None,
+        "counts_are_estimated": False if token_counter is not None else None,
         "chunks": chunk_records,
     }
     return final_result, chunking
@@ -613,10 +750,21 @@ def run_file_job(
     runtime_config: dict[str, Any],
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
+    token_counter: ExactTokenCounter | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    chunk_chars = int(runtime_config["summarize"]["chunk_chars"])
-    reduce_chars = int(runtime_config["summarize"]["reduce_chars"])
-    if mode == "summarize" and len(content) > chunk_chars:
+    summarize = runtime_config["summarize"]
+    chunk_strategy = str(summarize.get("chunk_strategy", "character"))
+    chunk_chars = int(summarize["chunk_chars"])
+    reduce_chars = int(summarize["reduce_chars"])
+    chunk_tokens = summarize.get("chunk_tokens")
+    reduce_tokens = summarize.get("reduce_tokens")
+    should_chunk = mode == "summarize" and len(content) > chunk_chars
+    if mode == "summarize" and chunk_strategy == "token":
+        if token_counter is None or chunk_tokens is None:
+            raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
+        should_chunk = token_counter.count_tokens(content) > int(chunk_tokens)
+
+    if should_chunk:
         return run_chunked_summary_job(
             job=job,
             job_dir=job_dir,
@@ -628,6 +776,10 @@ def run_file_job(
             timeout=timeout,
             chunk_chars=chunk_chars,
             reduce_chars=reduce_chars,
+            chunk_strategy=chunk_strategy,
+            chunk_tokens=int(chunk_tokens) if chunk_tokens is not None else None,
+            reduce_tokens=int(reduce_tokens) if reduce_tokens is not None else None,
+            token_counter=token_counter,
             model_processor=model_processor,
             call_timings=call_timings,
         )
@@ -640,6 +792,9 @@ def run_file_job(
         ollama_base_url=ollama_base_url,
         timeout=timeout,
         chunk_chars=chunk_chars,
+        chunk_strategy=chunk_strategy,
+        chunk_tokens=int(chunk_tokens) if chunk_tokens is not None else None,
+        token_counter=token_counter,
         model_processor=model_processor,
         call_timings=call_timings,
     )
@@ -669,6 +824,7 @@ def execute_job(
     runtime_config: dict[str, Any],
     max_attempts: int,
     model_processor: ModelProcessor,
+    token_counter: ExactTokenCounter | None,
 ) -> dict[str, Any]:
     last_error: str | None = None
     call_timings: list[dict[str, Any]] = []
@@ -688,6 +844,7 @@ def execute_job(
                 runtime_config=runtime_config,
                 model_processor=model_processor,
                 call_timings=call_timings,
+                token_counter=token_counter,
             )
 
             envelope = write_result_files(
@@ -755,6 +912,7 @@ def run_scheduled_jobs(
     runtime_config: dict[str, Any],
     max_attempts: int,
     model_processor: ModelProcessor,
+    token_counter: ExactTokenCounter | None,
 ) -> None:
     max_workers = max(1, int(runtime_config["concurrency"]["jobs"]))
     queued = list(zip(jobs, items))
@@ -785,6 +943,7 @@ def run_scheduled_jobs(
                     runtime_config=runtime_config,
                     max_attempts=max_attempts,
                     model_processor=model_processor,
+                    token_counter=token_counter,
                 )
                 in_flight[future] = job
 
@@ -810,6 +969,10 @@ def resolve_run_agent_and_config(
     model: str | None = None,
     chunk_chars: int | None = None,
     reduce_chars: int | None = None,
+    chunk_strategy: str | None = None,
+    chunk_tokens: int | None = None,
+    reduce_tokens: int | None = None,
+    token_safety_margin: float | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -820,8 +983,12 @@ def resolve_run_agent_and_config(
         overrides=RuntimeOverrides(
             profile=profile,
             model=model,
+            chunk_strategy=chunk_strategy,
             chunk_chars=chunk_chars,
             reduce_chars=reduce_chars,
+            chunk_tokens=chunk_tokens,
+            reduce_tokens=reduce_tokens,
+            token_safety_margin=token_safety_margin,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
         ),
@@ -830,6 +997,7 @@ def resolve_run_agent_and_config(
     if model_is_explicit(runtime_config):
         agent["model"] = runtime_config["model"]
     runtime_config = set_effective_model(runtime_config, str(agent["model"]))
+    runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
     return agent, runtime_config
 
 
@@ -848,12 +1016,18 @@ def run_farm(
     model: str | None = None,
     chunk_chars: int | None = None,
     reduce_chars: int | None = None,
+    chunk_strategy: str | None = None,
+    chunk_tokens: int | None = None,
+    reduce_tokens: int | None = None,
+    token_safety_margin: float | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
     runtime_config: dict[str, Any] | None = None,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     per_file_timeout_seconds: int = DEFAULT_PER_FILE_TIMEOUT_SECONDS,
     model_processor: ModelProcessor = default_model_processor,
+    token_counter: ExactTokenCounter | None = None,
+    token_counter_loader: TokenCounterLoader = load_exact_token_counter,
 ) -> dict[str, Any]:
     if mode not in SUPPORTED_MODES:
         raise ValueError(f"Unsupported farm mode: {mode}")
@@ -868,8 +1042,12 @@ def run_farm(
             config_path=config_path,
             profile=profile,
             model=model,
+            chunk_strategy=chunk_strategy,
             chunk_chars=chunk_chars,
             reduce_chars=reduce_chars,
+            chunk_tokens=chunk_tokens,
+            reduce_tokens=reduce_tokens,
+            token_safety_margin=token_safety_margin,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
         )
@@ -878,6 +1056,10 @@ def run_farm(
         if model_is_explicit(runtime_config):
             agent["model"] = runtime_config["model"]
         runtime_config = set_effective_model(runtime_config, str(agent["model"]))
+        runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
+
+    if runtime_config["summarize"].get("chunk_strategy") == "token" and token_counter is None:
+        token_counter = token_counter_loader(root=root, model=str(agent["model"]), local_files_only=True)
 
     farm_root = farm_home(root)
     discovery = discover_text_files(input_folder)
@@ -946,6 +1128,7 @@ def run_farm(
         runtime_config=runtime_config,
         max_attempts=max_attempts,
         model_processor=model_processor,
+        token_counter=token_counter,
     )
 
     status["status"] = final_run_status(jobs)

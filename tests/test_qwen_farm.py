@@ -5,9 +5,18 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src import qwen_farm
 from src.qwen_farm_model import FarmModelResult
+
+
+class FakeTokenCounter:
+    tokenizer_id = "fake/qwen"
+    counts_are_estimated = False
+
+    def count_tokens(self, text: str) -> int:
+        return len(text.split())
 
 
 def fake_processor(**kwargs: object) -> FarmModelResult:
@@ -95,6 +104,42 @@ class FarmRunTests(unittest.TestCase):
             timing_summary = qwen_farm.read_json(run_dir / "timing-summary.json")
             self.assertEqual(timing_summary["run_id"], status["run_id"])
             self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
+
+    def test_default_summarize_processor_sets_fast_model_options(self) -> None:
+        seen: dict[str, object] = {}
+
+        class CapturingClient:
+            def __init__(self, base_url: str, model: str, options: dict[str, object]) -> None:
+                seen["base_url"] = base_url
+                seen["model"] = model
+                seen["options"] = options
+
+        def fake_process(**kwargs: object) -> FarmModelResult:
+            return fake_processor(**kwargs)
+
+        with patch.object(qwen_farm, "OllamaChatClient", CapturingClient), patch.object(
+            qwen_farm, "process_file_with_model", fake_process
+        ):
+            qwen_farm.default_model_processor(
+                mode="summarize",
+                file_path="a.txt",
+                content="A",
+                instructions=None,
+                agent={
+                    "id": "default",
+                    "model": "qwen-test:1b",
+                    "system_prompt": "",
+                    "options": {"num_ctx": 8192, "num_predict": 256},
+                },
+                ollama_base_url="http://127.0.0.1:11434",
+                timeout=1,
+            )
+
+        options = seen["options"]
+        assert isinstance(options, dict)
+        self.assertEqual(options["num_ctx"], 8192)
+        self.assertEqual(options["num_predict"], 256)
+        self.assertEqual(options["num_batch"], qwen_farm.SUMMARY_NUM_BATCH)
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -321,6 +366,155 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["runtime"]["summarize"]["chunk_chars"], 500)
             self.assertEqual(resolved["summarize"]["chunk_chars"], 500)
             self.assertTrue(observed_inputs)
+
+    def test_token_strategy_can_single_pass_long_character_input(self) -> None:
+        observed_inputs: list[tuple[int, int]] = []
+
+        def observing_processor(**kwargs: object) -> FarmModelResult:
+            content = str(kwargs["content"])
+            summary_max_input_chars = int(kwargs["summary_max_input_chars"])
+            observed_inputs.append((len(content), summary_max_input_chars))
+            self.assertEqual(summary_max_input_chars, len(content))
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "longword" * 1000
+            (root / "input" / "long-chars.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_chars=500,
+                chunk_tokens=50,
+                reduce_tokens=50,
+                token_counter=FakeTokenCounter(),
+                model_processor=observing_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+
+            self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
+            self.assertEqual(result["chunking"]["strategy"], "single-pass-token")
+            self.assertEqual(result["chunking"]["tokenizer"], "fake/qwen")
+            self.assertFalse(result["chunking"]["counts_are_estimated"])
+            self.assertEqual(observed_inputs[0][0], len(content))
+
+    def test_token_strategy_chunks_and_records_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "\n\n".join([" ".join(f"word{index}" for index in range(30)) for _ in range(3)])
+            (root / "input" / "token-long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_chars=500,
+                chunk_tokens=25,
+                reduce_tokens=200,
+                token_counter=FakeTokenCounter(),
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            job = status["jobs"][0]
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+
+            self.assertTrue(job["chunking"]["enabled"])
+            self.assertEqual(job["chunking"]["strategy"], "paragraph-token")
+            self.assertEqual(job["chunking"]["tokenizer"], "fake/qwen")
+            self.assertEqual(result["chunking"]["strategy"], "paragraph-token")
+            self.assertEqual(result["chunking"]["chunk_tokens"], 25)
+            self.assertFalse(result["chunking"]["counts_are_estimated"])
+            self.assertGreater(result["chunking"]["chunk_count"], 1)
+            for chunk in result["chunking"]["chunks"]:
+                self.assertIsInstance(chunk["chars"], int)
+                self.assertLessEqual(chunk["tokens"], 25)
+
+    def test_token_strategy_loads_counter_before_run_folder_creation(self) -> None:
+        def failing_loader(**kwargs: object) -> FakeTokenCounter:
+            raise RuntimeError("missing tokenizer")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.md").write_text("A", encoding="utf-8")
+            output = root / "results"
+
+            with self.assertRaisesRegex(RuntimeError, "missing tokenizer"):
+                qwen_farm.run_farm(
+                    root=root,
+                    input_folder=root / "input",
+                    output_dir=output,
+                    mode="summarize",
+                    instructions=None,
+                    agent_id="default",
+                    default_model="qwen-test:1b",
+                    ollama_base_url="http://127.0.0.1:11434",
+                    chunk_strategy="token",
+                    chunk_tokens=100,
+                    reduce_tokens=100,
+                    token_counter_loader=failing_loader,
+                    model_processor=fake_processor,
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_token_reduce_budget_overflow_fails_before_reduce_call(self) -> None:
+        calls: list[str] = []
+
+        def recording_processor(**kwargs: object) -> FarmModelResult:
+            calls.append(str(kwargs["file_path"]))
+            return fake_processor(**kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "\n\n".join([" ".join(f"word{index}" for index in range(30)) for _ in range(2)])
+            (root / "input" / "token-long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                chunk_strategy="token",
+                chunk_tokens=25,
+                reduce_tokens=3,
+                token_counter=FakeTokenCounter(),
+                model_processor=recording_processor,
+                max_attempts=1,
+            )
+
+            self.assertEqual(status["status"], "failed")
+            self.assertIn("exceeds reduce token budget", status["jobs"][0]["error"])
+            self.assertTrue(any("#chunk-" in call for call in calls))
+            self.assertFalse(any("#reduce" in call for call in calls))
 
     def test_invalid_config_fails_before_run_folder_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

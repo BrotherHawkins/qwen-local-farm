@@ -9,10 +9,24 @@ from src.qwen_farm_model import FarmModelResult
 class FakeClient:
     def __init__(self, raw: str) -> None:
         self.raw = raw
-        self.messages: list[list[dict[str, str]]] = []
+        self.calls: list[dict[str, object]] = []
 
-    def chat(self, messages: list[dict[str, str]], *, response_format: str | None = None, timeout: int = 600) -> str:
-        self.messages.append(messages)
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        response_format: str | None = None,
+        timeout: int = 600,
+        think: bool | None = None,
+    ) -> str:
+        self.calls.append(
+            {
+                "messages": messages,
+                "response_format": response_format,
+                "timeout": timeout,
+                "think": think,
+            }
+        )
         return self.raw
 
 
@@ -40,6 +54,28 @@ class JsonParsingTests(unittest.TestCase):
                 "confidence": "medium",
             },
         )
+
+    def test_parse_labeled_summary_builds_payload(self) -> None:
+        raw = "\n".join(
+            [
+                "TITLE: Example",
+                "ABSTRACT: A compact article summary.",
+                "KEY POINTS:",
+                "- first point",
+                "- second point",
+                "OPEN QUESTIONS:",
+                "- None",
+                "CONFIDENCE: high",
+            ]
+        )
+
+        payload, valid = qwen_farm_model.parse_summary_response(raw)
+
+        self.assertTrue(valid)
+        self.assertEqual(payload["title"], "Example")
+        self.assertEqual(payload["bullets"], ["first point", "second point"])
+        self.assertEqual(payload["open_questions"], [])
+        self.assertEqual(payload["confidence"], "high")
 
     def test_apply_agent_guidance_appends_to_system_message(self) -> None:
         messages = [{"role": "system", "content": "Base"}, {"role": "user", "content": "Hi"}]
@@ -82,6 +118,36 @@ class JsonParsingTests(unittest.TestCase):
         )
 
         self.assertIsInstance(result, FarmModelResult)
-        combined = "\n".join(message["content"] for message in client.messages[0])
+        messages = client.calls[0]["messages"]
+        assert isinstance(messages, list)
+        combined = "\n".join(message["content"] for message in messages)
         self.assertNotIn("Agent guidance", combined)
         self.assertNotIn("local Qwen assistant", combined)
+
+    def test_summarize_mode_uses_fast_plain_text_call_shape(self) -> None:
+        client = FakeClient(
+            "\n".join(
+                [
+                    "TITLE: T",
+                    "ABSTRACT: A",
+                    "KEY POINTS:",
+                    "- B",
+                    "OPEN QUESTIONS:",
+                    "- None",
+                    "CONFIDENCE: high",
+                ]
+            )
+        )
+
+        result = qwen_farm_model.process_file_with_model(
+            client=client,  # type: ignore[arg-type]
+            mode="summarize",
+            file_path="article.txt",
+            content="Article body",
+            instructions=None,
+            timeout=1,
+        )
+
+        self.assertTrue(result.structured_valid)
+        self.assertEqual(client.calls[0]["response_format"], None)
+        self.assertEqual(client.calls[0]["think"], False)

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.request
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 SUMMARY_MAX_INPUT_CHARS = 8_000
+SUMMARY_NUM_PREDICT = 384
+SUMMARY_NUM_BATCH = 128
 
 
 @dataclass(frozen=True)
@@ -24,15 +26,25 @@ class OllamaChatClient:
         self.model = model
         self.options = options or {}
 
-    def chat(self, messages: list[dict[str, str]], *, response_format: str | None = None, timeout: int = 600) -> str:
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        response_format: str | None = None,
+        timeout: int = 600,
+        think: bool | None = None,
+    ) -> str:
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "keep_alive": "5m",
             "options": self.options,
         }
         if response_format:
             payload["format"] = response_format
+        if think is not None:
+            payload["think"] = think
 
         request = urllib.request.Request(
             f"{self.base_url}/api/chat",
@@ -91,6 +103,87 @@ def normalize_summary_payload(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def strip_bullet_marker(line: str) -> str:
+    return re.sub(r"^\s*(?:[-*]|\d+[.)])\s*", "", line).strip()
+
+
+def compact_labeled_items(lines: list[str]) -> list[str]:
+    items = [strip_bullet_marker(line) for line in lines if strip_bullet_marker(line)]
+    return [item for item in items if item.lower() not in {"none", "n/a", "no open questions"}]
+
+
+def parse_labeled_summary(raw: str) -> dict[str, Any]:
+    text = raw.strip()
+    labels = {
+        "title": "title",
+        "abstract": "abstract",
+        "key points": "bullets",
+        "key_points": "bullets",
+        "bullets": "bullets",
+        "open questions": "open_questions",
+        "open_questions": "open_questions",
+        "confidence": "confidence",
+    }
+    sections: dict[str, list[str]] = {}
+    current: str | None = None
+
+    for line in text.splitlines():
+        match = re.match(r"^\s*([A-Za-z_ ]{3,30})\s*:\s*(.*)$", line)
+        if match:
+            label = match.group(1).strip().lower()
+            mapped = labels.get(label)
+            if mapped:
+                current = mapped
+                sections.setdefault(current, [])
+                rest = match.group(2).strip()
+                if rest:
+                    sections[current].append(rest)
+                continue
+        if current is not None:
+            sections.setdefault(current, []).append(line.rstrip())
+
+    if not sections:
+        raise ValueError("No labeled summary sections found.")
+
+    bullets = compact_labeled_items(sections.get("bullets", []))
+    open_questions = compact_labeled_items(sections.get("open_questions", []))
+    confidence = " ".join(part.strip() for part in sections.get("confidence", []) if part.strip()).lower()
+    confidence = confidence.split()[0] if confidence else "medium"
+
+    return normalize_summary_payload(
+        {
+            "title": " ".join(part.strip() for part in sections.get("title", []) if part.strip()),
+            "abstract": " ".join(part.strip() for part in sections.get("abstract", []) if part.strip()),
+            "bullets": bullets,
+            "open_questions": open_questions,
+            "confidence": confidence,
+        }
+    )
+
+
+def parse_summary_response(raw: str) -> tuple[dict[str, Any], bool]:
+    try:
+        return normalize_summary_payload(parse_json_object(raw)), True
+    except Exception:
+        pass
+
+    try:
+        return parse_labeled_summary(raw), True
+    except Exception:
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        bullets = [strip_bullet_marker(line) for line in lines if re.match(r"^\s*(?:[-*]|\d+[.)])\s+", line)]
+        payload = normalize_summary_payload(
+            {
+                "title": "Untitled",
+                "abstract": lines[0] if lines else "",
+                "bullets": bullets,
+                "open_questions": [],
+                "confidence": "low",
+            }
+        )
+        return payload, False
+
+
 def render_summary_markdown(payload: dict[str, Any]) -> str:
     lines = [
         f"# {payload.get('title', 'Summary')}",
@@ -131,32 +224,23 @@ def summarize_messages(file_path: str, content: str, instructions: str | None = 
             "role": "system",
             "content": (
                 "Summarize the provided input file. Use only facts present in the file content. "
-                "Return only valid JSON with keys: title, abstract, bullets, open_questions, confidence. "
-                "confidence must be low, medium, or high."
+                "Do not include reasoning traces. Return compact labeled text only."
             ),
         },
         {
             "role": "user",
             "content": (
                 f"Summarize this file.\nPath: {file_path}\n{extra}\n"
-                "Return compact, useful JSON only.\n\n"
+                "Use exactly this output shape:\n"
+                "TITLE: <short title>\n"
+                "ABSTRACT: <2-3 sentence summary>\n"
+                "KEY POINTS:\n"
+                "- <point>\n"
+                "- <point>\n"
+                "OPEN QUESTIONS:\n"
+                "- <question, or None>\n"
+                "CONFIDENCE: low|medium|high\n\n"
                 f"File content:\n{content}"
-            ),
-        },
-    ]
-
-
-def repair_messages(raw_response: str) -> list[dict[str, str]]:
-    return [
-        {
-            "role": "system",
-            "content": "Repair model output into valid JSON only. Do not add prose.",
-        },
-        {
-            "role": "user",
-            "content": (
-                "Return one valid JSON object with keys: title, abstract, bullets, open_questions, confidence.\n\n"
-                f"Broken output:\n{raw_response}"
             ),
         },
     ]
@@ -205,44 +289,18 @@ def process_file_with_model(
         summary_content, warnings = prepare_summary_content(content, max_chars=summary_max_input_chars)
         raw = client.chat(
             summarize_messages(file_path, summary_content, instructions),
-            response_format="json",
             timeout=timeout,
+            think=False,
         )
-        try:
-            payload = normalize_summary_payload(parse_json_object(raw))
-            return FarmModelResult(
-                payload=payload,
-                markdown=render_summary_markdown(payload),
-                raw_response=raw,
-                structured_valid=True,
-                warnings=warnings,
-            )
-        except Exception:
-            repair_raw = client.chat(repair_messages(raw), response_format="json", timeout=timeout)
-            try:
-                payload = normalize_summary_payload(parse_json_object(repair_raw))
-                return FarmModelResult(
-                    payload=payload,
-                    markdown=render_summary_markdown(payload),
-                    raw_response=f"{raw}\n\n--- repair response ---\n\n{repair_raw}",
-                    structured_valid=True,
-                    warnings=[*warnings, "summary_json_repaired"],
-                )
-            except Exception:
-                payload = {
-                    "title": Path(file_path).name,
-                    "abstract": "",
-                    "bullets": [],
-                    "open_questions": ["Model did not return valid summary JSON."],
-                    "confidence": "low",
-                }
-                return FarmModelResult(
-                    payload=payload,
-                    markdown=raw,
-                    raw_response=f"{raw}\n\n--- failed repair response ---\n\n{repair_raw}",
-                    structured_valid=False,
-                    warnings=[*warnings, "summary_json_invalid"],
-                )
+        payload, structured_valid = parse_summary_response(raw)
+        parse_warnings = [] if structured_valid else ["summary_text_parse_fallback"]
+        return FarmModelResult(
+            payload=payload,
+            markdown=render_summary_markdown(payload),
+            raw_response=raw,
+            structured_valid=structured_valid,
+            warnings=[*warnings, *parse_warnings],
+        )
 
     if mode == "prompt":
         if not instructions:

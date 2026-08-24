@@ -348,8 +348,12 @@ def handle_farm(args: argparse.Namespace) -> None:
             config_path=Path(args.config) if args.config else None,
             profile=args.profile,
             model=args.model,
+            chunk_strategy=args.chunk_strategy,
             chunk_chars=args.chunk_chars,
             reduce_chars=args.reduce_chars,
+            chunk_tokens=args.chunk_tokens,
+            reduce_tokens=args.reduce_tokens,
+            token_safety_margin=args.token_safety_margin,
             parallel_jobs=args.parallel_jobs,
             parallel_chunks=args.parallel_chunks,
         )
@@ -368,6 +372,22 @@ def handle_farm(args: argparse.Namespace) -> None:
         print(f"Farm run complete: {status['run_id']}")
         print(f"Status: {status['status']}")
         print(f"Output: {status['output']['path']}")
+        return
+
+    if args.farm_command == "tokenizer":
+        from src.qwen_farm_tokenizer import (
+            SUPPORTED_QWEN_TOKENIZERS,
+            render_tokenizer_status_markdown,
+            tokenizer_status,
+            write_tokenizer_status,
+        )
+
+        models = args.model or list(SUPPORTED_QWEN_TOKENIZERS)
+        status = tokenizer_status(root=ROOT, models=models, download=args.tokenizer_command == "setup")
+        write_tokenizer_status(ROOT, status)
+        print(render_tokenizer_status_markdown(status))
+        if not status["ready"]:
+            raise SystemExit(1)
         return
 
     if args.farm_command == "list":
@@ -404,10 +424,20 @@ def parse_args() -> argparse.Namespace:
     farm_run.add_argument("--config")
     farm_run.add_argument("--profile")
     farm_run.add_argument("--model")
+    farm_run.add_argument("--chunk-strategy", choices=["character", "token"])
     farm_run.add_argument("--chunk-chars", type=int)
     farm_run.add_argument("--reduce-chars", type=int)
+    farm_run.add_argument("--chunk-tokens", type=int)
+    farm_run.add_argument("--reduce-tokens", type=int)
+    farm_run.add_argument("--token-safety-margin", type=float)
     farm_run.add_argument("--parallel-jobs", type=int)
     farm_run.add_argument("--parallel-chunks", type=int)
+
+    farm_tokenizer = farm_subparsers.add_parser("tokenizer")
+    farm_tokenizer_subparsers = farm_tokenizer.add_subparsers(dest="tokenizer_command", required=True)
+    for name in ["setup", "status"]:
+        command = farm_tokenizer_subparsers.add_parser(name)
+        command.add_argument("--model", action="append")
 
     farm_subparsers.add_parser("list")
 

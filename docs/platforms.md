@@ -25,6 +25,46 @@ Different systems expose Python under different command names:
 
 Python 3.10 or newer is recommended.
 
+## Optional Tokenizer Setup
+
+The default farm chunker uses character budgets and needs no extra Python packages.
+
+Tokenizer-aware chunking is optional. It uses exact Hugging Face tokenizers for the supported Qwen/Ollama models, but it does not download model weights and does not require PyTorch.
+
+Install the tokenizer dependencies:
+
+```bash
+python -m pip install --user "transformers>=5.15" "tokenizers>=0.22"
+```
+
+On macOS/Linux, use `python3 -m pip ...` if `python` is not available.
+
+Cache and verify tokenizer assets:
+
+```bash
+python qwen.py farm tokenizer setup
+python qwen.py farm tokenizer status
+```
+
+The cache and status reports live under:
+
+```text
+.run/tokenizers/
+```
+
+That folder is ignored by Git. After setup, `farm tokenizer status` verifies offline/local-only loading so normal token-aware runs do not need to fetch tokenizer files again.
+
+Supported first-pass tokenizer mappings:
+
+| Ollama model | Tokenizer ID |
+| --- | --- |
+| `qwen3.5:4b` | `Qwen/Qwen3.5-4B` |
+| `qwen3:4b` | `Qwen/Qwen3-4B` |
+| `qwen3:8b` | `Qwen/Qwen3-8B` |
+| `qwen3:14b` | `Qwen/Qwen3-14B` |
+
+If token-aware chunking reports a missing tokenizer, rerun `python qwen.py farm tokenizer setup`. To avoid tokenizer setup entirely, use the default character strategy or pass `--chunk-strategy character`.
+
 ## Ollama Install
 
 `python qwen.py setup` checks for Ollama and prints platform-specific install help if it is missing.

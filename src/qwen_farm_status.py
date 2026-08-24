@@ -92,8 +92,11 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         "",
         f"Profile: `{runtime.get('profile', '')}`",
         f"Model: `{runtime.get('model', status.get('model', ''))}`",
+        f"Chunk strategy: `{summarize.get('chunk_strategy', '')}`",
         f"Chunk chars: `{summarize.get('chunk_chars', '')}`",
         f"Reduce chars: `{summarize.get('reduce_chars', '')}`",
+        f"Chunk tokens: `{summarize.get('chunk_tokens') or ''}`",
+        f"Reduce tokens: `{summarize.get('reduce_tokens') or ''}`",
         f"Parallel jobs: `{concurrency.get('jobs', '')}`",
         f"Parallel chunks: `{concurrency.get('chunks', '')}`",
         "",
@@ -121,9 +124,12 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         timing = job.get("timing") or {}
         chunking = job.get("chunking") or {}
         if chunking.get("enabled"):
-            chunking_text = f"{chunking.get('chunk_count', 0)} chunks/{chunking.get('coverage', '')}"
+            chunking_text = (
+                f"{chunking.get('chunk_count', 0)} chunks/"
+                f"{chunking.get('strategy', '')}/{chunking.get('coverage', '')}"
+            )
         else:
-            chunking_text = "single-pass"
+            chunking_text = str(chunking.get("strategy") or "single-pass")
         lines.append(
             f"| `{job.get('job_id', '')}` | `{job.get('status', '')}` | "
             f"`{job.get('input_path', '')}` | `{chunking_text}` | "

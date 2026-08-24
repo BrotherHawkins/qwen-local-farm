@@ -23,6 +23,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
   - Markdown, JSON, raw response, and run status artifacts.
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
+- Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
 
 ## North Star
 
@@ -459,6 +460,7 @@ Capability discovery should report:
 - available agents.
 - supported modes.
 - chunking support.
+- tokenizer dependency and cache readiness.
 - output schemas.
 
 Likely future command:
@@ -474,7 +476,7 @@ Possible outputs:
 .run/reports/setup-doctor.json
 ```
 
-The point is not just troubleshooting. The primary AI should be able to inspect the report, explain tradeoffs, and choose a safe local model/profile for the user's machine.
+The point is not just troubleshooting. The primary AI should be able to inspect the report, explain tradeoffs, choose a safe local model/profile for the user's machine, and guide tokenizer setup for token-aware chunking when useful.
 
 ## Proposed Milestones
 

@@ -69,6 +69,9 @@ def write_status(run_dir: Path, status: dict[str, Any]) -> None:
 
 def render_status_markdown(status: dict[str, Any]) -> str:
     counts = status.get("counts", {})
+    runtime = status.get("runtime") or {}
+    summarize = runtime.get("summarize") or {}
+    concurrency = runtime.get("concurrency") or {}
     lines = [
         f"# Farm Run {status.get('run_id', '')}",
         "",
@@ -77,6 +80,15 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Mode: `{status.get('mode', '')}`",
         f"Agent: `{status.get('agent', '')}`",
         f"Model: `{status.get('model', '')}`",
+        "",
+        "## Runtime",
+        "",
+        f"Profile: `{runtime.get('profile', '')}`",
+        f"Model: `{runtime.get('model', status.get('model', ''))}`",
+        f"Chunk chars: `{summarize.get('chunk_chars', '')}`",
+        f"Reduce chars: `{summarize.get('reduce_chars', '')}`",
+        f"Parallel jobs: `{concurrency.get('jobs', '')}`",
+        f"Parallel chunks: `{concurrency.get('chunks', '')}`",
         "",
         "## Counts",
         "",

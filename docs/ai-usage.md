@@ -144,6 +144,46 @@ python qwen.py farm run input-folder --output results --mode summarize
 
 In `summarize` mode, oversized text files are chunked automatically. Each chunk gets its own input and result artifacts under the job folder, then the farm reduces chunk summaries into the normal file-level `result.md` and `result.json`.
 
+Runtime profile invocation:
+
+```bash
+python qwen.py farm run input-folder --mode summarize --profile local-12gb
+python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
+python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
+```
+
+Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.qwen-farm.json` for the user, then the farm writes the final effective settings into every run.
+
+Example `.qwen-farm.json`:
+
+```json
+{
+  "profile": "local-8gb",
+  "model": "qwen3.5:4b",
+  "summarize": {
+    "chunk_chars": 8000,
+    "reduce_chars": 8000
+  },
+  "concurrency": {
+    "jobs": 1,
+    "chunks": 1
+  }
+}
+```
+
+Built-in profiles:
+
+```text
+cpu-small
+local-4gb
+local-8gb
+local-12gb
+local-24gb
+custom
+```
+
+Hardware probing and automatic recommendation are deferred to a future `farm doctor` workflow. Until then, AI assistants should choose conservative profiles and leave visible config files behind.
+
 Custom prompt invocation:
 
 ```bash
@@ -232,6 +272,7 @@ Every farm run produces:
 ```text
 FARM_STATUS.md
 farm-status.json
+farm-config.resolved.json
 ```
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.

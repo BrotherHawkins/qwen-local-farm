@@ -15,6 +15,13 @@ from src.qwen_farm_files import (
     utc_timestamp,
 )
 from src.qwen_farm_model import SUMMARY_MAX_INPUT_CHARS, FarmModelResult, OllamaChatClient, process_file_with_model
+from src.qwen_farm_profiles import (
+    RuntimeOverrides,
+    compact_runtime_config,
+    model_is_explicit,
+    resolve_runtime_config,
+    set_effective_model,
+)
 from src.qwen_farm_status import (
     count_jobs,
     final_run_status,
@@ -94,6 +101,7 @@ def make_initial_status(
     input_folder: Path,
     jobs: list[dict[str, Any]],
     skipped_files: list[str],
+    runtime_config: dict[str, Any],
 ) -> dict[str, Any]:
     created_at = utc_timestamp()
     status = {
@@ -103,6 +111,7 @@ def make_initial_status(
         "mode": mode,
         "agent": agent["id"],
         "model": agent["model"],
+        "runtime": compact_runtime_config(runtime_config),
         "input": {
             "path": str(input_folder),
             "kind": "folder",
@@ -256,6 +265,7 @@ def default_model_processor(
     agent: dict[str, Any],
     ollama_base_url: str,
     timeout: int,
+    summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
 ) -> FarmModelResult:
     client = OllamaChatClient(ollama_base_url, str(agent["model"]), agent.get("options", {}))
     return process_file_with_model(
@@ -266,6 +276,7 @@ def default_model_processor(
         instructions=instructions,
         timeout=timeout,
         agent_system_prompt=str(agent.get("system_prompt", "")),
+        summary_max_input_chars=summary_max_input_chars,
     )
 
 
@@ -292,7 +303,7 @@ def reduce_instructions_for(instructions: str | None) -> str:
 def reduce_payload_batches(
     source_path: str,
     payloads: list[dict[str, Any]],
-    max_chars: int = SUMMARY_MAX_INPUT_CHARS,
+    max_chars: int,
 ) -> list[list[dict[str, Any]]]:
     batches: list[list[dict[str, Any]]] = []
     current: list[dict[str, Any]] = []
@@ -318,6 +329,7 @@ def reduce_summary_payloads(
     agent: dict[str, Any],
     ollama_base_url: str,
     timeout: int,
+    reduce_chars: int,
     model_processor: ModelProcessor,
 ) -> tuple[FarmModelResult, list[str]]:
     warnings: list[str] = []
@@ -326,7 +338,7 @@ def reduce_summary_payloads(
 
     while True:
         reduce_input = render_reduce_input(source_path, pending)
-        if len(reduce_input) <= SUMMARY_MAX_INPUT_CHARS or len(pending) <= 1:
+        if len(reduce_input) <= reduce_chars or len(pending) <= 1:
             result = model_processor(
                 mode="summarize",
                 file_path=source_path,
@@ -335,12 +347,13 @@ def reduce_summary_payloads(
                 agent=agent,
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
+                summary_max_input_chars=reduce_chars,
             )
             warnings.extend(result.warnings)
             return result, warnings
 
         next_pending: list[dict[str, Any]] = []
-        for batch_index, batch in enumerate(reduce_payload_batches(source_path, pending), start=1):
+        for batch_index, batch in enumerate(reduce_payload_batches(source_path, pending, max_chars=reduce_chars), start=1):
             result = model_processor(
                 mode="summarize",
                 file_path=f"{source_path}#reduce-{generation:02d}-{batch_index:04d}",
@@ -349,6 +362,7 @@ def reduce_summary_payloads(
                 agent=agent,
                 ollama_base_url=ollama_base_url,
                 timeout=timeout,
+                summary_max_input_chars=reduce_chars,
             )
             warnings.extend(result.warnings)
             next_pending.append(result.payload)
@@ -366,6 +380,7 @@ def run_single_pass_job(
     agent: dict[str, Any],
     ollama_base_url: str,
     timeout: int,
+    chunk_chars: int,
     model_processor: ModelProcessor,
 ) -> tuple[FarmModelResult, dict[str, Any]]:
     result = model_processor(
@@ -376,6 +391,7 @@ def run_single_pass_job(
         agent=agent,
         ollama_base_url=ollama_base_url,
         timeout=timeout,
+        summary_max_input_chars=chunk_chars,
     )
     return result, single_pass_chunking()
 
@@ -390,9 +406,11 @@ def run_chunked_summary_job(
     agent: dict[str, Any],
     ollama_base_url: str,
     timeout: int,
+    chunk_chars: int,
+    reduce_chars: int,
     model_processor: ModelProcessor,
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    chunks = chunk_text(content)
+    chunks = chunk_text(content, max_chars=chunk_chars)
     chunks_dir = job_dir / "chunks"
     chunk_results_dir = job_dir / "chunk-results"
     chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -414,6 +432,7 @@ def run_chunked_summary_job(
             agent=agent,
             ollama_base_url=ollama_base_url,
             timeout=timeout,
+            summary_max_input_chars=chunk_chars,
         )
         warnings.extend(chunk_result.warnings)
 
@@ -456,6 +475,7 @@ def run_chunked_summary_job(
         agent=agent,
         ollama_base_url=ollama_base_url,
         timeout=timeout,
+        reduce_chars=reduce_chars,
         model_processor=model_processor,
     )
     warnings.extend(reduce_warnings)
@@ -487,9 +507,12 @@ def run_file_job(
     agent: dict[str, Any],
     ollama_base_url: str,
     timeout: int,
+    runtime_config: dict[str, Any],
     model_processor: ModelProcessor,
 ) -> tuple[FarmModelResult, dict[str, Any]]:
-    if mode == "summarize" and len(content) > SUMMARY_MAX_INPUT_CHARS:
+    chunk_chars = int(runtime_config["summarize"]["chunk_chars"])
+    reduce_chars = int(runtime_config["summarize"]["reduce_chars"])
+    if mode == "summarize" and len(content) > chunk_chars:
         return run_chunked_summary_job(
             job=job,
             job_dir=job_dir,
@@ -499,6 +522,8 @@ def run_file_job(
             agent=agent,
             ollama_base_url=ollama_base_url,
             timeout=timeout,
+            chunk_chars=chunk_chars,
+            reduce_chars=reduce_chars,
             model_processor=model_processor,
         )
     return run_single_pass_job(
@@ -509,8 +534,42 @@ def run_file_job(
         agent=agent,
         ollama_base_url=ollama_base_url,
         timeout=timeout,
+        chunk_chars=chunk_chars,
         model_processor=model_processor,
     )
+
+
+def resolve_run_agent_and_config(
+    *,
+    root: Path,
+    agent_id: str,
+    default_model: str,
+    config_path: Path | None = None,
+    profile: str | None = None,
+    model: str | None = None,
+    chunk_chars: int | None = None,
+    reduce_chars: int | None = None,
+    parallel_jobs: int | None = None,
+    parallel_chunks: int | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    runtime_config = resolve_runtime_config(
+        root=root,
+        default_model=default_model,
+        config_path=config_path,
+        overrides=RuntimeOverrides(
+            profile=profile,
+            model=model,
+            chunk_chars=chunk_chars,
+            reduce_chars=reduce_chars,
+            parallel_jobs=parallel_jobs,
+            parallel_chunks=parallel_chunks,
+        ),
+    )
+    agent = load_agent(root, agent_id, str(runtime_config["model"]))
+    if model_is_explicit(runtime_config):
+        agent["model"] = runtime_config["model"]
+    runtime_config = set_effective_model(runtime_config, str(agent["model"]))
+    return agent, runtime_config
 
 
 def run_farm(
@@ -523,6 +582,14 @@ def run_farm(
     agent_id: str,
     default_model: str,
     ollama_base_url: str,
+    config_path: Path | None = None,
+    profile: str | None = None,
+    model: str | None = None,
+    chunk_chars: int | None = None,
+    reduce_chars: int | None = None,
+    parallel_jobs: int | None = None,
+    parallel_chunks: int | None = None,
+    runtime_config: dict[str, Any] | None = None,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     per_file_timeout_seconds: int = DEFAULT_PER_FILE_TIMEOUT_SECONDS,
     model_processor: ModelProcessor = default_model_processor,
@@ -532,11 +599,30 @@ def run_farm(
     if mode == "prompt" and not instructions:
         raise ValueError("prompt mode requires --instructions.")
 
-    agent = load_agent(root, agent_id, default_model)
+    if runtime_config is None:
+        agent, runtime_config = resolve_run_agent_and_config(
+            root=root,
+            agent_id=agent_id,
+            default_model=default_model,
+            config_path=config_path,
+            profile=profile,
+            model=model,
+            chunk_chars=chunk_chars,
+            reduce_chars=reduce_chars,
+            parallel_jobs=parallel_jobs,
+            parallel_chunks=parallel_chunks,
+        )
+    else:
+        agent = load_agent(root, agent_id, str(runtime_config["model"]))
+        if model_is_explicit(runtime_config):
+            agent["model"] = runtime_config["model"]
+        runtime_config = set_effective_model(runtime_config, str(agent["model"]))
+
     farm_root = farm_home(root)
     discovery = discover_text_files(input_folder)
     run_id, run_dir = create_run_dir(farm_root, output_dir)
     remember_run(root, run_id, run_dir)
+    write_json(run_dir / "farm-config.resolved.json", runtime_config)
     jobs_dir = run_dir / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -572,6 +658,7 @@ def run_farm(
         input_folder=input_folder,
         jobs=jobs,
         skipped_files=discovery.skipped,
+        runtime_config=runtime_config,
     )
     write_status(run_dir, status)
 
@@ -595,6 +682,7 @@ def run_farm(
                     agent=agent,
                     ollama_base_url=ollama_base_url,
                     timeout=per_file_timeout_seconds,
+                    runtime_config=runtime_config,
                     model_processor=model_processor,
                 )
 

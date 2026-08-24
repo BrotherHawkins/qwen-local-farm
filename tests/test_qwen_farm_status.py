@@ -66,3 +66,43 @@ class StatusCalculationTests(unittest.TestCase):
         )
 
         self.assertIn("`2/3/4`", markdown)
+
+    def test_farm_overview_json_wraps_runs(self) -> None:
+        runs = [
+            {
+                "run_id": "run-2",
+                "status": "complete",
+                "mode": "summarize",
+                "counts": {"total": 1, "complete": 1},
+            },
+            {
+                "run_id": "run-1",
+                "status": "failed",
+                "mode": "prompt",
+                "counts": {"total": 1, "failed": 1},
+            },
+        ]
+
+        envelope = qwen_farm_status.farm_overview_json(runs)
+
+        self.assertEqual(envelope["schema_version"], 1)
+        self.assertEqual(envelope["scope"], "overview")
+        self.assertEqual(envelope["counts"], {"runs": 2})
+        self.assertEqual(envelope["runs"], runs)
+
+    def test_farm_overview_json_handles_empty_runs(self) -> None:
+        envelope = qwen_farm_status.farm_overview_json([])
+
+        self.assertEqual(envelope["scope"], "overview")
+        self.assertEqual(envelope["counts"], {"runs": 0})
+        self.assertEqual(envelope["runs"], [])
+
+    def test_run_status_json_wraps_loaded_status(self) -> None:
+        status = {"run_id": "run-1", "status": "complete", "jobs": []}
+
+        envelope = qwen_farm_status.run_status_json(status)
+
+        self.assertEqual(envelope["schema_version"], 1)
+        self.assertEqual(envelope["scope"], "run")
+        self.assertEqual(envelope["run_id"], "run-1")
+        self.assertEqual(envelope["run"], status)

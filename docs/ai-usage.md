@@ -263,7 +263,11 @@ Status inspection:
 python qwen.py farm list
 python qwen.py farm status
 python qwen.py farm status <run-id>
+python qwen.py farm status --json
+python qwen.py farm status <run-id> --json
 ```
+
+Use `farm status --json` when a script or primary AI needs a machine-readable overview of known runs. Use `farm status <run-id> --json` when it needs the full loaded status for one run without parsing Markdown.
 
 If `--output` is omitted, the farm writes outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm creates a structured run folder inside that destination and records it in `.run/farm/runs.json` so later status commands can find it.
 

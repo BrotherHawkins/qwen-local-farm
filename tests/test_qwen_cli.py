@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import qwen
 
@@ -122,6 +123,34 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
         self.assertEqual(args.run_id, "farm-run-1")
+        self.assertFalse(args.json)
+
+    def test_parse_args_accepts_farm_status_json_overview(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "--json"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "status")
+        self.assertIsNone(args.run_id)
+        self.assertTrue(args.json)
+
+    def test_parse_args_accepts_farm_status_json_run_id(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1", "--json"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "status")
+        self.assertEqual(args.run_id, "farm-run-1")
+        self.assertTrue(args.json)
+
+    def test_parse_args_accepts_farm_status_json_before_run_id(self) -> None:
+        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "--json", "farm-run-1"]):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "status")
+        self.assertEqual(args.run_id, "farm-run-1")
+        self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_dogfood_record(self) -> None:
         with patch.object(
@@ -236,6 +265,32 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class FarmHandlerTests(unittest.TestCase):
+    def test_status_json_prints_json_envelope(self) -> None:
+        args = argparse.Namespace(farm_command="status", run_id="farm-run-1", json=True)
+        envelope = {"schema_version": 1, "scope": "run", "run_id": "farm-run-1", "run": {"run_id": "farm-run-1"}}
+
+        with (
+            patch("src.qwen_farm.status_json", return_value=envelope) as status_json,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        status_json.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), envelope)
+
+    def test_status_markdown_stays_default(self) -> None:
+        args = argparse.Namespace(farm_command="status", run_id=None, json=False)
+
+        with (
+            patch("src.qwen_farm.status_text", return_value="# Farm Overview") as status_text,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        status_text.assert_called_once_with(qwen.ROOT, None)
+        printed.assert_has_calls([call("# Farm Overview")])
+
     def test_snippets_pack_resolves_run_reference_before_building_pack(self) -> None:
         resolved = Path("resolved-run")
         args = argparse.Namespace(

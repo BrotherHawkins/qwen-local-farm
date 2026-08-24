@@ -30,7 +30,7 @@ Status values:
 | BL-0015 | Open | 0002 | Markdown heading ancestry preservation | Preserve heading context in chunk inputs and outputs. |
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
 | BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |
-| BL-0018 | Open | 0002 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results. |
+| BL-0018 | Open | 0002, 0010 | Cross-file synthesis | Add a reduce/synthesis layer across file-level results; 0010 provides snippet packs as a possible input but does not synthesize. |
 | BL-0019 | Open | 0002 | `farm status --json` | Machine-oriented status command for primary AI inspection. |
 | BL-0020 | Open | 0003, 0006 | `farm doctor` for machine, Ollama, and tokenizer inspection | Should produce human-readable and AI-readable setup reports, including tokenizer dependency/cache readiness and next-step guidance for less technical users. |
 | BL-0021 | Open | 0003, 0006 | Benchmark-based profile recommendation | Recommend profiles and token-aware chunk settings from measured local performance. |
@@ -57,10 +57,10 @@ Status values:
 | BL-0042 | Open | 0006 | Progressive reduce quality tuning | Improve multi-batch reduce quality after first-pass token budget safety exists. |
 | BL-0043 | Open | 0006 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
 | BL-0044 | Implemented | 0007, 0008 | Advanced snippet ranking | 0008 implemented deterministic scoring, diversity, and diagnostics; semantic ranking remains separate in BL-0047. |
-| BL-0045 | Open | 0007 | Cross-file snippet packs | Collect source snippets across files for later synthesis workflows. |
-| BL-0046 | Open | 0007 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing. |
-| BL-0047 | Open | 0007 | Semantic snippet selection | Consider embedding-assisted or retrieval-assisted snippet selection after basic verified snippets work. |
-| BL-0048 | Open | 0007 | Snippet review states | Add accepted/rejected/superseded review state if snippet curation becomes a workflow. |
+| BL-0045 | Implemented | 0007, 0010 | Cross-file snippet packs | 0010 implemented deterministic Markdown/JSON snippet packs from existing summarize run artifacts for later synthesis workflows. |
+| BL-0046 | Open | 0007, 0010 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing; 0010 only proposes generic Markdown/JSON packs. |
+| BL-0047 | Open | 0007, 0010 | Semantic snippet selection | Consider embedding-assisted or retrieval-assisted snippet selection after deterministic cross-file packs exist. |
+| BL-0048 | Open | 0007, 0010 | Snippet review states | Add accepted/rejected/superseded review state if snippet curation becomes a workflow. |
 | BL-0049 | Implemented | 0007, 0008, 0009 | Snippet quality benchmark history | 0009 implemented local dogfood history records and baseline/candidate comparisons under `.run/dogfood_history/`. |
 | BL-0050 | Open | 0009 | Automatic frontier-model dogfood grading | Use a frontier model to assist scoring later, while keeping the first local history workflow manual and model-free. |
 | BL-0051 | Open | 0009 | Tracked aggregate dogfood history | Decide whether selected aggregate history should live in tracked docs once local records prove useful. |
@@ -68,6 +68,10 @@ Status values:
 | BL-0053 | Open | 0009 | Statistical quality thresholds or CI gates | Define objective thresholds before adding pass/fail gates for subjective quality measures. |
 | BL-0054 | Open | 0009 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles. |
 | BL-0055 | Open | 0009 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows when additional farm modes mature. |
+| BL-0056 | Open | 0010 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable. |
+| BL-0057 | Open | 0010 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough. |
+| BL-0058 | Open | 0010 | Run-ID lookup for post-run helpers | Let commands such as `farm snippets pack` accept a known run ID instead of requiring the full run directory path. |
+| BL-0059 | Open | 0010 | Summary-plus-snippet synthesis bundles | Optionally package compact per-file summaries alongside snippets for downstream synthesis prompts. |
 
 ## Notes
 

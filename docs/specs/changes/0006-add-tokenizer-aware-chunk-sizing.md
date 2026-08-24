@@ -1,6 +1,6 @@
 # 0006 Add Tokenizer-Aware Chunk Sizing
 
-Status: Accepted
+Status: Implemented
 Type: Add
 
 ## WHY

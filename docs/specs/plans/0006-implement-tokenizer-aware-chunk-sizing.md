@@ -1,6 +1,6 @@
 # 0006 Implement Tokenizer-Aware Chunk Sizing
 
-Status: Accepted
+Status: Implemented
 Change Spec: [0006 Add Tokenizer-Aware Chunk Sizing](../changes/0006-add-tokenizer-aware-chunk-sizing.md)
 
 ## WHY
@@ -302,8 +302,8 @@ Inspect:
 - [x] README documents tokenizer setup and readiness verification.
 - [x] Platform docs document dependencies, cache behavior, and troubleshooting.
 - [x] AI usage docs explain when to enable token-aware chunking.
-- [ ] `BL-0014` is marked implemented when behavior lands.
+- [x] `BL-0014` is marked implemented when behavior lands.
 - [x] Doctor-related backlog items remain open.
 - [x] Model-free unit tests cover the tokenization/chunking contract.
 - [x] Compile check passes.
-- [ ] Dogfood_lite token-aware rerun and comparison report are recorded.
+- [x] Dogfood_lite token-aware rerun and comparison report are recorded.

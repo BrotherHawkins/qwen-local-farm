@@ -26,7 +26,7 @@ Status values:
 | BL-0011 | Open | 0001 | Queue-only execution | Submit work without processing immediately. |
 | BL-0012 | Open | 0001 | Drop-folder scanning | Manual `farm scan` first, watcher later. |
 | BL-0013 | Implemented | 0001 | Chunking | Implemented first for summarize mode by 0002; broader chunking remains tracked separately. |
-| BL-0014 | Planned | 0002, 0003, 0006 | Tokenizer-aware chunk sizing | Planned by 0006 to add opt-in exact local tokenizer-aware summarize chunk sizing. |
+| BL-0014 | Implemented | 0002, 0003, 0006 | Tokenizer-aware chunk sizing | Implemented by 0006 as opt-in exact local tokenizer-aware summarize chunk sizing. |
 | BL-0015 | Open | 0002 | Markdown heading ancestry preservation | Preserve heading context in chunk inputs and outputs. |
 | BL-0016 | Implemented | 0002 | Configurable chunk sizes | Chunk and reduce sizing are configurable via runtime profiles in 0003. |
 | BL-0017 | Open | 0002 | Chunk retries separate from file retries | Retry individual chunks without rerunning the whole file job. |

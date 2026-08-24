@@ -24,7 +24,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 - Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
-- Opt-in verified source snippets for summarize results.
+- Opt-in verified source snippets for summarize results, including deterministic ranking and compact diagnostics.
 
 ## North Star
 
@@ -496,7 +496,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: Markdown plus JSON sidecar outputs.
 - Implemented: `summarize` result contract first.
 - Implemented: generic custom-prompt support.
-- Implemented: verified verbatim source snippets for `summarize`.
+- Implemented: verified verbatim source snippets for `summarize`, with deterministic ranking and compact diagnostics.
 - Implemented: first AI-facing usage doc.
 - Next: output schema folder.
 - Next: stricter validation helpers.

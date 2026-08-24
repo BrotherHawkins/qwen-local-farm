@@ -611,6 +611,11 @@ class FarmRunTests(unittest.TestCase):
             self.assertNotIn("invented reduce quote", snippet_texts)
             self.assertEqual(result["snippets"]["requested_count"], 3)
             self.assertEqual(result["snippets"]["verified_count"], 2)
+            self.assertEqual(result["snippets"]["selected_count"], 2)
+            self.assertEqual(result["snippets"]["candidate_count"], 2)
+            self.assertEqual(result["snippets"]["dropped"]["unverified"], 0)
+            self.assertIn("score", result["result"]["snippets"][0])
+            self.assertIn("score_reasons", result["result"]["snippets"][0])
             self.assertIn("snippet_count_under_requested", result["warnings"])
 
     def test_invalid_config_fails_before_run_folder_creation(self) -> None:

@@ -6,6 +6,8 @@ from src.qwen_farm_snippets import (
     apply_snippet_warning_policy,
     parse_snippet_candidates,
     resolve_snippet_request,
+    score_snippet,
+    select_snippet_candidates,
     verify_snippet_candidates,
 )
 
@@ -84,6 +86,104 @@ class SnippetHelperTests(unittest.TestCase):
 
         self.assertEqual([item["text"] for item in snippets], [source.splitlines()[2]])
         self.assertEqual(warnings, [])
+
+    def test_select_snippet_candidates_ranks_high_signal_before_source_order(self) -> None:
+        source = "\n".join(
+            [
+                "This short intro is fine but not especially useful.",
+                "A common mistake is querying the wiki too early because the model has high-confidence gaps.",
+            ]
+        )
+
+        snippets, warnings, diagnostics = select_snippet_candidates(
+            [
+                {"text": source.splitlines()[0], "reason": "Background."},
+                {"text": source.splitlines()[1], "reason": "Captures a caveat and risk."},
+            ],
+            source_text=source,
+            source_path="article.txt",
+            requested_count=1,
+            max_chars=200,
+            policy="fixed",
+        )
+
+        self.assertEqual([item["text"] for item in snippets], [source.splitlines()[1]])
+        self.assertIn("limit", snippets[0]["score_reasons"])
+        self.assertEqual(warnings, [])
+        self.assertEqual(diagnostics["candidate_count"], 2)
+        self.assertEqual(diagnostics["verified_count"], 2)
+        self.assertEqual(diagnostics["selected_count"], 1)
+
+    def test_select_snippet_candidates_reports_drop_reasons(self) -> None:
+        source = "\n".join(
+            [
+                "tags: [guide]",
+                "QMD - Query Markup Documents",
+                "Exact duplicate claim because this is useful.",
+                "Exact duplicate claim because this is useful.",
+            ]
+        )
+
+        snippets, warnings, diagnostics = select_snippet_candidates(
+            [
+                {"text": "tags: [guide]", "reason": "Metadata."},
+                {"text": "QMD - Query Markup Documents", "reason": "Title."},
+                {"text": "x" * 50, "reason": "Invented."},
+                {"text": "y" * 150, "reason": "Too long."},
+                {"text": "Exact duplicate claim because this is useful.", "reason": "Claim."},
+                {"text": "Exact duplicate claim because this is useful.", "reason": "Duplicate."},
+            ],
+            source_text=source,
+            source_path="article.txt",
+            requested_count=1,
+            max_chars=100,
+            policy="fixed",
+        )
+
+        self.assertEqual(len(snippets), 1)
+        self.assertEqual(diagnostics["dropped"]["low_signal"], 2)
+        self.assertEqual(diagnostics["dropped"]["unverified"], 1)
+        self.assertEqual(diagnostics["dropped"]["too_long"], 1)
+        self.assertEqual(diagnostics["dropped"]["duplicate"], 1)
+        self.assertIn("snippet_candidates_unverified", warnings)
+
+    def test_select_snippet_candidates_prefers_source_diversity(self) -> None:
+        source = "\n".join(
+            [
+                "Rule: this first nearby claim must be preserved because it is useful.",
+                "Rule: this second nearby claim must be preserved because it is useful.",
+                *["filler"] * 24,
+                "Beyond that point, the system fails unless search tools help with navigation.",
+            ]
+        )
+
+        snippets, _warnings, _diagnostics = select_snippet_candidates(
+            [
+                {"text": source.splitlines()[0], "reason": "Rule."},
+                {"text": source.splitlines()[1], "reason": "Rule."},
+                {"text": source.splitlines()[-1], "reason": "Limit."},
+            ],
+            source_text=source,
+            source_path="article.txt",
+            requested_count=2,
+            max_chars=200,
+            policy="fixed",
+        )
+
+        self.assertEqual(snippets[0]["text"], source.splitlines()[0])
+        self.assertEqual(snippets[1]["text"], source.splitlines()[-1])
+
+    def test_score_snippet_records_stable_score_reasons(self) -> None:
+        scored = score_snippet(
+            {
+                "text": "A wiki with 90% coverage can be actively misleading because it has high-confidence gaps.",
+                "reason": "Captures a caveat.",
+            }
+        )
+
+        self.assertGreater(scored["score"], 0)
+        self.assertIn("limit", scored["score_reasons"])
+        self.assertIn("metric", scored["score_reasons"])
 
     def test_auto_warning_policy_allows_partial_success(self) -> None:
         warnings = apply_snippet_warning_policy(

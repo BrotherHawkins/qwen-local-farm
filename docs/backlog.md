@@ -56,12 +56,12 @@ Status values:
 | BL-0041 | Open | 0005, 0006 | Token-per-second metrics | Capture backend eval/generation token metrics when available. |
 | BL-0042 | Open | 0006 | Progressive reduce quality tuning | Improve multi-batch reduce quality after first-pass token budget safety exists. |
 | BL-0043 | Open | 0006 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
-| BL-0044 | Open | 0007 | Advanced snippet ranking | Improve snippet selection beyond simple model-proposed order or first-pass importance. |
+| BL-0044 | Implemented | 0007, 0008 | Advanced snippet ranking | 0008 implemented deterministic scoring, diversity, and diagnostics; semantic ranking remains separate in BL-0047. |
 | BL-0045 | Open | 0007 | Cross-file snippet packs | Collect source snippets across files for later synthesis workflows. |
 | BL-0046 | Open | 0007 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing. |
 | BL-0047 | Open | 0007 | Semantic snippet selection | Consider embedding-assisted or retrieval-assisted snippet selection after basic verified snippets work. |
 | BL-0048 | Open | 0007 | Snippet review states | Add accepted/rejected/superseded review state if snippet curation becomes a workflow. |
-| BL-0049 | Open | 0007 | Snippet quality benchmark history | Track snippet quality across dogfood runs when the feature becomes important enough to measure over time. |
+| BL-0049 | Open | 0007, 0008 | Snippet quality benchmark history | 0008 implemented per-run diagnostics and dogfood comparison; durable historical dashboards remain open. |
 
 ## Notes
 

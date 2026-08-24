@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+SUMMARY_MAX_INPUT_CHARS = 8_000
+
 
 @dataclass(frozen=True)
 class FarmModelResult:
@@ -113,13 +115,22 @@ def render_summary_markdown(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def prepare_summary_content(content: str, max_chars: int = SUMMARY_MAX_INPUT_CHARS) -> tuple[str, list[str]]:
+    if len(content) <= max_chars:
+        return content, []
+
+    clipped = content[:max_chars].rstrip()
+    clipped += f"\n\n[Input truncated by qwen-local-farm: summarized first {max_chars} of {len(content)} characters.]"
+    return clipped, ["input_truncated"]
+
+
 def summarize_messages(file_path: str, content: str, instructions: str | None = None) -> list[dict[str, str]]:
     extra = f"\nCaller instructions: {instructions.strip()}\n" if instructions else ""
     return [
         {
             "role": "system",
             "content": (
-                "You summarize files for a local worker farm. "
+                "Summarize the provided input file. Use only facts present in the file content. "
                 "Return only valid JSON with keys: title, abstract, bullets, open_questions, confidence. "
                 "confidence must be low, medium, or high."
             ),
@@ -190,8 +201,9 @@ def process_file_with_model(
     agent_system_prompt: str | None = None,
 ) -> FarmModelResult:
     if mode == "summarize":
+        summary_content, warnings = prepare_summary_content(content)
         raw = client.chat(
-            apply_agent_guidance(summarize_messages(file_path, content, instructions), agent_system_prompt),
+            summarize_messages(file_path, summary_content, instructions),
             response_format="json",
             timeout=timeout,
         )
@@ -202,7 +214,7 @@ def process_file_with_model(
                 markdown=render_summary_markdown(payload),
                 raw_response=raw,
                 structured_valid=True,
-                warnings=[],
+                warnings=warnings,
             )
         except Exception:
             repair_raw = client.chat(repair_messages(raw), response_format="json", timeout=timeout)
@@ -213,7 +225,7 @@ def process_file_with_model(
                     markdown=render_summary_markdown(payload),
                     raw_response=f"{raw}\n\n--- repair response ---\n\n{repair_raw}",
                     structured_valid=True,
-                    warnings=["summary_json_repaired"],
+                    warnings=[*warnings, "summary_json_repaired"],
                 )
             except Exception:
                 payload = {
@@ -228,7 +240,7 @@ def process_file_with_model(
                     markdown=raw,
                     raw_response=f"{raw}\n\n--- failed repair response ---\n\n{repair_raw}",
                     structured_valid=False,
-                    warnings=["summary_json_invalid"],
+                    warnings=[*warnings, "summary_json_invalid"],
                 )
 
     if mode == "prompt":

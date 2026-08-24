@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import os
 import secrets
 from dataclasses import dataclass
@@ -131,7 +132,8 @@ def is_probably_text_file(path: Path, sample_size: int = 8192) -> bool:
         return False
 
     try:
-        sample.decode("utf-8")
+        decoder = codecs.getincrementaldecoder("utf-8")()
+        decoder.decode(sample, final=False)
         return True
     except UnicodeDecodeError:
         return False

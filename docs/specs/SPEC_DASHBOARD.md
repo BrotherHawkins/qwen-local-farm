@@ -20,7 +20,7 @@ The dashboard is manual for now. Update it when adding, accepting, implementing,
 | Status | Count |
 | --- | ---: |
 | Draft | 0 |
-| Accepted | 0 |
+| Accepted | 1 |
 | Implemented | 2 |
 | Deprecated | 0 |
 
@@ -48,6 +48,7 @@ None.
 | --- | --- | --- | --- | --- |
 | 0000 | Implemented | Add | [0000-add-minimal-pr-gate.md](changes/0000-add-minimal-pr-gate.md) | Adds the first lightweight GitHub Actions PR gate for compile and unit test checks. |
 | 0001 | Implemented | Add | [0001-add-worker-farm-mvp.md](changes/0001-add-worker-farm-mvp.md) | Adds the first filesystem-backed worker-farm MVP. |
+| 0002 | Accepted | Add | [0002-add-summarize-chunking.md](changes/0002-add-summarize-chunking.md) | Adds chunked map/reduce summarization for oversized summarize inputs. |
 
 ## Stale Drafts To Revisit
 

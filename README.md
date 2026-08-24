@@ -59,6 +59,8 @@ Write the run under a chosen results folder:
 python qwen.py farm run notes --output results --mode summarize
 ```
 
+Summarize mode automatically chunks oversized text files and reduces the chunk summaries into one file-level result. Chunk inputs and chunk summaries are written under each job folder so a caller can inspect the intermediate work.
+
 Apply custom instructions to every readable text file:
 
 ```bash

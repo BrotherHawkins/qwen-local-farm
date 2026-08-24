@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+from src.qwen_farm_chunks import CHUNK_STRATEGY, chunk_text, render_chunk_input, render_reduce_input
 from src.qwen_farm_files import (
     FARM_SCHEMA_VERSION,
     create_run_dir,
@@ -13,7 +14,7 @@ from src.qwen_farm_files import (
     relative_to,
     utc_timestamp,
 )
-from src.qwen_farm_model import FarmModelResult, OllamaChatClient, process_file_with_model
+from src.qwen_farm_model import SUMMARY_MAX_INPUT_CHARS, FarmModelResult, OllamaChatClient, process_file_with_model
 from src.qwen_farm_status import (
     count_jobs,
     final_run_status,
@@ -128,9 +129,10 @@ def result_envelope(
     markdown_path: Path,
     raw_path: Path,
     agent: dict[str, Any],
+    chunking: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     status = "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
-    return {
+    envelope = {
         "schema_version": FARM_SCHEMA_VERSION,
         "job_id": job["job_id"],
         "mode": mode,
@@ -150,6 +152,99 @@ def result_envelope(
         },
         "warnings": result.warnings,
     }
+    if chunking is not None:
+        envelope["chunking"] = chunking
+    return envelope
+
+
+def result_status(result: FarmModelResult) -> str:
+    return "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
+
+
+def single_pass_chunking() -> dict[str, Any]:
+    return {
+        "enabled": False,
+        "strategy": "single-pass",
+        "chunk_count": 1,
+        "coverage": "full",
+    }
+
+
+def compact_chunking(chunking: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "enabled": bool(chunking.get("enabled")),
+        "strategy": str(chunking.get("strategy", "")),
+        "chunk_count": int(chunking.get("chunk_count", 0)),
+        "coverage": str(chunking.get("coverage", "")),
+    }
+
+
+def chunk_result_envelope(
+    *,
+    job: dict[str, Any],
+    chunk_id: str,
+    chunk_index: int,
+    chunk_total: int,
+    chunk_input_path: Path,
+    result: FarmModelResult,
+    run_dir: Path,
+    markdown_path: Path,
+    raw_path: Path,
+    agent: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": FARM_SCHEMA_VERSION,
+        "job_id": job["job_id"],
+        "chunk_id": chunk_id,
+        "mode": "summarize",
+        "status": result_status(result),
+        "structured_valid": result.structured_valid,
+        "input": {
+            "source_path": job["input_path"],
+            "chunk_path": relative_to(chunk_input_path, run_dir),
+            "chunk_index": chunk_index,
+            "chunk_total": chunk_total,
+        },
+        "result": result.payload,
+        "artifacts": {
+            "markdown": relative_to(markdown_path, run_dir),
+            "raw_response": relative_to(raw_path, run_dir),
+        },
+        "model": {
+            "agent": agent["id"],
+            "model": agent["model"],
+        },
+        "warnings": result.warnings,
+    }
+
+
+def write_result_files(
+    *,
+    result: FarmModelResult,
+    job_dir: Path,
+    job: dict[str, Any],
+    mode: str,
+    run_dir: Path,
+    agent: dict[str, Any],
+    chunking: dict[str, Any],
+) -> dict[str, Any]:
+    raw_path = job_dir / "raw-response.txt"
+    markdown_path = job_dir / "result.md"
+    json_path = job_dir / "result.json"
+    raw_path.write_text(result.raw_response, encoding="utf-8")
+    markdown_path.write_text(result.markdown, encoding="utf-8")
+    envelope = result_envelope(
+        job=job,
+        mode=mode,
+        result=result,
+        run_dir=run_dir,
+        markdown_path=markdown_path,
+        raw_path=raw_path,
+        agent=agent,
+        chunking=chunking,
+    )
+    write_json(json_path, envelope)
+    return envelope
 
 
 def default_model_processor(
@@ -171,6 +266,250 @@ def default_model_processor(
         instructions=instructions,
         timeout=timeout,
         agent_system_prompt=str(agent.get("system_prompt", "")),
+    )
+
+
+def unique_warnings(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    output = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            output.append(item)
+    return output
+
+
+def reduce_instructions_for(instructions: str | None) -> str:
+    reduce_instructions = (
+        "Synthesize the chunk summaries into one file-level summary. "
+        "Capture the source thesis, key claims, useful examples, and open questions."
+    )
+    if instructions:
+        reduce_instructions = f"{reduce_instructions} Caller instructions: {instructions}"
+    return reduce_instructions
+
+
+def reduce_payload_batches(
+    source_path: str,
+    payloads: list[dict[str, Any]],
+    max_chars: int = SUMMARY_MAX_INPUT_CHARS,
+) -> list[list[dict[str, Any]]]:
+    batches: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+
+    for payload in payloads:
+        candidate = [*current, payload]
+        if current and len(render_reduce_input(source_path, candidate)) > max_chars:
+            batches.append(current)
+            current = [payload]
+        else:
+            current = candidate
+
+    if current:
+        batches.append(current)
+    return batches
+
+
+def reduce_summary_payloads(
+    *,
+    source_path: str,
+    payloads: list[dict[str, Any]],
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    model_processor: ModelProcessor,
+) -> tuple[FarmModelResult, list[str]]:
+    warnings: list[str] = []
+    pending = payloads
+    generation = 1
+
+    while True:
+        reduce_input = render_reduce_input(source_path, pending)
+        if len(reduce_input) <= SUMMARY_MAX_INPUT_CHARS or len(pending) <= 1:
+            result = model_processor(
+                mode="summarize",
+                file_path=source_path,
+                content=reduce_input,
+                instructions=reduce_instructions_for(instructions),
+                agent=agent,
+                ollama_base_url=ollama_base_url,
+                timeout=timeout,
+            )
+            warnings.extend(result.warnings)
+            return result, warnings
+
+        next_pending: list[dict[str, Any]] = []
+        for batch_index, batch in enumerate(reduce_payload_batches(source_path, pending), start=1):
+            result = model_processor(
+                mode="summarize",
+                file_path=f"{source_path}#reduce-{generation:02d}-{batch_index:04d}",
+                content=render_reduce_input(source_path, batch),
+                instructions=reduce_instructions_for(instructions),
+                agent=agent,
+                ollama_base_url=ollama_base_url,
+                timeout=timeout,
+            )
+            warnings.extend(result.warnings)
+            next_pending.append(result.payload)
+
+        pending = next_pending
+        generation += 1
+
+
+def run_single_pass_job(
+    *,
+    mode: str,
+    file_path: str,
+    content: str,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    model_processor: ModelProcessor,
+) -> tuple[FarmModelResult, dict[str, Any]]:
+    result = model_processor(
+        mode=mode,
+        file_path=file_path,
+        content=content,
+        instructions=instructions,
+        agent=agent,
+        ollama_base_url=ollama_base_url,
+        timeout=timeout,
+    )
+    return result, single_pass_chunking()
+
+
+def run_chunked_summary_job(
+    *,
+    job: dict[str, Any],
+    job_dir: Path,
+    run_dir: Path,
+    content: str,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    model_processor: ModelProcessor,
+) -> tuple[FarmModelResult, dict[str, Any]]:
+    chunks = chunk_text(content)
+    chunks_dir = job_dir / "chunks"
+    chunk_results_dir = job_dir / "chunk-results"
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    chunk_results_dir.mkdir(parents=True, exist_ok=True)
+
+    chunk_records: list[dict[str, Any]] = []
+    chunk_payloads: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    for chunk in chunks:
+        chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
+        chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
+
+        chunk_result = model_processor(
+            mode="summarize",
+            file_path=f"{job['input_path']}#{chunk.chunk_id}",
+            content=chunk_input_path.read_text(encoding="utf-8"),
+            instructions=instructions,
+            agent=agent,
+            ollama_base_url=ollama_base_url,
+            timeout=timeout,
+        )
+        warnings.extend(chunk_result.warnings)
+
+        chunk_dir = chunk_results_dir / chunk.chunk_id
+        chunk_dir.mkdir(parents=True, exist_ok=True)
+        raw_path = chunk_dir / "raw-response.txt"
+        markdown_path = chunk_dir / "result.md"
+        json_path = chunk_dir / "result.json"
+        raw_path.write_text(chunk_result.raw_response, encoding="utf-8")
+        markdown_path.write_text(chunk_result.markdown, encoding="utf-8")
+        envelope = chunk_result_envelope(
+            job=job,
+            chunk_id=chunk.chunk_id,
+            chunk_index=chunk.index,
+            chunk_total=chunk.total,
+            chunk_input_path=chunk_input_path,
+            result=chunk_result,
+            run_dir=run_dir,
+            markdown_path=markdown_path,
+            raw_path=raw_path,
+            agent=agent,
+        )
+        write_json(json_path, envelope)
+        chunk_payloads.append(chunk_result.payload)
+        chunk_records.append(
+            {
+                "chunk_id": chunk.chunk_id,
+                "input": relative_to(chunk_input_path, run_dir),
+                "result_json": relative_to(json_path, run_dir),
+                "result_md": relative_to(markdown_path, run_dir),
+                "status": envelope["status"],
+                "warnings": chunk_result.warnings,
+            }
+        )
+
+    reduce_result, reduce_warnings = reduce_summary_payloads(
+        source_path=job["input_path"],
+        payloads=chunk_payloads,
+        instructions=instructions,
+        agent=agent,
+        ollama_base_url=ollama_base_url,
+        timeout=timeout,
+        model_processor=model_processor,
+    )
+    warnings.extend(reduce_warnings)
+    final_result = FarmModelResult(
+        payload=reduce_result.payload,
+        markdown=reduce_result.markdown,
+        raw_response=reduce_result.raw_response,
+        structured_valid=reduce_result.structured_valid,
+        warnings=unique_warnings(warnings),
+    )
+    chunking = {
+        "enabled": True,
+        "strategy": CHUNK_STRATEGY,
+        "chunk_count": len(chunks),
+        "coverage": "full",
+        "chunks": chunk_records,
+    }
+    return final_result, chunking
+
+
+def run_file_job(
+    *,
+    mode: str,
+    job: dict[str, Any],
+    job_dir: Path,
+    run_dir: Path,
+    content: str,
+    instructions: str | None,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    model_processor: ModelProcessor,
+) -> tuple[FarmModelResult, dict[str, Any]]:
+    if mode == "summarize" and len(content) > SUMMARY_MAX_INPUT_CHARS:
+        return run_chunked_summary_job(
+            job=job,
+            job_dir=job_dir,
+            run_dir=run_dir,
+            content=content,
+            instructions=instructions,
+            agent=agent,
+            ollama_base_url=ollama_base_url,
+            timeout=timeout,
+            model_processor=model_processor,
+        )
+    return run_single_pass_job(
+        mode=mode,
+        file_path=job["input_path"],
+        content=content,
+        instructions=instructions,
+        agent=agent,
+        ollama_base_url=ollama_base_url,
+        timeout=timeout,
+        model_processor=model_processor,
     )
 
 
@@ -221,6 +560,7 @@ def run_farm(
                 "raw_response": None,
                 "error": None,
                 "warnings": [],
+                "chunking": single_pass_chunking(),
             }
         )
 
@@ -245,37 +585,35 @@ def run_farm(
         for attempt in range(1, max_attempts + 1):
             try:
                 content = item.path.read_text(encoding="utf-8", errors="replace")
-                result = model_processor(
+                result, chunking = run_file_job(
                     mode=mode,
-                    file_path=item.relative_path,
+                    job=job,
+                    job_dir=job_dir,
+                    run_dir=run_dir,
                     content=content,
                     instructions=instructions,
                     agent=agent,
                     ollama_base_url=ollama_base_url,
                     timeout=per_file_timeout_seconds,
+                    model_processor=model_processor,
                 )
 
-                raw_path = job_dir / "raw-response.txt"
-                markdown_path = job_dir / "result.md"
-                json_path = job_dir / "result.json"
-                raw_path.write_text(result.raw_response, encoding="utf-8")
-                markdown_path.write_text(result.markdown, encoding="utf-8")
-                envelope = result_envelope(
+                envelope = write_result_files(
+                    result=result,
+                    job_dir=job_dir,
                     job=job,
                     mode=mode,
-                    result=result,
                     run_dir=run_dir,
-                    markdown_path=markdown_path,
-                    raw_path=raw_path,
                     agent=agent,
+                    chunking=chunking,
                 )
-                write_json(json_path, envelope)
 
                 job["status"] = envelope["status"]
-                job["result_json"] = relative_to(json_path, run_dir)
-                job["result_md"] = relative_to(markdown_path, run_dir)
-                job["raw_response"] = relative_to(raw_path, run_dir)
+                job["result_json"] = f"jobs/{job['job_id']}/result.json"
+                job["result_md"] = f"jobs/{job['job_id']}/result.md"
+                job["raw_response"] = f"jobs/{job['job_id']}/raw-response.txt"
                 job["warnings"] = result.warnings
+                job["chunking"] = compact_chunking(chunking)
                 job["error"] = None
                 break
             except Exception as exc:

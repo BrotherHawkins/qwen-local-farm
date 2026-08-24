@@ -494,8 +494,9 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ### Milestone 3: Chunked Workflows
 
-- Markdown-aware chunking.
-- Map/reduce summarization.
+- Implemented: paragraph-aware chunking for summarize mode.
+- Implemented: map/reduce summarization for oversized summarize inputs.
+- Markdown heading-aware chunking.
 - Provenance tracking.
 - Rerun failed chunks.
 

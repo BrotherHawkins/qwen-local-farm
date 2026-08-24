@@ -68,6 +68,21 @@ The plan should name when the canonical spec can move from `accepted/` to `imple
 
 Planning-only PRs can still use `NO-SPEC`, but once an accepted behavior spec is being implemented, the implementation PR should cite the relevant plan.
 
+## AI Process Gate
+
+For behavior-changing work, AI assistants should follow this order:
+
+1. Draft or update the change spec.
+2. Stop for human acceptance of the behavior target.
+3. Draft or update the implementation plan.
+4. Stop for human acceptance of the plan.
+5. Implement only after both gates are satisfied.
+6. Update spec/dashboard status only when the corresponding human-controlled lifecycle step has happened.
+
+Do not mark a change spec `Accepted` without explicit human acceptance.
+Do not mark a change spec `Implemented` while it is only local WIP.
+Do not open an implementation PR for behavior-changing work unless it cites an accepted spec and plan, or explicitly uses `NO-SPEC`.
+
 ## Change Types
 
 Change specs should identify one of:

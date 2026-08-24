@@ -29,6 +29,17 @@ def fake_processor(**kwargs: object) -> FarmModelResult:
     )
 
 
+def warning_processor(**kwargs: object) -> FarmModelResult:
+    result = fake_processor(**kwargs)
+    return FarmModelResult(
+        payload=result.payload,
+        markdown=result.markdown,
+        raw_response=result.raw_response,
+        structured_valid=result.structured_valid,
+        warnings=["chunk_warning"],
+    )
+
+
 class FarmRunTests(unittest.TestCase):
     def test_run_farm_happy_path_creates_status_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -60,6 +71,7 @@ class FarmRunTests(unittest.TestCase):
             self.assertTrue((run_dir / "jobs/job-0001/result.json").exists())
             self.assertTrue((run_dir / "jobs/job-0001/raw-response.txt").exists())
             self.assertEqual(status["jobs"][0]["result_json"], "jobs/job-0001/result.json")
+            self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -204,3 +216,103 @@ class FarmRunTests(unittest.TestCase):
 
             self.assertTrue(listing[1].startswith(newer["run_id"]))
             self.assertTrue(listing[2].startswith(older["run_id"]))
+
+    def test_summarize_chunks_large_files_and_reduces_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            content = "\n\n".join(["alpha " * 600, "beta " * 600, "gamma " * 600])
+            (root / "input" / "long.txt").write_text(content, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions="Summarize everything.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            job = status["jobs"][0]
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+
+            self.assertEqual(status["status"], "complete")
+            self.assertTrue(job["chunking"]["enabled"])
+            self.assertEqual(job["chunking"]["coverage"], "full")
+            self.assertGreater(job["chunking"]["chunk_count"], 1)
+            self.assertTrue((run_dir / "jobs/job-0001/chunks/chunk-0001.txt").exists())
+            self.assertTrue((run_dir / "jobs/job-0001/chunk-results/chunk-0001/result.json").exists())
+            self.assertTrue(result["chunking"]["enabled"])
+            self.assertEqual(result["chunking"]["coverage"], "full")
+            self.assertEqual(result["result"]["title"], "long.txt")
+
+    def test_chunk_warnings_mark_run_complete_with_warnings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "long.txt").write_text("x" * 9000, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=warning_processor,
+            )
+
+            self.assertEqual(status["status"], "complete_with_warnings")
+            self.assertEqual(status["jobs"][0]["warnings"], ["chunk_warning"])
+
+    def test_prompt_mode_does_not_chunk_large_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "long.txt").write_text("x" * 9000, encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="prompt",
+                instructions="Do the thing.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+
+            self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
+            self.assertFalse(result["chunking"]["enabled"])
+            self.assertFalse((run_dir / "jobs/job-0001/chunks").exists())
+
+    def test_reduce_payload_batches_stay_under_budget(self) -> None:
+        payloads = [
+            {
+                "title": f"Chunk {index}",
+                "abstract": "a" * 120,
+                "bullets": ["b" * 120],
+                "open_questions": [],
+                "confidence": "medium",
+            }
+            for index in range(8)
+        ]
+
+        batches = qwen_farm.reduce_payload_batches("source.txt", payloads, max_chars=700)
+
+        self.assertGreater(len(batches), 1)
+        for batch in batches:
+            self.assertLessEqual(len(qwen_farm.render_reduce_input("source.txt", batch)), 700)

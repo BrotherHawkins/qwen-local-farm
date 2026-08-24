@@ -91,17 +91,22 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             "",
             "## Jobs",
             "",
-            "| Job | Status | Input | Result | Error |",
-            "| --- | --- | --- | --- | --- |",
+            "| Job | Status | Input | Chunking | Result | Error |",
+            "| --- | --- | --- | --- | --- | --- |",
         ]
     )
 
     for job in status.get("jobs", []):
         result = job.get("result_md") or ""
         error = (job.get("error") or "").replace("\n", " ")
+        chunking = job.get("chunking") or {}
+        if chunking.get("enabled"):
+            chunking_text = f"{chunking.get('chunk_count', 0)} chunks/{chunking.get('coverage', '')}"
+        else:
+            chunking_text = "single-pass"
         lines.append(
             f"| `{job.get('job_id', '')}` | `{job.get('status', '')}` | "
-            f"`{job.get('input_path', '')}` | `{result}` | {error} |"
+            f"`{job.get('input_path', '')}` | `{chunking_text}` | `{result}` | {error} |"
         )
 
     skipped = status.get("skipped_files") or []

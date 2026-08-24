@@ -142,6 +142,8 @@ Active invocation:
 python qwen.py farm run input-folder --output results --mode summarize
 ```
 
+In `summarize` mode, oversized text files are chunked automatically. Each chunk gets its own input and result artifacts under the job folder, then the farm reduces chunk summaries into the normal file-level `result.md` and `result.json`.
+
 Custom prompt invocation:
 
 ```bash

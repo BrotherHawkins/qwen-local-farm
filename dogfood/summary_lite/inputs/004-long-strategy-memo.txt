@@ -1,0 +1,102 @@
+Source URL: synthetic://sift/dogfood/summary-lite/004-long-strategy-memo
+
+# Long Strategy Memo: Local Workers And Frontier Handoff
+
+## Opening Claim
+
+Sift should treat local models as preprocessing workers rather than miniature replacements for frontier models. The local worker's job is to scan, compress, extract, and point. The frontier model's job is to synthesize, reason across sources, and help the user decide what to do next.
+
+This separation matters because local hardware varies widely. Some users have an 8GB GPU, some have a larger card, and some will only have CPU fallback. A strong design lets power users set profiles and flags directly while less technical users ask an AI assistant to run doctor checks, choose settings, and explain the tradeoffs.
+
+The design goal is not to hide complexity forever. It is to stage complexity. First the user should get a clean run. Then they can inspect timing, quality, warnings, snippets, and packages. After that, power users can tune chunk size, resource mode, model family, and concurrency.
+
+## Why Committed Dogfood Fixtures Matter
+
+Committed dogfood fixtures make local development less dependent on memory and folklore. If every contributor can run the same anonymous files, a regression is easier to reproduce. Generated outputs should stay under `.run/`, but the source fixtures should be stable enough to clone, inspect, and discuss.
+
+The fixture policy is simple. Authored synthetic inputs can be tracked. Downloaded article text should not be tracked. Private notes should not be tracked. Raw local model responses should not be tracked. Benchmark records can live under `.run/` until the team explicitly decides whether curated aggregate history belongs in docs.
+
+The first extract fixtures covered evidence, entities, work items, and a chunked research case. The summary fixtures should cover a similar spread: short product context, meeting decisions, incident analysis, and a longer strategy memo. They should exercise summarization, snippets, chunking, timing, and post-run package helpers.
+
+## CLI And Guided Setup
+
+Power users want direct CLI controls. They should be able to choose a profile, switch resource mode, force CPU, tune chunk sizes, request snippets, and set parallelism. Those flags should remain explicit and inspectable in `farm-config.resolved.json`.
+
+Less technical users want the AI assistant to do the hard part. The assistant should run `farm doctor`, explain whether Ollama is ready, recommend a model, and choose a conservative run command. The assistant should also inspect status artifacts after the run instead of asking the user to browse folders manually.
+
+Both paths need the same underlying contract. A CLI command and an AI-guided run should write the same status JSON, timing summaries, result files, snippet metadata, and package artifacts. That consistency is what lets a primary AI help without special cases.
+
+## Chunking Strategy
+
+Chunking is the main tool for fitting long sources into local context. Character chunking is reproducible and easy to reason about. Token-aware chunking is more efficient when an exact tokenizer is available. The system should support both and make the active strategy visible in every run.
+
+For summarize mode, chunking is more expensive than extract mode because summarize may need a reduce pass. A long document can produce multiple map summaries and then a final reduce summary. That means chunk count affects runtime and quality. More chunks can preserve fit but increase calls. Fewer chunks can be faster but risk oversized prompts or shallow summaries.
+
+Heading ancestry and overlap help preserve context across chunk boundaries. A chunk that starts in the middle of a section should still know the section title. A small overlap can preserve a sentence that bridges two chunks. Too much overlap wastes prompt budget and may duplicate summary bullets.
+
+## Snippets And Source Grounding
+
+Summaries are useful orientation, but they can become too terse for frontier-model handoff. Verified snippets add short source passages that the downstream model can quote, inspect, or use as anchors. The key rule is that snippets must be exact text from the source. If the local model paraphrases, Python should not pretend the passage was verified.
+
+Snippet policy should stay tunable. `--snippets off` is fastest and cleanest for pure summaries. `--snippets auto` is useful when summary artifacts feed later synthesis. Fixed snippet counts are useful for comparable dogfood runs. The run status should show selected, verified, requested, and dropped snippet counts.
+
+Snippet packs and synthesis bundles are important because they make post-run use less awkward. A snippet pack gives evidence only. A synthesis bundle gives compact summaries plus selected snippets. Both should be deterministic and should avoid new model calls.
+
+## Timing And Regression Tracking
+
+Performance needs evidence. A run that feels slow should produce enough timing data to inspect total duration, queue wait, per-job duration, chunk count, map calls, reduce calls, and model-call time. Timing records should make comparable dogfood runs easy to compare.
+
+The most useful benchmark is not a single number. It is a small table: model, profile, resource mode, fixture set, options, job count, chunk count, duration, warnings, and artifact sizes. If that table trends worse across changes, the team can inspect before performance regressions become normal.
+
+Runtime dogfood should remain local and explicit. GitHub CI should stay model-free. The repo can test fixture integrity, parser behavior, schemas, and docs without requiring Ollama. Local dogfood handles the real model behavior.
+
+## Model Choice
+
+Qwen remains the tested default family, but Sift should not be hardwired to Qwen forever. Other Ollama model families can work if their metadata, context assumptions, tokenizer strategy, and dogfood evidence are clear. Unknown models should run conservatively until measured.
+
+The recommendation system should say what it knows and what it does not know. A tested Qwen model can receive stronger guidance. An experimental or unknown model should use character chunking, cautious caps, and explicit warnings until dogfood proves otherwise.
+
+Resource-aware modes should describe intent. GPU mode prefers speed and should warn if memory looks tight. CPU mode avoids VRAM pressure but may be much slower. Hybrid mode allows partial offload. Auto mode should inspect available signals and choose a conservative profile.
+
+## Repeated Claims For Reduce Behavior
+
+This memo repeats its central claim intentionally: local workers should preprocess source material before a frontier model performs synthesis. The claim appears in different sections so chunked summarize runs have to merge repeated ideas during reduce.
+
+The memo also repeats the fixture policy intentionally: commit synthetic source inputs, keep generated outputs under `.run/`, and do not commit downloaded article text. A good final summary should mention this policy once, not as a duplicated theme in every bullet.
+
+The memo repeats the guided setup idea as well. Power users should get flags. Less technical users should get an AI-guided path using doctor checks and recommended commands. A good final summary should preserve both audiences without turning the memo into a product brochure.
+
+## Risks
+
+One risk is over-tuning to the local test machine. An 8GB GPU baseline is valuable, but it should not become the only supported mental model. The documentation should explain how larger and smaller systems choose profiles.
+
+Another risk is letting local model prose look more authoritative than it is. Local summaries are useful, but they are still approximations. The system should keep source paths, snippets, warnings, and schema validation visible so a stronger downstream model can decide when to reopen sources.
+
+A third risk is adding too many knobs before the setup path is friendly. The doctor workflow and skills library should help new users start with a conservative path, while advanced controls stay available for people who want them.
+
+## Decisions
+
+Decision: committed dogfood source fixtures are useful and should live under `dogfood/`.
+
+Decision: generated dogfood outputs should remain ignored under `.run/`.
+
+Decision: summarize fixtures should include enough size variation to exercise single-pass and chunked paths.
+
+Decision: local runtime reports should record both quality impressions and timing facts.
+
+Decision: docs should teach the difference between committed fixtures and local generated artifacts.
+
+## Open Questions
+
+Should summary dogfood eventually have a more formal expected-signal scorer? Manual review is fine for now, but a small model-free checker could report whether obvious named signals appear in summaries.
+
+Should benchmark records ever be promoted into tracked docs? The safer default is no, but curated aggregate tables might become useful once the team has several stable local runs.
+
+Should snippet quality be part of the same score as summary quality? They are related but not identical. A terse summary with strong snippets can be better for frontier handoff than a longer unsupported summary.
+
+Should token-aware chunking become the default for summarize when the tokenizer is available? It can reduce avoidable calls, but character chunking remains easier to reproduce across machines.
+
+## Closing
+
+The practical path is straightforward. Keep local workers fast, inspectable, and source-grounded. Let the frontier model handle synthesis. Commit synthetic fixtures so regressions are reproducible. Keep generated outputs local. Use timing and quality records so product decisions are based on evidence rather than vibes.
+

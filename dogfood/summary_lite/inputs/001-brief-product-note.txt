@@ -1,0 +1,16 @@
+Source URL: synthetic://sift/dogfood/summary-lite/001-brief-product-note
+
+# ScoutBoard Product Note
+
+ScoutBoard is a lightweight dashboard for local AI batch runs. It does not call frontier models directly. Its purpose is to show a primary AI assistant or solo operator what happened during a folder run: which files were processed, how long each job took, which outputs were written, and where warnings appeared.
+
+The product thesis is that local workers are easier to trust when their status and artifacts are boringly visible. A user should not need to inspect every raw model response. They should be able to scan run status, open a few result files, and hand a compact package to a stronger model when synthesis matters.
+
+The first user is a technically curious operator with an 8GB GPU. That user wants speed and predictability more than a perfect dashboard. The second user is less technical and mostly interacts through an AI assistant. That user needs guided setup, clear warnings, and commands that can be copied without understanding every runtime profile.
+
+Useful example: after a four-file run, ScoutBoard highlights one chunked job, two single-pass jobs, and one warning about a missing snippet. The operator can open the result Markdown directly, while the primary AI can read JSON status and decide whether to retry or package the run.
+
+Risk: too much telemetry can become noise before the user knows what matters. The first version should show job status, duration, chunk count, model, profile, warnings, and artifact paths. Token-level metrics can wait until they help explain a real slowdown.
+
+Open question: should first-run setup hide advanced controls until the doctor report says the machine is ready, or should power users see every knob immediately?
+

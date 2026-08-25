@@ -1,0 +1,48 @@
+{
+  "fixture": "summary_lite",
+  "version": 1,
+  "description": "Expected planted signals for synthetic summarize-mode dogfood. Use as a scoring guide, not an exact golden output.",
+  "files": [
+    {
+      "path": "dogfood/summary_lite/inputs/001-brief-product-note.txt",
+      "size_class": "small",
+      "summary_focus": [
+        "ScoutBoard is a lightweight dashboard for local AI batch runs.",
+        "The intended audience is a solo operator or primary AI assistant.",
+        "The key risk is showing too much telemetry before the user knows what matters.",
+        "The open question is whether first-run setup should hide advanced controls."
+      ]
+    },
+    {
+      "path": "dogfood/summary_lite/inputs/002-meeting-decisions.txt",
+      "size_class": "small",
+      "summary_focus": [
+        "The team decided to commit synthetic fixtures but keep generated outputs under .run.",
+        "Timing records should be captured after comparable local runs.",
+        "Snippets are useful when summaries will feed frontier-model synthesis.",
+        "The follow-up is to create anonymous summarize fixtures matching earlier article sizes."
+      ]
+    },
+    {
+      "path": "dogfood/summary_lite/inputs/003-incident-analysis.txt",
+      "size_class": "medium",
+      "summary_focus": [
+        "The incident was caused by a stale export mixed with a changed column name.",
+        "The local summary was useful for triage but initially missed the customer-impact nuance.",
+        "The recommended fix includes schema checks, source links, and a retry-safe import step.",
+        "The unresolved question is how much validation belongs in the local worker versus Python."
+      ]
+    },
+    {
+      "path": "dogfood/summary_lite/inputs/004-long-strategy-memo.txt",
+      "size_class": "long_chunked",
+      "summary_focus": [
+        "The memo argues that Sift should treat local models as preprocessing workers.",
+        "The strategy separates power-user CLI controls from AI-guided setup for less technical users.",
+        "Multiple sections repeat the same claims so reduce behavior and dedupe can be inspected.",
+        "The memo includes tradeoffs around speed, source grounding, model choice, and committed dogfood fixtures."
+      ]
+    }
+  ]
+}
+

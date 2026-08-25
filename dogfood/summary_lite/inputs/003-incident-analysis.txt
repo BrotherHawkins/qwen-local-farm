@@ -1,0 +1,58 @@
+Source URL: synthetic://sift/dogfood/summary-lite/003-incident-analysis
+
+# Incident Analysis: Stale Intake Export
+
+## Summary
+
+On Monday morning, the intake importer processed a stale LedgerLake export while also receiving a new column name from the nightly export job. The importer did not crash. Instead, it created incomplete customer records because the old file still had `account_owner` while the new parser expected `owner_name`.
+
+The customer-visible impact was narrow but real. Five trial accounts showed blank owner names in Harbor Notes for about six hours. Operators could still find the accounts by company name, but handoff notes looked incomplete. The support team sent two manual corrections before the data repair completed.
+
+## Timeline
+
+08:10 - LedgerLake wrote a new export with `owner_name`.
+
+08:15 - The scheduled copy step failed because the network share was locked.
+
+08:20 - The importer picked up the previous day's file from the fallback folder.
+
+08:27 - The parser used the new schema map and treated `account_owner` as unknown.
+
+09:05 - Asha noticed blank owner names while reviewing Harbor Notes.
+
+09:30 - Theo paused the importer and checked the raw export path.
+
+10:20 - The team replayed the correct file and repaired the five affected records.
+
+## What Worked
+
+The local summary run was useful for triage. It quickly surfaced the stale export, the changed column name, and the fact that the importer did not fail loudly. That let the primary AI ask for the import logs and schema map instead of reading every operational note.
+
+The timing summary also helped. The affected job was fast, which made it clear that the issue was not a model timeout or a long-running retry. The problem lived in source selection and validation.
+
+## What Did Not Work
+
+The first local summary flattened the customer impact by saying there was "no outage." That was technically true but incomplete. There was no full outage, but five trial accounts had incomplete handoff data for six hours. A better summary should preserve that nuance.
+
+The snippet pack included one useful quote from Asha but missed the exact line about the network share lock. That made the final synthesis less grounded than it should have been.
+
+The importer did not record whether the fallback folder was used. The only clue was the file timestamp. That delayed the diagnosis and made the incident harder to explain to a non-technical reviewer.
+
+## Fixes
+
+Add a schema check before import. If required columns are missing, fail the import and write a non-retryable validation error. The importer should not silently proceed with unknown required fields.
+
+Add source-path provenance to every import record. The operator should see whether the importer used the primary export path or fallback folder.
+
+Add a retry-safe import step. Replaying the corrected file should update incomplete records without duplicating notes or losing manual corrections.
+
+Add a small local smoke test with one stale file and one current file. The test should prove that the importer rejects stale shape mismatches before records are written.
+
+## Open Questions
+
+How much validation belongs in the local worker versus Python? The local model can summarize that a stale export looks suspicious, but Python should own required-column checks, source-path detection, and retry safety.
+
+Should the summary prompt ask for customer impact explicitly? The incident suggests yes. Without that instruction, the local worker may overemphasize technical cause and understate user-facing consequences.
+
+Should timing records include input-file timestamps? That might help future diagnosis, but it could leak local filesystem details into artifacts meant for broad sharing.
+

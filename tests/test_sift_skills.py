@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import sift
+from src import sift_skills_install
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,6 +142,22 @@ class SkillManifestTests(unittest.TestCase):
 
 
 class SkillContentTests(unittest.TestCase):
+    def test_skill_install_targets_stay_in_sync_with_platform_docs(self) -> None:
+        docs = [
+            (ROOT / "skills" / "README.md").read_text(encoding="utf-8"),
+            (ROOT / "README.md").read_text(encoding="utf-8"),
+            (ROOT / "docs" / "ai-usage.md").read_text(encoding="utf-8"),
+        ]
+        combined = "\n".join(docs)
+
+        for target in sift_skills_install.TARGETS:
+            with self.subTest(target=target):
+                self.assertIn(target, combined)
+
+        self.assertIn(".agents/skills", combined)
+        self.assertIn(".claude/skills", combined)
+        self.assertIn("python sift.py skills install", combined)
+
     def test_skill_docs_do_not_contain_stale_renamed_references(self) -> None:
         for skill in read_manifest()["skills"]:
             text = read_skill(skill)

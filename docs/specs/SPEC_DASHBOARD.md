@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 35 |
+| Implemented | 36 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -46,9 +46,9 @@ This is advisory, not a lifecycle state. See [../backlog.md](../backlog.md) for 
 
 | Rank | Candidate | Backlog |
 | ---: | --- | --- |
-| 1 | Platform-specific skill installation helpers | BL-0107 |
-| 2 | Skip non-retryable jobs by default in `retry-failed` | BL-0099 |
-| 3 | Reserved prompt-wrapper budget | BL-0065 |
+| 1 | Skip non-retryable jobs by default in `retry-failed` | BL-0099 |
+| 2 | Reserved prompt-wrapper budget | BL-0065 |
+| 3 | Published AI skill packages | BL-0108 |
 
 ## Implemented Specs
 
@@ -99,6 +99,7 @@ None.
 | 0032 | Implemented | Add | [0032-add-ai-skills-library.md](changes/0032-add-ai-skills-library.md) | Adds a portable AI skills library so AI assistants can guide users through Sift setup and operation. |
 | 0033 | Implemented | Add | [0033-add-hardware-specific-model-install-guidance.md](changes/0033-add-hardware-specific-model-install-guidance.md) | Adds hardware-specific model installation guidance for humans, AI assistants, doctor reports, and recommendation reports. |
 | 0034 | Implemented | Add | [0034-add-package-shaping-budget-controls.md](changes/0034-add-package-shaping-budget-controls.md) | Adds package shaping and budget controls for synthesis bundles and snippet packs. |
+| 0035 | Implemented | Add | [0035-add-platform-specific-skill-install-helpers.md](changes/0035-add-platform-specific-skill-install-helpers.md) | Adds safe Codex and Claude Code install helpers for repo-shipped Sift skills. |
 
 ## Stale Drafts To Revisit
 

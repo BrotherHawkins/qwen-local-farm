@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sift.local/schemas/skill-install-report.schema.json",
+  "title": "Sift Skill Install Report",
+  "description": "Preview or write report from python sift.py skills install.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "command",
+    "target",
+    "app",
+    "scope",
+    "dry_run",
+    "write",
+    "replace",
+    "source_root",
+    "destination_root",
+    "skills",
+    "summary",
+    "warnings",
+    "next_steps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "command": {
+      "const": "skills install"
+    },
+    "target": {
+      "type": "string",
+      "enum": ["codex-user", "codex-project", "claude-user", "claude-project"]
+    },
+    "app": {
+      "type": "string",
+      "enum": ["codex", "claude-code"]
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["user", "project"]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "write": {
+      "type": "boolean"
+    },
+    "replace": {
+      "type": "boolean"
+    },
+    "source_root": {
+      "type": "string"
+    },
+    "destination_root": {
+      "type": "string"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "destination", "action", "status", "reason"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["copy", "replace", "skip"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "copied", "up_to_date", "conflict", "skipped", "error"]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["planned", "copied", "up_to_date", "conflicts", "skipped", "errors"],
+      "properties": {
+        "planned": {
+          "type": "integer"
+        },
+        "copied": {
+          "type": "integer"
+        },
+        "up_to_date": {
+          "type": "integer"
+        },
+        "conflicts": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

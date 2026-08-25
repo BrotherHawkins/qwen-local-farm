@@ -37,6 +37,39 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.message, "hello")
         self.assertEqual(args.agent, "coder")
 
+    def test_parse_args_accepts_skills_install(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "sift.py",
+                "skills",
+                "install",
+                "--target",
+                "codex-user",
+                "--repo-root",
+                ".",
+                "--home",
+                ".run/home",
+                "--output",
+                ".run/report.json",
+                "--json",
+                "--write",
+                "--replace",
+            ],
+        ):
+            args = sift.parse_args()
+
+        self.assertEqual(args.command, "skills")
+        self.assertEqual(args.skills_command, "install")
+        self.assertEqual(args.target, "codex-user")
+        self.assertEqual(args.repo_root, ".")
+        self.assertEqual(args.home, ".run/home")
+        self.assertEqual(args.output, ".run/report.json")
+        self.assertTrue(args.json)
+        self.assertTrue(args.write)
+        self.assertTrue(args.replace)
+
     def test_parse_args_accepts_farm_run(self) -> None:
         with patch.object(
             sys,
@@ -569,6 +602,36 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class FarmHandlerTests(unittest.TestCase):
+    def test_main_skills_install_writes_json_report_when_requested(self) -> None:
+        args = argparse.Namespace(
+            command="skills",
+            skills_command="install",
+            target="codex-user",
+            repo_root="repo",
+            home="home",
+            output="report.json",
+            json=True,
+            write=True,
+            replace=False,
+        )
+        report = {"schema_version": 1, "command": "skills install", "summary": {"copied": 2}}
+
+        with (
+            patch("sift.parse_args", return_value=args),
+            patch("src.sift_skills_install.build_skill_install_report", return_value=report) as build,
+            patch("src.sift_skills_install.write_json") as write_json,
+            patch("builtins.print") as printed,
+        ):
+            sift.main()
+
+        self.assertEqual(build.call_args.kwargs["repo_root"], Path("repo"))
+        self.assertEqual(build.call_args.kwargs["target"], "codex-user")
+        self.assertEqual(build.call_args.kwargs["home"], Path("home"))
+        self.assertTrue(build.call_args.kwargs["write"])
+        self.assertFalse(build.call_args.kwargs["replace"])
+        write_json.assert_called_once_with(Path("report.json"), report)
+        self.assertEqual(json.loads(printed.call_args.args[0])["command"], "skills install")
+
     def test_schema_validate_json_prints_result(self) -> None:
         args = argparse.Namespace(
             farm_command="schema",

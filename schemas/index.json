@@ -90,6 +90,12 @@
       "path": "schemas/model-installation.schema.json",
       "surface": "docs/model-installation.json",
       "status": "current"
+    },
+    {
+      "id": "https://sift.local/schemas/skill-install-report.schema.json",
+      "path": "schemas/skill-install-report.schema.json",
+      "surface": "python sift.py skills install",
+      "status": "current"
     }
   ]
 }

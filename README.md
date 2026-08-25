@@ -9,6 +9,7 @@ AI assistants can use the repo-shipped [skills library](skills/README.md) to gui
 ## Contents
 
 - [Model Defaults](#model-defaults)
+- [Model Installation](#model-installation)
 - [Quick Start](#quick-start)
 - [Worker Farm](#worker-farm)
 - [What Gets Started](#what-gets-started)
@@ -36,6 +37,26 @@ Installed local models:
 | `qwen3:8b` | 8.2B | `Q4_K_M` | Deeper offline worker; fits in VRAM at `4096` context in testing. |
 | `qwen3:14b` | 14.8B | `Q4_K_M` | Heavier offline worker; usable as partial GPU offload or CPU/RAM-only. |
 | `qwen3:4b` | 4.0B | `Q4_K_M` | Fallback only; this model emitted thinking text in summarization tests. |
+
+## Model Installation
+
+Use [docs/model-installation.md](docs/model-installation.md) to choose a first model/profile path by hardware band. It covers CPU-only, 4 GB, 8 GB, 12 GB, 24 GB, larger local machines, and Apple Silicon/unified-memory setups.
+
+Machine-readable guidance for AI assistants and scripts lives in [docs/model-installation.json](docs/model-installation.json) and is validated by [schemas/model-installation.schema.json](schemas/model-installation.schema.json).
+
+Model pulls download local model weights, so review first:
+
+```bash
+ollama pull qwen3.5:4b
+```
+
+Then run doctor, measured recommendations, and a tiny smoke test before large batches:
+
+```bash
+python sift.py farm doctor --json
+python sift.py farm recommend --agent default --profile local-8gb --resource-mode auto
+python sift.py farm run .run/smoke/input --mode summarize --output .run/smoke/output
+```
 
 ## Quick Start
 

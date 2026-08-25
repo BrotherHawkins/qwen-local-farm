@@ -26,17 +26,18 @@ The goal is reproducible local work. Prefer commands and artifacts that another 
 
 1. Put transient inputs, downloaded/test artifacts, and outputs under `.run/`.
 2. Use `python sift.py farm doctor --json` or inspect recent recommendation/config state before large jobs.
-3. Choose `summarize` as the mature default mode unless the user gives a custom prompt.
-4. Use `prompt` mode only when the user supplies clear instructions and accepts that outputs are less specialized than summarize mode.
-5. Use `--include` and `--exclude` filters when the input folder needs reproducible file selection.
-6. Use snippets or synthesis bundles when the output will feed a downstream frontier model.
-7. Inspect `farm-status.json`, `FARM_STATUS.md`, `jobs/job-*/result.json`, `jobs/job-*/result.md`, raw response files when needed, and `timing-summary.json`.
-8. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json` before handing them to scripts or downstream AI workflows.
-9. Use `farm collect` when the user wants ordinary per-file outputs gathered into one easier folder.
-10. Use `farm snippets pack` when the user needs verified source evidence across files.
-11. Use `farm synthesis bundle` when the user needs summaries plus evidence in one downstream-ready package.
-12. Record dogfood quality or timing when the user is comparing changes across runs.
-13. Report the run ID, final status, output path, counts, skipped files, rough timing, and any failures or warnings.
+3. Use `docs/model-installation.md` and report `model_installation_guidance` when a run fails due to model availability or resource pressure.
+4. Choose `summarize` as the mature default mode unless the user gives a custom prompt.
+5. Use `prompt` mode only when the user supplies clear instructions and accepts that outputs are less specialized than summarize mode.
+6. Use `--include` and `--exclude` filters when the input folder needs reproducible file selection.
+7. Use snippets or synthesis bundles when the output will feed a downstream frontier model.
+8. Inspect `farm-status.json`, `FARM_STATUS.md`, `jobs/job-*/result.json`, `jobs/job-*/result.md`, raw response files when needed, and `timing-summary.json`.
+9. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json` before handing them to scripts or downstream AI workflows.
+10. Use `farm collect` when the user wants ordinary per-file outputs gathered into one easier folder.
+11. Use `farm snippets pack` when the user needs verified source evidence across files.
+12. Use `farm synthesis bundle` when the user needs summaries plus evidence in one downstream-ready package.
+13. Record dogfood quality or timing when the user is comparing changes across runs.
+14. Report the run ID, final status, output path, counts, skipped files, rough timing, and any failures or warnings.
 
 ## Safety Boundaries
 

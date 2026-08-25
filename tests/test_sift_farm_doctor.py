@@ -55,6 +55,13 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertEqual(report["runtime"]["resource_mode"]["requested"], "auto")
             self.assertEqual(report["runtime"]["resource_mode"]["effective"], "gpu")
             self.assertTrue(report["tokenizers"]["ready"])
+            guidance = report["model_installation_guidance"]
+            self.assertEqual(guidance["guide_path"], "docs/model-installation.md")
+            self.assertEqual(guidance["catalog_path"], "docs/model-installation.json")
+            self.assertEqual(guidance["suggested_band"], "local-8gb")
+            self.assertEqual(guidance["recommended_agent"], "default")
+            self.assertEqual(guidance["recommended_model"], "qwen3.5:4b")
+            self.assertEqual(guidance["missing_models"], [])
             self.assertEqual(report["runs"], {"known_count": 0, "latest": []})
             self.assertEqual(report["profile_recommendation"]["status"], "missing")
             self.assertIn("setup-doctor.md", report["report_paths"]["markdown"])
@@ -109,6 +116,8 @@ class FarmDoctorTests(unittest.TestCase):
 
             self.assertEqual(report["status"], "ready_with_warnings")
             self.assertFalse(report["agent"]["model_installed"])
+            self.assertEqual(report["model_installation_guidance"]["missing_models"], ["qwen3.5:4b"])
+            self.assertIn("model.pull", [item["id"] for item in report["model_installation_guidance"]["next_actions"]])
             self.assertIn("model.setup", [item["id"] for item in report["recommendations"]])
 
     def test_missing_tokenizer_readiness_is_optional_warning(self) -> None:
@@ -144,6 +153,7 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertIn("# Farm Doctor", markdown)
             self.assertIn("## Ollama", markdown)
             self.assertIn("## Agent And Runtime", markdown)
+            self.assertIn("## Model Installation Guidance", markdown)
             self.assertIn("Resource mode effective", markdown)
             self.assertIn("Model family: `qwen`", markdown)
             self.assertIn("Model support: `tested`", markdown)

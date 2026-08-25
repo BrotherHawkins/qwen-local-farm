@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sift.local/schemas/model-installation.schema.json",
+  "title": "Sift Model Installation Guidance",
+  "description": "Machine-readable hardware-band guidance for choosing initial Sift model installation and setup commands.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "guide_path",
+    "default_band",
+    "hardware_bands",
+    "approval_boundaries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "guide_path": {
+      "type": "string"
+    },
+    "default_band": {
+      "type": "string"
+    },
+    "hardware_bands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "machine_shape",
+          "recommended_profile",
+          "recommended_agent",
+          "recommended_model",
+          "resource_mode",
+          "install_commands",
+          "setup_commands",
+          "smoke_test_commands",
+          "warnings",
+          "notes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "machine_shape": {
+            "type": "string"
+          },
+          "recommended_profile": {
+            "type": "string"
+          },
+          "recommended_agent": {
+            "type": "string"
+          },
+          "recommended_model": {
+            "type": "string"
+          },
+          "resource_mode": {
+            "type": "string",
+            "enum": ["auto", "gpu", "hybrid", "cpu"]
+          },
+          "install_commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["command", "approval_required", "reason"],
+              "properties": {
+                "command": {
+                  "type": "string"
+                },
+                "approval_required": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "setup_commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "smoke_test_commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "approval_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

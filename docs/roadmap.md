@@ -485,6 +485,7 @@ Discovery paths:
 - AI-facing docs for primary assistants.
 - Machine-readable capabilities file such as `farm-capabilities.json`.
 - Implemented first doctor command for local setup reports.
+- Implemented hardware-specific model installation guidance for humans, scripts, and primary AIs.
 - Future runtime endpoint such as `GET /farm/capabilities`.
 
 Capability discovery should report:
@@ -581,7 +582,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: machine capability and readiness report.
 - Implemented: benchmark-based model/profile/concurrency recommendations.
 - Implemented: safe recommendation config apply.
-- Next: hardware-specific model installation guidance.
+- Implemented: hardware-specific model installation guidance.
 
 ## Groomed Next Decisions
 

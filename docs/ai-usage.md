@@ -24,6 +24,12 @@ Start with:
 
 If the current AI app cannot install skills directly, read or paste the relevant `SKILL.md` as session instructions. The skill files are intentionally platform-agnostic Markdown and should guide the assistant through doctor, recommend, safe config apply, schema validation, tiny smoke tests, `.run/` artifact hygiene, and output inspection.
 
+## Model Installation Guidance
+
+Before recommending model pulls for a user, read [model-installation.md](model-installation.md) and, when automation needs stable fields, [model-installation.json](model-installation.json). The JSON catalog is validated by [../schemas/model-installation.schema.json](../schemas/model-installation.schema.json).
+
+Primary AIs should treat model pulls as approval-required because they download local model weights. `farm doctor --json` and `farm recommend --json` expose `model_installation_guidance` with guide/catalog paths, selected band, selected model, missing model state, and approval-tagged next commands.
+
 ## Core Rule
 
 Use the farm when the work is suitable for slower, local, staged processing.

@@ -1,0 +1,16 @@
+Source URL: synthetic://sift/dogfood/extract-lite/002-entities-small
+
+# Entity Map For Northwind Analytics Trial
+
+Mira Chen is the research lead for the Northwind Analytics trial. She owns the evaluation rubric and decides whether the extract artifacts are clear enough for a frontier-model handoff.
+
+Jon Patel is the procurement buyer. He needs a short comparison between the current vendor contract and the proposed LedgerLake subscription before Friday.
+
+Asha Morgan is the operations owner. She tracks whether weekly intake notes arrive in a format that Sift can read without manual cleanup.
+
+Northwind Analytics is the vendor in the trial. LedgerLake is the data tool that exports the messy CSV notes. Harbor Notes is the internal knowledge base where operators paste meeting notes after each customer call.
+
+The briefing page is https://example.test/northwind/briefing. LedgerLake setup notes are at https://example.test/tools/ledgerlake. Harbor Notes export guidance is at https://example.test/harbor-notes/export.
+
+The team also mentioned Rowan Ives from Finance, but Rowan has no assigned action in this note.
+

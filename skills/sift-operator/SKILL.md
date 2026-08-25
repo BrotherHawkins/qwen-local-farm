@@ -13,6 +13,7 @@ The goal is reproducible local work. Prefer commands and artifacts that another 
 
 - `python sift.py farm doctor --json`
 - `python sift.py farm run <input-folder> --output <output-folder> --mode summarize`
+- `python sift.py farm run <input-folder> --output <output-folder> --mode extract --extract-preset research`
 - `python sift.py farm run <input-folder> --output <output-folder> --mode prompt --instructions <instructions>`
 - `python sift.py farm status <run-ref> --json`
 - `python sift.py farm collect <run-ref> --output <output-folder> --label <label>`
@@ -27,17 +28,18 @@ The goal is reproducible local work. Prefer commands and artifacts that another 
 1. Put transient inputs, downloaded/test artifacts, and outputs under `.run/`.
 2. Use `python sift.py farm doctor --json` or inspect recent recommendation/config state before large jobs.
 3. Use `docs/model-installation.md` and report `model_installation_guidance` when a run fails due to model availability or resource pressure.
-4. Choose `summarize` as the mature default mode unless the user gives a custom prompt.
-5. Use `prompt` mode only when the user supplies clear instructions and accepts that outputs are less specialized than summarize mode.
-6. Use `--include` and `--exclude` filters when the input folder needs reproducible file selection.
-7. Use snippets or synthesis bundles when the output will feed a downstream frontier model.
-8. Inspect `farm-status.json`, `FARM_STATUS.md`, `jobs/job-*/result.json`, `jobs/job-*/result.md`, raw response files when needed, and `timing-summary.json`.
-9. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json` before handing them to scripts or downstream AI workflows.
-10. Use `farm collect` when the user wants ordinary per-file outputs gathered into one easier folder.
-11. Use `farm snippets pack` when the user needs verified source evidence across files.
-12. Use `farm synthesis bundle` when the user needs summaries plus evidence in one downstream-ready package.
-13. Record dogfood quality or timing when the user is comparing changes across runs.
-14. Report the run ID, final status, output path, counts, skipped files, rough timing, and any failures or warnings.
+4. Choose `summarize` when the user needs compact prose summaries.
+5. Choose `extract` when the user needs compact JSON-first harvested claims, facts, examples, entities, links, tasks, decisions, risks, requirements, blockers, or follow-ups for later frontier-model handoff.
+6. Use `prompt` mode only when the user supplies clear instructions and accepts that outputs are less specialized than summarize or extract mode.
+7. Use `--include` and `--exclude` filters when the input folder needs reproducible file selection.
+8. Use snippets or synthesis bundles when summarize output will feed a downstream frontier model; use `extract-results.json` when extract output is the handoff artifact.
+9. Inspect `farm-status.json`, `FARM_STATUS.md`, `jobs/job-*/result.json`, `jobs/job-*/result.md`, raw response files when needed, `timing-summary.json`, and extract run aggregates when present.
+10. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json` before handing them to scripts or downstream AI workflows.
+11. Use `farm collect` when the user wants ordinary per-file outputs gathered into one easier folder.
+12. Use `farm snippets pack` when the user needs verified source evidence across files.
+13. Use `farm synthesis bundle` when the user needs summaries plus evidence in one downstream-ready package.
+14. Record dogfood quality or timing when the user is comparing changes across runs.
+15. Report the run ID, final status, output path, counts, skipped files, rough timing, and any failures or warnings.
 
 ## Safety Boundaries
 
@@ -57,6 +59,7 @@ For a completed farm run, inspect:
 - `farm-config.resolved.json`
 - `timing-summary.json`
 - `TIMING_SUMMARY.md`
+- `extract-results.json` and `EXTRACT_RESULTS.md` for extract runs
 - several `jobs/job-*/result.json`
 - several `jobs/job-*/result.md`
 

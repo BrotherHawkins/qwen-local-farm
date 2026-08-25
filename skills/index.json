@@ -14,6 +14,7 @@
         "python sift.py farm tokenizer status",
         "python sift.py farm tokenizer setup",
         "python sift.py farm run <input-folder> --mode summarize --output <output-folder>",
+        "python sift.py farm run <input-folder> --mode extract --extract-preset research --output <output-folder>",
         "python sift.py farm status <run-ref> --json",
         "python sift.py farm schema validate <path> --json"
       ]
@@ -25,6 +26,7 @@
       "required_commands": [
         "python sift.py farm doctor --json",
         "python sift.py farm run <input-folder> --output <output-folder> --mode summarize",
+        "python sift.py farm run <input-folder> --output <output-folder> --mode extract --extract-preset research",
         "python sift.py farm run <input-folder> --output <output-folder> --mode prompt --instructions <instructions>",
         "python sift.py farm status <run-ref> --json",
         "python sift.py farm collect <run-ref> --output <output-folder> --label <label>",

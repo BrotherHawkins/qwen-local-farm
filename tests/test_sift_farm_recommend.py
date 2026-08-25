@@ -77,6 +77,18 @@ def recommendation_fixture(status: str = "ready") -> dict[str, Any]:
             "confidence": "high",
             "reason": "Tokenizer is ready.",
         },
+        "extract": {
+            "preset": "research",
+            "chunk_strategy": "token",
+            "chunk_tokens": 4096,
+            "chunk_chars": 6000,
+            "token_safety_margin": 0.1,
+            "max_items_per_file": 40,
+            "max_items_per_chunk": 10,
+            "snippet_max_chars": 240,
+            "confidence": "high",
+            "reason": "Tokenizer is ready.",
+        },
         "model_installation_guidance": {
             "guide_path": "docs/model-installation.md",
             "catalog_path": "docs/model-installation.json",
@@ -151,6 +163,8 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["concurrency"]["ollama_num_parallel"]["recommended"], 1)
             self.assertEqual(report["summarize"]["chunk_strategy"], "token")
             self.assertEqual(report["summarize"]["chunk_tokens"], 4096)
+            self.assertEqual(report["extract"]["chunk_strategy"], "token")
+            self.assertEqual(report["extract"]["preset"], "research")
             self.assertEqual(report["model_installation_guidance"]["guide_path"], "docs/model-installation.md")
             self.assertEqual(report["model_installation_guidance"]["suggested_band"], "local-8gb")
             self.assertEqual(report["model_installation_guidance"]["missing_models"], [])
@@ -199,6 +213,7 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["model_metadata"]["family"], "llama")
             self.assertEqual(report["model_metadata"]["support"], "experimental")
             self.assertEqual(report["summarize"]["chunk_strategy"], "character")
+            self.assertEqual(report["extract"]["chunk_strategy"], "character")
             self.assertIn("not dogfood-tested", report["summarize"]["reason"])
             self.assertIn("Model family: `llama`", markdown)
             self.assertIn("Model support: `experimental`", markdown)

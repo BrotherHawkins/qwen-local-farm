@@ -128,6 +128,7 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     runtime = status.get("runtime") or {}
     resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
     summarize = runtime.get("summarize") or {}
+    extract = runtime.get("extract") or {}
     concurrency = runtime.get("concurrency") or {}
     failure_policy = runtime.get("failure_policy") or {}
     discovery_runtime = runtime.get("discovery") if isinstance(runtime.get("discovery"), dict) else {}
@@ -173,6 +174,14 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Snippet policy: `{summarize.get('snippet_policy', 'off')}`",
         f"Snippet count: `{summarize.get('snippet_count') if summarize.get('snippet_count') is not None else ''}`",
         f"Snippet max chars: `{summarize.get('snippet_max_chars', '')}`",
+        f"Extract preset: `{extract.get('preset', '')}`",
+        f"Extract focus: `{extract.get('focus') or ''}`",
+        f"Extract chunk strategy: `{extract.get('chunk_strategy', '')}`",
+        f"Extract chunk chars: `{extract.get('chunk_chars', '')}`",
+        f"Extract chunk tokens: `{extract.get('chunk_tokens') or ''}`",
+        f"Extract max items per file: `{extract.get('max_items_per_file', '')}`",
+        f"Extract max items per chunk: `{extract.get('max_items_per_chunk', '')}`",
+        f"Extract snippet max chars: `{extract.get('snippet_max_chars', '')}`",
         f"Parallel jobs: `{concurrency.get('jobs', '')}`",
         f"Parallel chunks: `{concurrency.get('chunks', '')}`",
         f"Max attempts: `{failure_policy.get('max_attempts', '')}`",

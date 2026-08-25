@@ -107,6 +107,38 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.include, ["articles/*.txt", "notes/**/*.md"])
         self.assertEqual(args.exclude, ["**/raw/**"])
 
+    def test_parse_args_accepts_extract_mode_options(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "sift.py",
+                "farm",
+                "run",
+                "articles",
+                "--mode",
+                "extract",
+                "--extract-preset",
+                "work",
+                "--extract-focus",
+                "Capture follow-ups.",
+                "--extract-max-items-per-file",
+                "12",
+                "--extract-max-items-per-chunk",
+                "4",
+                "--extract-snippet-max-chars",
+                "180",
+            ],
+        ):
+            args = sift.parse_args()
+
+        self.assertEqual(args.mode, "extract")
+        self.assertEqual(args.extract_preset, "work")
+        self.assertEqual(args.extract_focus, "Capture follow-ups.")
+        self.assertEqual(args.extract_max_items_per_file, 12)
+        self.assertEqual(args.extract_max_items_per_chunk, 4)
+        self.assertEqual(args.extract_snippet_max_chars, 180)
+
     def test_parse_args_accepts_token_chunk_overrides(self) -> None:
         with patch.object(
             sys,

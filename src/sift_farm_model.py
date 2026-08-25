@@ -11,10 +11,25 @@ from src.sift_farm_snippets import (
     parse_snippet_candidates,
     select_snippet_candidates,
 )
+from src.sift_farm_extract import (
+    DEFAULT_EXTRACT_CHUNK_CHARS,
+    DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK,
+    DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE,
+    DEFAULT_EXTRACT_PRESET,
+    DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    dedupe_items,
+    extract_messages,
+    extract_payload,
+    parse_tagged_extract,
+    render_extract_markdown,
+    warning_codes_from_diagnostics,
+)
 
 SUMMARY_MAX_INPUT_CHARS = 8_000
 SUMMARY_NUM_PREDICT = 384
 SUMMARY_NUM_BATCH = 128
+EXTRACT_NUM_PREDICT = 256
+EXTRACT_NUM_BATCH = 128
 
 
 @dataclass(frozen=True)
@@ -345,6 +360,13 @@ def process_file_with_model(
     agent_system_prompt: str | None = None,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
     snippet_request: dict[str, Any] | None = None,
+    extract_preset: str = DEFAULT_EXTRACT_PRESET,
+    extract_focus: str | None = None,
+    extract_max_items: int = DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK,
+    extract_snippet_max_chars: int = DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    extract_source_text: str | None = None,
+    extract_source_offset: int = 0,
+    extract_chunk_id: str | None = None,
 ) -> FarmModelResult:
     if mode == "summarize":
         summary_content, warnings = prepare_summary_content(content, max_chars=summary_max_input_chars)
@@ -398,6 +420,56 @@ def process_file_with_model(
             raw_response=raw,
             structured_valid=True,
             warnings=[],
+        )
+
+    if mode == "extract":
+        raw = client.chat(
+            apply_agent_guidance(
+                extract_messages(
+                    file_path,
+                    content,
+                    preset=extract_preset,
+                    focus=extract_focus,
+                    max_items=extract_max_items,
+                    snippet_max_chars=extract_snippet_max_chars,
+                ),
+                agent_system_prompt,
+            ),
+            timeout=timeout,
+            think=False,
+        )
+        source_text = extract_source_text if extract_source_text is not None else content
+        candidates, diagnostics = parse_tagged_extract(
+            raw,
+            preset=extract_preset,
+            source_path=file_path,
+            source_text=source_text,
+            chunk_id=extract_chunk_id,
+            source_offset=extract_source_offset,
+            snippet_max_chars=extract_snippet_max_chars,
+        )
+        max_items = extract_max_items or DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE
+        items, dedupe = dedupe_items(candidates, max_items=max_items)
+        diagnostics["dedupe"] = dedupe
+        payload = extract_payload(
+            preset=extract_preset,
+            focus=extract_focus,
+            source_files=[file_path],
+            items=items,
+            limits={
+                "max_items": max_items,
+                "snippet_max_chars": extract_snippet_max_chars,
+                "max_items_per_chunk": extract_max_items,
+                "chunk_chars": DEFAULT_EXTRACT_CHUNK_CHARS,
+            },
+            diagnostics=diagnostics,
+        )
+        return FarmModelResult(
+            payload=payload,
+            markdown=render_extract_markdown(payload),
+            raw_response=raw,
+            structured_valid=True,
+            warnings=warning_codes_from_diagnostics(diagnostics),
         )
 
     raise ValueError(f"Unsupported farm mode: {mode}")

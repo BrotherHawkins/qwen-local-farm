@@ -235,7 +235,7 @@ def build_doctor_report(
         recommendation(
             "smoke.run",
             "optional",
-            "Run a tiny model-free-sized farm input before a large batch.",
+            "Run a tiny farm input before a large summarize or extract batch.",
             "python sift.py farm run <input-folder> --mode summarize",
         )
     )
@@ -323,6 +323,8 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
     model_metadata = agent.get("model_metadata") if isinstance(agent.get("model_metadata"), dict) else {}
     runtime = report.get("runtime", {}) if isinstance(report.get("runtime"), dict) else {}
     resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
+    summarize_runtime = (runtime.get("summarize") or {}) if isinstance(runtime.get("summarize"), dict) else {}
+    extract_runtime = (runtime.get("extract") or {}) if isinstance(runtime.get("extract"), dict) else {}
     lines.extend(
         [
             "",
@@ -339,7 +341,9 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
             f"- Resource mode effective: `{resource_mode.get('effective') or ''}`",
             f"- Resource mode source: `{resource_mode.get('source') or ''}`",
             f"- Resource mode reason: {resource_mode.get('reason') or ''}",
-            f"- Chunk strategy: `{((runtime.get('summarize') or {}) if isinstance(runtime.get('summarize'), dict) else {}).get('chunk_strategy') or ''}`",
+            f"- Summarize chunk strategy: `{summarize_runtime.get('chunk_strategy') or ''}`",
+            f"- Extract preset: `{extract_runtime.get('preset') or ''}`",
+            f"- Extract chunk strategy: `{extract_runtime.get('chunk_strategy') or ''}`",
             f"- Parallel jobs: `{((runtime.get('concurrency') or {}) if isinstance(runtime.get('concurrency'), dict) else {}).get('jobs') or ''}`",
             "",
             "## Tokenizers",

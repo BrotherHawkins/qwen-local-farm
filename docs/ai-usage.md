@@ -218,7 +218,10 @@ Active invocation:
 
 ```bash
 python sift.py farm run input-folder --output results --mode summarize
+python sift.py farm run input-folder --output results --mode extract --extract-preset research
 ```
+
+Use `summarize` when the downstream AI needs compact prose. Use `extract` when the downstream AI needs compact source-grounded harvests such as claims, facts, examples, quotes, entities, links, tasks, decisions, risks, requirements, blockers, and follow-ups. Extract writes `extract-results.json` and `EXTRACT_RESULTS.md` at the run root for frontier-model handoff.
 
 In `summarize` mode, oversized text files are chunked automatically. Each chunk gets its own input and result artifacts under the job folder, then the farm reduces chunk summaries into the normal file-level `result.md` and `result.json`.
 

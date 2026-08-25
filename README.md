@@ -115,6 +115,15 @@ python sift.py farm run notes --output results --mode summarize
 
 Summarize mode automatically chunks oversized text files and reduces the chunk summaries into one file-level result. Chunk inputs and chunk summaries are written under each job folder so a caller can inspect the intermediate work.
 
+Extract compact evidence and entities for frontier-model handoff:
+
+```bash
+python sift.py farm run articles --mode extract
+python sift.py farm run articles --mode extract --extract-preset research --extract-focus "Capture local AI models, tools, benchmarks, and setup pitfalls."
+```
+
+Extract mode defaults to `research`, which scans for evidence plus entities. Other presets are `evidence`, `entities`, and `work`. It writes normal per-job `result.json` / `result.md` artifacts plus run-level `extract-results.json` and `EXTRACT_RESULTS.md`. Extract is JSON-first, chunk-safe, and uses deterministic Python parsing/dedupe around compact local-model tagged lines.
+
 ### Runtime Profiles
 
 Farm runs use a runtime profile so chunk sizes and capacity assumptions are explicit. If no profile is configured, the farm uses `local-8gb`, which preserves the original 8GB GPU dogfood default.
@@ -312,6 +321,8 @@ python sift.py farm synthesis bundle <run-ref> --label research-bundle --fit-pol
 Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls. Bundle JSON includes character and estimated-token budget metadata. Use `--summary-template compact|claims|questions|standard` or `--summary-fields title,abstract,bullets` to shape the summary layer. Use `--fit-policy summary-first|evidence-first|balanced` to choose what survives first under tight caps. Use `--max-chars <n>` for an exact Markdown size cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate based on `--chars-per-token` (default `4.0`).
 
 To compare dogfood runs over time, record compact local quality history with `python sift.py farm dogfood record <run-ref>` and compare records with `python sift.py farm dogfood compare <baseline.json> <candidate.json>`. For timing regressions, use `python sift.py farm dogfood timing record <run-ref>` and `python sift.py farm dogfood timing compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and `docs/dogfood-timing.md` for timing interpretation.
+
+Committed synthetic dogfood fixtures live under `dogfood/`. These are authored, anonymous, license-clean sources that can be cloned and reused. Generated outputs, downloaded article text, scraped pages, private notes, and timing/quality records should stay under `.run/`.
 
 ### Token-Aware Chunking
 

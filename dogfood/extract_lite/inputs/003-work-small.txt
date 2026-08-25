@@ -1,0 +1,22 @@
+Source URL: synthetic://sift/dogfood/extract-lite/003-work-small
+
+# Implementation Planning Notes
+
+Decision: use tokenizer-aware chunking for long Markdown notes, but keep character chunking available for reproducible smoke tests.
+
+Task: Chris owns the timing-history table update and will add elapsed seconds, chunk count, and item count to the next dogfood record.
+
+Task: Mira will update the README section that explains when to use summarize versus extract.
+
+Risk: CPU fallback may make demo runs appear stalled if the status view does not show per-job progress.
+
+Requirement: every run-level JSON artifact must validate against a checked-in schema before it is documented as stable.
+
+Requirement: extract mode must keep downloaded article text out of tracked files.
+
+Blocker: the lab machine cannot run two 8B workers until the memory profile is confirmed with a real runtime check.
+
+Follow-up: revisit model-assisted dedupe after deterministic dedupe has dogfood records.
+
+Follow-up: create anonymous summarize fixtures that match the size of the earlier article set without copying article text.
+

@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 36 |
+| Implemented | 37 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -100,6 +100,7 @@ None.
 | 0033 | Implemented | Add | [0033-add-hardware-specific-model-install-guidance.md](changes/0033-add-hardware-specific-model-install-guidance.md) | Adds hardware-specific model installation guidance for humans, AI assistants, doctor reports, and recommendation reports. |
 | 0034 | Implemented | Add | [0034-add-package-shaping-budget-controls.md](changes/0034-add-package-shaping-budget-controls.md) | Adds package shaping and budget controls for synthesis bundles and snippet packs. |
 | 0035 | Implemented | Add | [0035-add-platform-specific-skill-install-helpers.md](changes/0035-add-platform-specific-skill-install-helpers.md) | Adds safe Codex and Claude Code install helpers for repo-shipped Sift skills. |
+| 0036 | Implemented | Add | [0036-add-extract-mode.md](changes/0036-add-extract-mode.md) | Adds fast JSON-first extract mode with presets, chunked map-only harvesting, source offsets, and run-level aggregate artifacts. |
 
 ## Stale Drafts To Revisit
 

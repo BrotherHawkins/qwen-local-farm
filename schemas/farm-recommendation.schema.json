@@ -14,6 +14,7 @@
     "profile",
     "concurrency",
     "summarize",
+    "extract",
     "model_installation_guidance",
     "evidence",
     "warnings",
@@ -160,6 +161,45 @@
         },
         "token_safety_margin": {
           "type": "number"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "extract": {
+      "type": "object",
+      "required": ["preset", "chunk_strategy", "confidence", "reason"],
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["evidence", "entities", "work", "research"]
+        },
+        "chunk_strategy": {
+          "type": "string",
+          "enum": ["character", "token"]
+        },
+        "chunk_tokens": {
+          "type": ["integer", "null"]
+        },
+        "chunk_chars": {
+          "type": ["integer", "null"]
+        },
+        "token_safety_margin": {
+          "type": "number"
+        },
+        "max_items_per_file": {
+          "type": ["integer", "null"]
+        },
+        "max_items_per_chunk": {
+          "type": ["integer", "null"]
+        },
+        "snippet_max_chars": {
+          "type": ["integer", "null"]
         },
         "confidence": {
           "type": "string",

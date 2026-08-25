@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 29 |
+| Implemented | 30 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -30,6 +30,8 @@ None.
 
 ## Draft Change Specs
 
+| ID | Type | Spec | Summary |
+| --- | --- | --- | --- |
 None.
 
 ## Accepted Not Implemented
@@ -89,6 +91,7 @@ None.
 | 0026 | Implemented | Add | [0026-add-markdown-heading-ancestry-and-chunk-overlap.md](changes/0026-add-markdown-heading-ancestry-and-chunk-overlap.md) | Adds Markdown heading ancestry and opt-in chunk overlap to improve chunked summarize context. |
 | 0027 | Implemented | Add | [0027-add-in-progress-chunk-and-reduce-status.md](changes/0027-add-in-progress-chunk-and-reduce-status.md) | Adds active chunk map and reduce progress visibility to farm status artifacts. |
 | 0028 | Implemented | Add | [0028-add-failed-file-retry.md](changes/0028-add-failed-file-retry.md) | Adds a retry command for rerunning failed files from a prior farm run. |
+| 0029 | Implemented | Add | [0029-add-failure-classification-and-retry-guidance.md](changes/0029-add-failure-classification-and-retry-guidance.md) | Adds durable failure codes, retryability flags, and recommended next actions for failed farm jobs. |
 
 ## Stale Drafts To Revisit
 

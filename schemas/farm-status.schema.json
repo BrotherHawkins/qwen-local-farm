@@ -146,8 +146,27 @@
               },
               "source_error": {
                 "type": ["string", "null"]
+              },
+              "source_failure": {
+                "type": ["object", "null"],
+                "properties": {
+                  "code": {"type": "string"},
+                  "category": {"type": "string"},
+                  "retryable": {"type": "boolean"},
+                  "retry_after_fix": {"type": "boolean"},
+                  "message": {"type": "string"},
+                  "recommended_action": {"type": "string"}
+                }
               }
             }
+          }
+        },
+        "failure_counts": {
+          "type": "object",
+          "properties": {
+            "retryable": {"type": "integer"},
+            "non_retryable": {"type": "integer"},
+            "unknown": {"type": "integer"}
           }
         },
         "warnings": {
@@ -233,6 +252,21 @@
           },
           "error": {
             "type": ["string", "null"]
+          },
+          "failure": {
+            "type": "object",
+            "required": ["code", "category", "retryable", "retry_after_fix", "message", "recommended_action"],
+            "properties": {
+              "code": {"type": "string"},
+              "category": {
+                "type": "string",
+                "enum": ["transient", "resource", "input", "configuration", "model_output", "internal"]
+              },
+              "retryable": {"type": "boolean"},
+              "retry_after_fix": {"type": "boolean"},
+              "message": {"type": "string"},
+              "recommended_action": {"type": "string"}
+            }
           },
           "warnings": {
             "type": "array",

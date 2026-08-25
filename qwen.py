@@ -573,6 +573,14 @@ def handle_farm(args: argparse.Namespace) -> None:
             print(f"Retry run complete: {status['run_id']}")
             print(f"Source run: {result['source_run']['run_id']}")
             print(f"Retried files: {result['retry_run']['retried_jobs']}")
+            failure_counts = result.get("failure_counts") if isinstance(result.get("failure_counts"), dict) else {}
+            if failure_counts:
+                print(
+                    "Selected failures: "
+                    f"{failure_counts.get('retryable', 0)} retryable, "
+                    f"{failure_counts.get('non_retryable', 0)} non-retryable, "
+                    f"{failure_counts.get('unknown', 0)} unknown"
+                )
             print(f"Status: {status['status']}")
             print(f"Output: {status['output']['path']}")
             for warning in result.get("warnings") or []:

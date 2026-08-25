@@ -140,6 +140,8 @@ python qwen.py farm run notes --mode summarize --per-file-timeout-seconds 900
 
 `--max-attempts` retries the whole file job. `--chunk-max-attempts` and `--reduce-max-attempts` retry individual chunk-map and reduce model calls during chunked summarize jobs. `--per-file-timeout-seconds` preserves the public timeout knob and currently applies to each local model call.
 
+Failed jobs include failure guidance in `result.json`, `farm-status.json`, `FARM_STATUS.md`, and `farm status <run-id> --json` when the farm can classify the failure. The fields are intentionally simple: `code`, `category`, `retryable`, `retry_after_fix`, `message`, and `recommended_action`. `retryable: true` means retrying the same job may help. `retry_after_fix: true` means fix the input, model, config, or resource setting before repeating the retry.
+
 Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
 
 ```json
@@ -309,7 +311,7 @@ If `--output` is omitted, runs are written under `.run/farm/`. If `--output` is 
 
 During a long chunked summarize run, `FARM_STATUS.md` includes an `Active Jobs` section and `farm-status.json` includes active `progress` metadata. Use this to tell whether a job is planning chunks, mapping a specific chunk, reducing chunk summaries, or retrying a failed model call.
 
-`farm retry-failed` creates a new normal farm run containing only jobs that failed in the source run. The source run is not modified, and the retry run's status includes a `retry` section that links source job IDs to retry job IDs.
+`farm retry-failed` creates a new normal farm run containing only jobs that failed in the source run. The source run is not modified, and the retry run's status includes a `retry` section that links source job IDs to retry job IDs. If source failures include guidance, retry output also reports how many selected failures are retryable, non-retryable, or unknown, and warns when retrying may repeat until a recommended fix is applied.
 
 ## What Gets Started
 

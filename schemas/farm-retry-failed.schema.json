@@ -4,7 +4,7 @@
   "title": "Qwen Local Farm Retry Failed JSON",
   "description": "CLI envelope printed by python qwen.py farm retry-failed --json.",
   "type": "object",
-  "required": ["schema_version", "status", "source_run", "retry_run", "counts", "warnings", "errors"],
+  "required": ["schema_version", "status", "source_run", "retry_run", "failure_counts", "selected_jobs", "counts", "warnings", "errors"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -41,6 +41,52 @@
         },
         "retried_jobs": {
           "type": "integer"
+        }
+      }
+    },
+    "failure_counts": {
+      "type": "object",
+      "required": ["retryable", "non_retryable", "unknown"],
+      "properties": {
+        "retryable": {
+          "type": "integer"
+        },
+        "non_retryable": {
+          "type": "integer"
+        },
+        "unknown": {
+          "type": "integer"
+        }
+      }
+    },
+    "selected_jobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_job_id": {
+            "type": "string"
+          },
+          "retry_job_id": {
+            "type": "string"
+          },
+          "input_path": {
+            "type": "string"
+          },
+          "source_error": {
+            "type": ["string", "null"]
+          },
+          "source_failure": {
+            "type": ["object", "null"],
+            "properties": {
+              "code": {"type": "string"},
+              "category": {"type": "string"},
+              "retryable": {"type": "boolean"},
+              "retry_after_fix": {"type": "boolean"},
+              "message": {"type": "string"},
+              "recommended_action": {"type": "string"}
+            }
+          }
         }
       }
     },

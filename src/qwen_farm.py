@@ -231,6 +231,171 @@ def result_status(result: FarmModelResult) -> str:
     return "complete_with_warnings" if result.warnings or not result.structured_valid else "complete"
 
 
+FAILURE_CATALOG: dict[str, dict[str, Any]] = {
+    "model_timeout": {
+        "category": "transient",
+        "retryable": True,
+        "retry_after_fix": False,
+        "recommended_action": "Retry the failed job, or increase the configured timeout if this repeats.",
+    },
+    "model_unavailable": {
+        "category": "configuration",
+        "retryable": False,
+        "retry_after_fix": True,
+        "recommended_action": "Start Ollama, install the selected model, or choose an available agent/model.",
+    },
+    "context_overflow": {
+        "category": "resource",
+        "retryable": False,
+        "retry_after_fix": True,
+        "recommended_action": "Enable chunking, reduce the configured chunk size, or choose a larger-context model.",
+    },
+    "input_missing": {
+        "category": "input",
+        "retryable": False,
+        "retry_after_fix": True,
+        "recommended_action": "Restore the missing input file or rerun discovery against an existing input folder.",
+    },
+    "input_unreadable": {
+        "category": "input",
+        "retryable": False,
+        "retry_after_fix": True,
+        "recommended_action": "Fix file permissions or convert the input to readable UTF-8 text.",
+    },
+    "input_empty": {
+        "category": "input",
+        "retryable": False,
+        "retry_after_fix": True,
+        "recommended_action": "Provide source text before retrying this job.",
+    },
+    "model_output_invalid": {
+        "category": "model_output",
+        "retryable": True,
+        "retry_after_fix": False,
+        "recommended_action": "Retry the job; if this repeats, simplify the prompt or use a stronger model.",
+    },
+    "internal_error": {
+        "category": "internal",
+        "retryable": True,
+        "retry_after_fix": False,
+        "recommended_action": "Retry once; if this repeats, inspect the error and file a bug with the run artifacts.",
+    },
+}
+
+
+def failure_object(code: str, message: str) -> dict[str, Any]:
+    template = FAILURE_CATALOG.get(code) or FAILURE_CATALOG["internal_error"]
+    return {
+        "code": code if code in FAILURE_CATALOG else "internal_error",
+        "category": str(template["category"]),
+        "retryable": bool(template["retryable"]),
+        "retry_after_fix": bool(template["retry_after_fix"]),
+        "message": message,
+        "recommended_action": str(template["recommended_action"]),
+    }
+
+
+def classify_failure(exc: BaseException) -> dict[str, Any]:
+    message = str(exc) or type(exc).__name__
+    text = message.lower()
+    exc_name = type(exc).__name__.lower()
+
+    if isinstance(exc, FileNotFoundError) or "no such file" in text or ("input file" in text and "not found" in text):
+        return failure_object("input_missing", message)
+    if isinstance(exc, PermissionError) or "permission denied" in text:
+        return failure_object("input_unreadable", message)
+    if "no usable text" in text or "empty input" in text:
+        return failure_object("input_empty", message)
+    if isinstance(exc, TimeoutError) or "timeout" in exc_name or "timed out" in text or "timeout" in text:
+        return failure_object("model_timeout", message)
+    if (
+        "connection refused" in text
+        or "failed to establish" in text
+        or ("ollama" in text and "unavailable" in text)
+        or ("model" in text and ("not found" in text or "not available" in text or "unavailable" in text))
+    ):
+        return failure_object("model_unavailable", message)
+    if (
+        "context" in text
+        or "num_ctx" in text
+        or "token budget" in text
+        or "too large" in text
+        or ("exceeds" in text and ("token" in text or "context" in text))
+    ):
+        return failure_object("context_overflow", message)
+    if "json" in text or "parse" in text or "schema" in text or "structured" in text:
+        return failure_object("model_output_invalid", message)
+    return failure_object("internal_error", message)
+
+
+def render_failure_markdown(job: dict[str, Any], failure: dict[str, Any]) -> str:
+    retryable = "yes" if failure.get("retryable") else "no"
+    retry_after_fix = "yes" if failure.get("retry_after_fix") else "no"
+    lines = [
+        "# Failure",
+        "",
+        f"Job: `{job.get('job_id', '')}`",
+        f"Input: `{job.get('input_path', '')}`",
+        f"Failure: `{failure.get('code', '')}` ({failure.get('category', '')}, retryable: {retryable}, retry after fix: {retry_after_fix})",
+        f"Next: {failure.get('recommended_action', '')}",
+        "",
+        "## Error",
+        "",
+        "```text",
+        str(failure.get("message") or ""),
+        "```",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def write_failure_result_files(
+    *,
+    job: dict[str, Any],
+    mode: str,
+    run_dir: Path,
+    job_dir: Path,
+    agent: dict[str, Any],
+    failure: dict[str, Any],
+    chunking: dict[str, Any],
+    snippets: dict[str, Any],
+    timing: dict[str, Any],
+) -> dict[str, Any]:
+    markdown_path = job_dir / "result.md"
+    raw_path = job_dir / "raw-response.txt"
+    json_path = job_dir / "result.json"
+    markdown = render_failure_markdown(job, failure)
+    markdown_path.write_text(markdown, encoding="utf-8")
+    raw_path.write_text(str(failure.get("message") or ""), encoding="utf-8")
+    envelope = {
+        "schema_version": FARM_SCHEMA_VERSION,
+        "job_id": job["job_id"],
+        "mode": mode,
+        "status": "failed",
+        "structured_valid": False,
+        "input": {
+            "path": job["input_path"],
+        },
+        "result": {},
+        "artifacts": {
+            "markdown": relative_to(markdown_path, run_dir),
+            "raw_response": relative_to(raw_path, run_dir),
+        },
+        "model": {
+            "agent": agent["id"],
+            "model": agent["model"],
+        },
+        "warnings": [],
+        "error": failure.get("message"),
+        "failure": failure,
+        "chunking": chunking,
+        "snippets": snippets,
+        "timing": timing,
+    }
+    write_json(json_path, envelope)
+    return envelope
+
+
 def single_pass_chunking(
     *,
     chunk_strategy: str | None = None,
@@ -1273,6 +1438,8 @@ def execute_job(
     for attempt in range(1, max_attempts + 1):
         try:
             content = item.path.read_text(encoding="utf-8", errors="replace")
+            if not content.strip():
+                raise ValueError("Input file contains no usable text.")
             result, chunking, snippets = run_file_job(
                 mode=mode,
                 job=job,
@@ -1318,16 +1485,31 @@ def execute_job(
             last_error = str(exc)
             if attempt < max_attempts:
                 continue
+            failure = classify_failure(exc)
             (job_dir / "log.md").write_text(f"# Failure\n\n{last_error}\n", encoding="utf-8")
+            failure_chunking = job.get("chunking", single_pass_chunking())
+            failure_snippets = job.get("snippets", compact_snippet_status({"policy": "off", "requested_count": 0}))
+            failure_envelope = write_failure_result_files(
+                job=job,
+                mode=mode,
+                run_dir=run_dir,
+                job_dir=job_dir,
+                agent=agent,
+                failure=failure,
+                chunking=failure_chunking,
+                snippets=failure_snippets,
+                timing=call_timing_summary(call_timings),
+            )
             return {
                 "status": "failed",
-                "result_json": None,
-                "result_md": None,
-                "raw_response": None,
+                "result_json": f"jobs/{job['job_id']}/result.json",
+                "result_md": f"jobs/{job['job_id']}/result.md",
+                "raw_response": f"jobs/{job['job_id']}/raw-response.txt",
                 "warnings": [],
-                "chunking": job.get("chunking", single_pass_chunking()),
-                "snippets": job.get("snippets", compact_snippet_status({"policy": "off", "requested_count": 0})),
+                "chunking": failure_envelope["chunking"],
+                "snippets": failure_envelope["snippets"],
                 "error": last_error,
+                "failure": failure,
                 "timing": {
                     "calls": call_timings,
                 },
@@ -1339,6 +1521,10 @@ def execute_job(
 def apply_job_update(job: dict[str, Any], update: dict[str, Any]) -> None:
     for key in ["status", "result_json", "result_md", "raw_response", "warnings", "chunking", "snippets", "error"]:
         job[key] = update[key]
+    if "failure" in update:
+        job["failure"] = update["failure"]
+    else:
+        job.pop("failure", None)
     job.setdefault("timing", {})["calls"] = update.get("timing", {}).get("calls", [])
     job["progress"] = terminal_progress(job)
 
@@ -1520,6 +1706,25 @@ def _request_instructions(source_status: dict[str, Any]) -> tuple[bool, str | No
     return True, str(value) if value is not None else None
 
 
+def failure_counts_for_jobs(jobs: list[dict[str, Any]]) -> dict[str, int]:
+    retryable = 0
+    non_retryable = 0
+    unknown = 0
+    for job in jobs:
+        failure = job.get("failure") if isinstance(job.get("failure"), dict) else None
+        if failure is None or "retryable" not in failure:
+            unknown += 1
+        elif failure.get("retryable"):
+            retryable += 1
+        else:
+            non_retryable += 1
+    return {
+        "retryable": retryable,
+        "non_retryable": non_retryable,
+        "unknown": unknown,
+    }
+
+
 def build_retry_failed_plan(
     *,
     root: Path,
@@ -1555,6 +1760,7 @@ def build_retry_failed_plan(
                 "retry_job_id": retry_job_id,
                 "input_path": relative_path,
                 "source_error": job.get("error"),
+                "source_failure": deepcopy(job.get("failure")) if isinstance(job.get("failure"), dict) else None,
             }
         )
 
@@ -1571,6 +1777,13 @@ def build_retry_failed_plan(
         warnings.append("Source run does not contain request.instructions; retrying without prior instructions.")
     if source_mode == "prompt" and not effective_instructions:
         raise ValueError("Cannot retry a prompt-mode run without instructions. Pass --instructions.")
+    selected_failure_counts = failure_counts_for_jobs(failed_jobs)
+    if selected_failure_counts["non_retryable"]:
+        warnings.append(
+            "Selected failed jobs include "
+            f"{selected_failure_counts['non_retryable']} known non-retryable failure(s); "
+            "retry may repeat until the recommended fix is applied."
+        )
 
     request = source_status.get("request") if isinstance(source_status.get("request"), dict) else {}
     effective_agent_id = agent_id or str(request.get("agent") or source_status.get("agent") or "default")
@@ -1597,6 +1810,7 @@ def build_retry_failed_plan(
         "selected_statuses": ["failed"],
         "source_failed_count": len(failed_jobs),
         "retried_count": len(selected_files),
+        "failure_counts": selected_failure_counts,
         "jobs": retry_jobs,
         "warnings": warnings,
     }
@@ -1632,6 +1846,8 @@ def retry_failed_result(status: dict[str, Any], plan: dict[str, Any]) -> dict[st
             "path": (status.get("output") or {}).get("path") if isinstance(status.get("output"), dict) else None,
             "retried_jobs": retry.get("retried_count", 0),
         },
+        "failure_counts": retry.get("failure_counts", {"retryable": 0, "non_retryable": 0, "unknown": 0}),
+        "selected_jobs": retry.get("jobs", []),
         "counts": status.get("counts", {}),
         "warnings": plan.get("warnings", []),
         "errors": [],
@@ -1653,6 +1869,8 @@ def retry_failed_error_result(*, run_ref: str, error: str) -> dict[str, Any]:
             "path": None,
             "retried_jobs": 0,
         },
+        "failure_counts": {"retryable": 0, "non_retryable": 0, "unknown": 0},
+        "selected_jobs": [],
         "counts": {},
         "warnings": [],
         "errors": [error],

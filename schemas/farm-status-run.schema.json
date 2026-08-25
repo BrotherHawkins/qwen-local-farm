@@ -37,6 +37,17 @@
           "items": {
             "type": "object",
             "properties": {
+              "failure": {
+                "type": "object",
+                "properties": {
+                  "code": {"type": "string"},
+                  "category": {"type": "string"},
+                  "retryable": {"type": "boolean"},
+                  "retry_after_fix": {"type": "boolean"},
+                  "message": {"type": "string"},
+                  "recommended_action": {"type": "string"}
+                }
+              },
               "progress": {
                 "type": "object",
                 "properties": {

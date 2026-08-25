@@ -168,6 +168,7 @@ def build_recommendation_report(
     profile_rec = recommend_profile(runtime=runtime, requested_profile=profile, benchmark=benchmark, runtime_error=runtime_error)
     concurrency = recommend_concurrency(runtime=runtime, benchmark=benchmark)
     summarize = recommend_summarize(runtime=runtime, tokenizer=tokenizer, agent=agent)
+    extract = recommend_extract(runtime=runtime, tokenizer=tokenizer, agent=agent)
 
     if int(((runtime.get("concurrency") or {}).get("jobs") if isinstance(runtime.get("concurrency"), dict) else 1) or 1) > 1:
         warnings.append("Current runtime allows more than one farm job, but this recommendation did not benchmark parallel load.")
@@ -184,6 +185,7 @@ def build_recommendation_report(
         "profile": profile_rec,
         "concurrency": concurrency,
         "summarize": summarize,
+        "extract": extract,
         "model_installation_guidance": guidance_for_report(
             root=root,
             agent=agent,
@@ -413,6 +415,46 @@ def recommend_summarize(*, runtime: dict[str, Any], tokenizer: dict[str, Any], a
     }
 
 
+def recommend_extract(*, runtime: dict[str, Any], tokenizer: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
+    extract = runtime.get("extract") if isinstance(runtime.get("extract"), dict) else {}
+    model_metadata = agent.get("model_metadata") if isinstance(agent.get("model_metadata"), dict) else {}
+    exact_tokenizer = (model_metadata.get("tokenizer") or {}) if isinstance(model_metadata.get("tokenizer"), dict) else {}
+    selected_exact_ready = bool(tokenizer.get("ready")) and bool(exact_tokenizer.get("exact"))
+    if selected_exact_ready:
+        chunk_tokens = extract.get("chunk_tokens")
+        if chunk_tokens is None:
+            num_ctx = (agent.get("options") or {}).get("num_ctx") if isinstance(agent.get("options"), dict) else None
+            if isinstance(num_ctx, int) and num_ctx > 0:
+                chunk_tokens = derive_token_budget(num_ctx, float(extract.get("token_safety_margin") or 0.10))
+        return {
+            "preset": extract.get("preset", "research"),
+            "chunk_strategy": "token",
+            "chunk_tokens": chunk_tokens,
+            "chunk_chars": extract.get("chunk_chars"),
+            "token_safety_margin": extract.get("token_safety_margin", 0.10),
+            "max_items_per_file": extract.get("max_items_per_file"),
+            "max_items_per_chunk": extract.get("max_items_per_chunk"),
+            "snippet_max_chars": extract.get("snippet_max_chars"),
+            "confidence": "high",
+            "reason": "Extract is chunk-safe and exact local tokenizer readiness was reported, so token-aware extract chunking should reduce avoidable extra calls.",
+        }
+    reason = "Character chunking is the conservative extract default until exact local tokenizer readiness is available."
+    if model_metadata.get("support") not in {"tested"}:
+        reason = "The selected model family is not dogfood-tested yet; character chunking is the conservative extract default."
+    return {
+        "preset": extract.get("preset", "research"),
+        "chunk_strategy": "character",
+        "chunk_tokens": None,
+        "chunk_chars": extract.get("chunk_chars"),
+        "token_safety_margin": extract.get("token_safety_margin", 0.10),
+        "max_items_per_file": extract.get("max_items_per_file"),
+        "max_items_per_chunk": extract.get("max_items_per_chunk"),
+        "snippet_max_chars": extract.get("snippet_max_chars"),
+        "confidence": "medium",
+        "reason": reason,
+    }
+
+
 def render_recommendation_markdown(report: dict[str, Any]) -> str:
     profile = report.get("profile") if isinstance(report.get("profile"), dict) else {}
     resource_mode = report.get("resource_mode") if isinstance(report.get("resource_mode"), dict) else {}
@@ -424,6 +466,7 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
         else {}
     )
     summarize = report.get("summarize") if isinstance(report.get("summarize"), dict) else {}
+    extract = report.get("extract") if isinstance(report.get("extract"), dict) else {}
     model_metadata = report.get("model_metadata") if isinstance(report.get("model_metadata"), dict) else {}
     evidence = report.get("evidence") if isinstance(report.get("evidence"), dict) else {}
     benchmark = evidence.get("benchmark") if isinstance(evidence.get("benchmark"), dict) else {}
@@ -450,6 +493,8 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
         f"- Farm parallel jobs: `{parallel_jobs.get('recommended')}` ({parallel_jobs.get('confidence')} confidence)",
         f"- `OLLAMA_NUM_PARALLEL`: `{ollama_parallel.get('recommended')}` ({ollama_parallel.get('confidence')} confidence)",
         f"- Summarize chunk strategy: `{summarize.get('chunk_strategy')}` ({summarize.get('confidence')} confidence)",
+        f"- Extract preset: `{extract.get('preset')}`",
+        f"- Extract chunk strategy: `{extract.get('chunk_strategy')}` ({extract.get('confidence')} confidence)",
         f"- Model install guide: `{guidance.get('guide_path') or ''}`",
     ]
     if summarize.get("chunk_strategy") == "token":
@@ -477,6 +522,7 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
             f"- Parallel jobs: {parallel_jobs.get('reason')}",
             f"- Ollama parallelism: {ollama_parallel.get('reason')}",
             f"- Summarize: {summarize.get('reason')}",
+            f"- Extract: {extract.get('reason')}",
             "",
             "## Evidence",
             "",
@@ -673,6 +719,7 @@ def config_from_recommendation(recommendation: dict[str, Any]) -> dict[str, Any]
     profile = recommendation.get("profile") if isinstance(recommendation.get("profile"), dict) else {}
     resource_mode = recommendation.get("resource_mode") if isinstance(recommendation.get("resource_mode"), dict) else {}
     summarize = recommendation.get("summarize") if isinstance(recommendation.get("summarize"), dict) else {}
+    extract = recommendation.get("extract") if isinstance(recommendation.get("extract"), dict) else {}
     concurrency = recommendation.get("concurrency") if isinstance(recommendation.get("concurrency"), dict) else {}
     parallel_jobs = concurrency.get("parallel_jobs") if isinstance(concurrency.get("parallel_jobs"), dict) else {}
 
@@ -693,6 +740,24 @@ def config_from_recommendation(recommendation: dict[str, Any]) -> dict[str, Any]
     if summarize_config:
         config["summarize"] = summarize_config
 
+    extract_config: dict[str, Any] = {}
+    if extract.get("preset"):
+        extract_config["preset"] = extract["preset"]
+    if extract.get("chunk_strategy"):
+        extract_config["chunk_strategy"] = extract["chunk_strategy"]
+    for key in (
+        "chunk_tokens",
+        "chunk_chars",
+        "token_safety_margin",
+        "max_items_per_file",
+        "max_items_per_chunk",
+        "snippet_max_chars",
+    ):
+        if extract.get(key) is not None:
+            extract_config[key] = extract[key]
+    if extract_config:
+        config["extract"] = extract_config
+
     concurrency_config: dict[str, Any] = {}
     if parallel_jobs.get("recommended") is not None:
         concurrency_config["jobs"] = parallel_jobs["recommended"]
@@ -711,6 +776,9 @@ def merge_configs(existing: dict[str, Any], recommended: dict[str, Any]) -> dict
     if "summarize" in recommended:
         current = merged.get("summarize") if isinstance(merged.get("summarize"), dict) else {}
         merged["summarize"] = {**current, **recommended["summarize"]}
+    if "extract" in recommended:
+        current = merged.get("extract") if isinstance(merged.get("extract"), dict) else {}
+        merged["extract"] = {**current, **recommended["extract"]}
     if "concurrency" in recommended:
         current = merged.get("concurrency") if isinstance(merged.get("concurrency"), dict) else {}
         merged["concurrency"] = {**current, **recommended["concurrency"]}

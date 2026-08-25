@@ -13,9 +13,17 @@ from src.sift_farm_chunks import (
     TextChunk,
     chunk_text,
     chunk_text_by_tokens,
+    locate_chunk_spans,
     overlap_metadata,
     render_chunk_input,
     render_reduce_input,
+)
+from src.sift_farm_extract import (
+    DEFAULT_EXTRACT_PRESET,
+    DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    dedupe_items,
+    extract_payload,
+    render_extract_markdown,
 )
 from src.sift_farm_files import (
     DiscoveredFile,
@@ -32,6 +40,8 @@ from src.sift_farm_model import (
     SUMMARY_MAX_INPUT_CHARS,
     SUMMARY_NUM_BATCH,
     SUMMARY_NUM_PREDICT,
+    EXTRACT_NUM_BATCH,
+    EXTRACT_NUM_PREDICT,
     FarmModelResult,
     OllamaChatClient,
     process_file_with_model,
@@ -76,7 +86,7 @@ from src.sift_farm_timing import duration_between, finish_timing, format_timesta
 from src.sift_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
 
 
-SUPPORTED_MODES = {"summarize", "prompt"}
+SUPPORTED_MODES = {"summarize", "prompt", "extract"}
 
 ModelProcessor = Callable[..., FarmModelResult]
 TokenCounterLoader = Callable[..., ExactTokenCounter]
@@ -140,6 +150,8 @@ def make_initial_status(
     mode: str,
     agent: dict[str, Any],
     instructions: str | None,
+    extract_preset: str | None = None,
+    extract_focus: str | None = None,
     input_folder: Path,
     jobs: list[dict[str, Any]],
     skipped_files: list[str],
@@ -184,6 +196,9 @@ def make_initial_status(
     }
     if retry is not None:
         status["retry"] = retry
+    if mode == "extract":
+        status["request"]["extract_preset"] = extract_preset or DEFAULT_EXTRACT_PRESET
+        status["request"]["extract_focus"] = extract_focus
     status["counts"] = count_jobs(jobs, skipped=len(skipped_files))
     return status
 
@@ -519,6 +534,7 @@ def terminal_progress(job: dict[str, Any]) -> dict[str, Any]:
 def chunk_result_envelope(
     *,
     job: dict[str, Any],
+    mode: str = "summarize",
     chunk_id: str,
     chunk_index: int,
     chunk_total: int,
@@ -537,7 +553,7 @@ def chunk_result_envelope(
         "schema_version": FARM_SCHEMA_VERSION,
         "job_id": job["job_id"],
         "chunk_id": chunk_id,
-        "mode": "summarize",
+        "mode": mode,
         "status": result_status(result),
         "structured_valid": result.structured_valid,
         "input": {
@@ -610,12 +626,22 @@ def default_model_processor(
     timeout: int,
     summary_max_input_chars: int = SUMMARY_MAX_INPUT_CHARS,
     snippet_request: dict[str, Any] | None = None,
+    extract_preset: str = DEFAULT_EXTRACT_PRESET,
+    extract_focus: str | None = None,
+    extract_max_items: int | None = None,
+    extract_snippet_max_chars: int = DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    extract_source_text: str | None = None,
+    extract_source_offset: int = 0,
+    extract_chunk_id: str | None = None,
 ) -> FarmModelResult:
     options = dict(agent.get("options", {}))
     if mode == "summarize":
         requested_snippets = int((snippet_request or {}).get("requested_count", 0))
         options.setdefault("num_predict", SUMMARY_NUM_PREDICT + min(512, requested_snippets * 128))
         options.setdefault("num_batch", SUMMARY_NUM_BATCH)
+    if mode == "extract":
+        options.setdefault("num_predict", EXTRACT_NUM_PREDICT)
+        options.setdefault("num_batch", EXTRACT_NUM_BATCH)
     client = OllamaChatClient(ollama_base_url, str(agent["model"]), options)
     return process_file_with_model(
         client=client,
@@ -627,6 +653,13 @@ def default_model_processor(
         agent_system_prompt=str(agent.get("system_prompt", "")),
         summary_max_input_chars=summary_max_input_chars,
         snippet_request=snippet_request,
+        extract_preset=extract_preset,
+        extract_focus=extract_focus,
+        extract_max_items=extract_max_items or 10,
+        extract_snippet_max_chars=extract_snippet_max_chars,
+        extract_source_text=extract_source_text,
+        extract_source_offset=extract_source_offset,
+        extract_chunk_id=extract_chunk_id,
     )
 
 
@@ -644,6 +677,12 @@ def timed_model_call(
     summary_max_input_chars: int,
     model_processor: ModelProcessor,
     snippet_request: dict[str, Any] | None = None,
+    extract_preset: str = DEFAULT_EXTRACT_PRESET,
+    extract_focus: str | None = None,
+    extract_max_items: int | None = None,
+    extract_snippet_max_chars: int = DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    extract_source_text: str | None = None,
+    extract_source_offset: int = 0,
     chunk_id: str | None = None,
     reduce_generation: int | None = None,
     reduce_batch_index: int | None = None,
@@ -690,6 +729,13 @@ def timed_model_call(
             timeout=timeout,
             summary_max_input_chars=summary_max_input_chars,
             snippet_request=snippet_request,
+            extract_preset=extract_preset,
+            extract_focus=extract_focus,
+            extract_max_items=extract_max_items,
+            extract_snippet_max_chars=extract_snippet_max_chars,
+            extract_source_text=extract_source_text,
+            extract_source_offset=extract_source_offset,
+            extract_chunk_id=chunk_id,
         )
     except Exception as exc:
         record.update(finish_timing(started))
@@ -981,8 +1027,10 @@ def run_single_pass_job(
     model_processor: ModelProcessor,
     call_timings: list[dict[str, Any]],
     snippet_request: dict[str, Any],
+    extract_config: dict[str, Any] | None = None,
     progress_callback: ProgressCallback | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
+    extract_config = extract_config or {}
     result = timed_model_call(
         call_timings=call_timings,
         kind="single",
@@ -996,6 +1044,12 @@ def run_single_pass_job(
         summary_max_input_chars=len(content) if chunk_strategy == "token" else chunk_chars,
         model_processor=model_processor,
         snippet_request=snippet_request,
+        extract_preset=str(extract_config.get("preset", DEFAULT_EXTRACT_PRESET)),
+        extract_focus=extract_config.get("focus"),
+        extract_max_items=int(extract_config.get("max_items_per_file", 10)),
+        extract_snippet_max_chars=int(extract_config.get("snippet_max_chars", DEFAULT_EXTRACT_SNIPPET_MAX_CHARS)),
+        extract_source_text=content,
+        extract_source_offset=0,
         progress_callback=progress_callback,
         progress_context={
             "progress": progress_snapshot(
@@ -1333,6 +1387,233 @@ def run_chunked_summary_job(
     )
 
 
+def run_chunked_extract_job(
+    *,
+    job: dict[str, Any],
+    job_dir: Path,
+    run_dir: Path,
+    content: str,
+    agent: dict[str, Any],
+    ollama_base_url: str,
+    timeout: int,
+    chunk_strategy: str,
+    token_counter: ExactTokenCounter | None,
+    model_processor: ModelProcessor,
+    call_timings: list[dict[str, Any]],
+    runtime_extract: dict[str, Any],
+    failure_policy: dict[str, Any],
+    progress_callback: ProgressCallback | None = None,
+) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
+    chunk_max_attempts = int(failure_policy.get("chunk_max_attempts", DEFAULT_MAX_ATTEMPTS))
+    preserve_heading_ancestry = bool(runtime_extract.get("preserve_heading_ancestry", True))
+    chunk_overlap_chars = int(runtime_extract.get("chunk_overlap_chars", 0))
+    chunk_overlap_tokens = int(runtime_extract.get("chunk_overlap_tokens", 0))
+    chunk_chars = int(runtime_extract["chunk_chars"])
+    chunk_tokens = runtime_extract.get("chunk_tokens")
+    if progress_callback is not None:
+        progress_callback({"progress": progress_snapshot(phase="planning_chunks", message="Planning extract chunks.")})
+
+    if chunk_strategy == "token":
+        if token_counter is None or chunk_tokens is None:
+            raise ValueError("Token-aware extract chunking requires an exact token counter and chunk token budget.")
+        chunks = chunk_text_by_tokens(
+            content,
+            max_input_tokens=int(chunk_tokens),
+            token_counter=token_counter,
+            source_path=job["input_path"],
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            overlap_tokens=chunk_overlap_tokens,
+        )
+        strategy_name = TOKEN_CHUNK_STRATEGY
+    else:
+        chunks = chunk_text(
+            content,
+            max_chars=chunk_body_budget(job["input_path"], chunk_chars),
+            preserve_heading_ancestry=preserve_heading_ancestry,
+            overlap_chars=chunk_overlap_chars,
+        )
+        strategy_name = CHUNK_STRATEGY
+    spans = locate_chunk_spans(content, chunks)
+
+    chunks_dir = job_dir / "chunks"
+    chunk_results_dir = job_dir / "chunk-results"
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    chunk_results_dir.mkdir(parents=True, exist_ok=True)
+    planned_chunking = compact_chunking(
+        {
+            "enabled": True,
+            "strategy": strategy_name,
+            "chunk_count": len(chunks),
+            "coverage": "full",
+            "tokenizer": token_counter.tokenizer_id if token_counter is not None else None,
+            "counts_are_estimated": False if token_counter is not None else None,
+        }
+    )
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "chunking": planned_chunking,
+                "progress": progress_snapshot(
+                    phase="chunk_map",
+                    message=f"Planned {len(chunks)} extract chunks.",
+                    chunks=chunk_progress_counts(total=len(chunks), complete=0, running=0),
+                ),
+            }
+        )
+
+    chunk_records: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    diagnostics = {
+        "candidate_count": 0,
+        "parsed_count": 0,
+        "invalid_line_count": 0,
+        "unsupported_type_count": 0,
+        "invalid_line_samples": [],
+    }
+
+    for chunk, (source_start, _source_end) in zip(chunks, spans):
+        chunk_input_path = chunks_dir / f"{chunk.chunk_id}.txt"
+        chunk_input_path.write_text(render_chunk_input(job["input_path"], chunk), encoding="utf-8")
+        chunk_call_context = {
+            "progress": progress_snapshot(
+                phase="chunk_map",
+                message=f"Extracting chunk {chunk.index} of {chunk.total}.",
+                chunks=chunk_progress_counts(
+                    total=len(chunks),
+                    complete=len(chunk_records),
+                    running=1,
+                    current=chunk.chunk_id,
+                ),
+            )
+        }
+        chunk_result = retry_model_call(
+            call_timings=call_timings,
+            kind="chunk_map",
+            mode="extract",
+            file_path=f"{job['input_path']}#{chunk.chunk_id}",
+            content=chunk.text,
+            instructions=None,
+            agent=agent,
+            ollama_base_url=ollama_base_url,
+            timeout=timeout,
+            summary_max_input_chars=len(chunk.text),
+            model_processor=model_processor,
+            chunk_id=chunk.chunk_id,
+            max_attempts=chunk_max_attempts,
+            progress_callback=progress_callback,
+            progress_context=chunk_call_context,
+            extract_preset=str(runtime_extract.get("preset", DEFAULT_EXTRACT_PRESET)),
+            extract_focus=runtime_extract.get("focus"),
+            extract_max_items=int(runtime_extract.get("max_items_per_chunk", 10)),
+            extract_snippet_max_chars=int(runtime_extract.get("snippet_max_chars", DEFAULT_EXTRACT_SNIPPET_MAX_CHARS)),
+            extract_source_text=chunk.text,
+            extract_source_offset=source_start,
+        )
+        warnings.extend(chunk_result.warnings)
+        payload = chunk_result.payload if isinstance(chunk_result.payload, dict) else {}
+        candidates.extend(item for item in payload.get("items", []) if isinstance(item, dict))
+        chunk_diag = payload.get("diagnostics") if isinstance(payload.get("diagnostics"), dict) else {}
+        for field in ["candidate_count", "parsed_count", "invalid_line_count", "unsupported_type_count"]:
+            diagnostics[field] += int(chunk_diag.get(field, 0))
+        diagnostics["invalid_line_samples"].extend(
+            str(item) for item in chunk_diag.get("invalid_line_samples", [])[:5]
+        )
+        diagnostics["invalid_line_samples"] = diagnostics["invalid_line_samples"][:5]
+
+        chunk_dir = chunk_results_dir / chunk.chunk_id
+        chunk_dir.mkdir(parents=True, exist_ok=True)
+        raw_path = chunk_dir / "raw-response.txt"
+        markdown_path = chunk_dir / "result.md"
+        json_path = chunk_dir / "result.json"
+        raw_path.write_text(chunk_result.raw_response, encoding="utf-8")
+        markdown_path.write_text(chunk_result.markdown, encoding="utf-8")
+        envelope = chunk_result_envelope(
+            job=job,
+            mode="extract",
+            chunk_id=chunk.chunk_id,
+            chunk_index=chunk.index,
+            chunk_total=chunk.total,
+            chunk_input_path=chunk_input_path,
+            result=chunk_result,
+            run_dir=run_dir,
+            markdown_path=markdown_path,
+            raw_path=raw_path,
+            agent=agent,
+            timing=call_timings[-1],
+            heading_ancestry=chunk.heading_ancestry,
+            overlap=overlap_metadata(chunk),
+        )
+        write_json(json_path, envelope)
+        chunk_records.append(
+            {
+                "chunk_id": chunk.chunk_id,
+                "chars": chunk.chars or len(chunk.text),
+                "tokens": chunk.tokens,
+                "heading_ancestry": chunk.heading_ancestry,
+                "overlap": overlap_metadata(chunk),
+                "input": relative_to(chunk_input_path, run_dir),
+                "result_json": relative_to(json_path, run_dir),
+                "result_md": relative_to(markdown_path, run_dir),
+                "status": envelope["status"],
+                "warnings": chunk_result.warnings,
+            }
+        )
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "chunking": planned_chunking,
+                    "progress": progress_snapshot(
+                        phase="chunk_map",
+                        message=f"Completed extract chunk {chunk.index} of {chunk.total}.",
+                        chunks=chunk_progress_counts(total=len(chunks), complete=len(chunk_records), running=0),
+                    ),
+                    "calls": [dict(call) for call in call_timings],
+                }
+            )
+
+    items, dedupe = dedupe_items(candidates, max_items=int(runtime_extract.get("max_items_per_file", 40)))
+    diagnostics["dedupe"] = dedupe
+    payload = extract_payload(
+        preset=str(runtime_extract.get("preset", DEFAULT_EXTRACT_PRESET)),
+        focus=runtime_extract.get("focus"),
+        source_files=[job["input_path"]],
+        items=items,
+        limits={
+            "max_items_per_file": int(runtime_extract.get("max_items_per_file", 40)),
+            "max_items_per_chunk": int(runtime_extract.get("max_items_per_chunk", 10)),
+            "snippet_max_chars": int(runtime_extract.get("snippet_max_chars", DEFAULT_EXTRACT_SNIPPET_MAX_CHARS)),
+            "chunk_chars": chunk_chars if chunk_strategy == "character" else None,
+            "chunk_tokens": int(chunk_tokens) if chunk_strategy == "token" and chunk_tokens is not None else None,
+        },
+        diagnostics=diagnostics,
+    )
+    final_result = FarmModelResult(
+        payload=payload,
+        markdown=render_extract_markdown(payload),
+        raw_response="\n\n".join(f"## {record['chunk_id']}\n{record['result_json']}" for record in chunk_records),
+        structured_valid=True,
+        warnings=unique_warnings(warnings),
+    )
+    chunking = {
+        "enabled": True,
+        "strategy": strategy_name,
+        "chunk_count": len(chunks),
+        "coverage": "full",
+        "chunk_chars": chunk_chars if chunk_strategy == "character" else None,
+        "reduce_chars": None,
+        "chunk_tokens": int(chunk_tokens) if chunk_strategy == "token" and chunk_tokens is not None else None,
+        "reduce_tokens": None,
+        "preserve_heading_ancestry": preserve_heading_ancestry,
+        "chunk_overlap_chars": chunk_overlap_chars,
+        "chunk_overlap_tokens": chunk_overlap_tokens,
+        "tokenizer": token_counter.tokenizer_id if token_counter is not None else None,
+        "counts_are_estimated": False if token_counter is not None else None,
+        "chunks": chunk_records,
+    }
+    return final_result, chunking, compact_snippet_status({"policy": "off", "requested_count": 0})
+
+
 def run_file_job(
     *,
     mode: str,
@@ -1351,10 +1632,12 @@ def run_file_job(
     progress_callback: ProgressCallback | None = None,
 ) -> tuple[FarmModelResult, dict[str, Any], dict[str, Any]]:
     summarize = runtime_config["summarize"]
-    chunk_strategy = str(summarize.get("chunk_strategy", "character"))
-    chunk_chars = int(summarize["chunk_chars"])
+    extract = runtime_config["extract"]
+    mode_config = extract if mode == "extract" else summarize
+    chunk_strategy = str(mode_config.get("chunk_strategy", "character"))
+    chunk_chars = int(mode_config["chunk_chars"])
     reduce_chars = int(summarize["reduce_chars"])
-    chunk_tokens = summarize.get("chunk_tokens")
+    chunk_tokens = mode_config.get("chunk_tokens")
     reduce_tokens = summarize.get("reduce_tokens")
     source_tokens = token_counter.count_tokens(content) if chunk_strategy == "token" and token_counter is not None else None
     should_chunk = mode == "summarize" and len(content) > chunk_chars
@@ -1363,8 +1646,15 @@ def run_file_job(
             raise ValueError("Token-aware chunking requires an exact token counter and chunk token budget.")
         source_tokens = token_counter.count_tokens(content)
         should_chunk = source_tokens > int(chunk_tokens)
+    if mode == "extract":
+        should_chunk = len(content) > chunk_chars
+        if chunk_strategy == "token":
+            if token_counter is None or chunk_tokens is None:
+                raise ValueError("Token-aware extract chunking requires an exact token counter and chunk token budget.")
+            source_tokens = token_counter.count_tokens(content)
+            should_chunk = source_tokens > int(chunk_tokens)
 
-    if should_chunk:
+    if should_chunk and mode == "summarize":
         return run_chunked_summary_job(
             job=job,
             job_dir=job_dir,
@@ -1383,6 +1673,23 @@ def run_file_job(
             model_processor=model_processor,
             call_timings=call_timings,
             runtime_summarize=summarize,
+            failure_policy=runtime_config["failure_policy"],
+            progress_callback=progress_callback,
+        )
+    if should_chunk and mode == "extract":
+        return run_chunked_extract_job(
+            job=job,
+            job_dir=job_dir,
+            run_dir=run_dir,
+            content=content,
+            agent=agent,
+            ollama_base_url=ollama_base_url,
+            timeout=timeout,
+            chunk_strategy=chunk_strategy,
+            token_counter=token_counter,
+            model_processor=model_processor,
+            call_timings=call_timings,
+            runtime_extract=extract,
             failure_policy=runtime_config["failure_policy"],
             progress_callback=progress_callback,
         )
@@ -1407,6 +1714,7 @@ def run_file_job(
         model_processor=model_processor,
         call_timings=call_timings,
         snippet_request=snippet_request,
+        extract_config=extract if mode == "extract" else None,
         progress_callback=progress_callback,
     )
 
@@ -1419,6 +1727,127 @@ def call_timing_summary(call_timings: list[dict[str, Any]]) -> dict[str, Any]:
         "duration_ms": duration,
         "calls": call_timings,
     }
+
+
+def extract_failure_summary(job: dict[str, Any]) -> dict[str, Any]:
+    failure = job.get("failure") if isinstance(job.get("failure"), dict) else {}
+    return {
+        "job_id": job.get("job_id"),
+        "file": job.get("input_path"),
+        "error": job.get("error"),
+        "failure": failure,
+    }
+
+
+def build_extract_run_results(run_dir: Path, status: dict[str, Any]) -> dict[str, Any]:
+    jobs = [job for job in status.get("jobs", []) if isinstance(job, dict)]
+    completed_jobs = [job for job in jobs if job.get("status") in {"complete", "complete_with_warnings"}]
+    failed_jobs = [job for job in jobs if job.get("status") == "failed"]
+    items: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for job in completed_jobs:
+        result_ref = job.get("result_json")
+        if not result_ref:
+            continue
+        result_path = run_dir / str(result_ref)
+        if not result_path.exists():
+            warnings.append(f"missing_result_json:{job.get('job_id')}")
+            continue
+        try:
+            result = read_json(result_path)
+        except Exception as exc:
+            warnings.append(f"malformed_result_json:{job.get('job_id')}:{exc}")
+            continue
+        payload = result.get("result") if isinstance(result.get("result"), dict) else {}
+        items.extend(item for item in payload.get("items", []) if isinstance(item, dict))
+        warnings.extend(str(item) for item in result.get("warnings", []) if str(item).strip())
+
+    runtime = status.get("runtime") if isinstance(status.get("runtime"), dict) else {}
+    extract = runtime.get("extract") if isinstance(runtime.get("extract"), dict) else {}
+    deduped, dedupe = dedupe_items(items, max_items=max(1, int(extract.get("max_items_per_file", 40))) * max(1, len(completed_jobs)))
+    coverage_status = "partial" if failed_jobs else "complete"
+    if not completed_jobs and failed_jobs:
+        coverage_status = "failed"
+    result = {
+        "schema_version": 1,
+        "run_id": status.get("run_id"),
+        "mode": "extract",
+        "preset": extract.get("preset", DEFAULT_EXTRACT_PRESET),
+        "focus": extract.get("focus"),
+        "status": status.get("status"),
+        "coverage": {
+            "status": coverage_status,
+            "total_jobs": len(jobs),
+            "completed_jobs": len(completed_jobs),
+            "failed_jobs": len(failed_jobs),
+            "skipped_files": len(status.get("skipped_files") or []),
+        },
+        "counts": {
+            "items": len(deduped),
+            "by_type": {},
+        },
+        "items": deduped,
+        "failures": [extract_failure_summary(job) for job in failed_jobs],
+        "artifacts": {
+            "markdown": "EXTRACT_RESULTS.md",
+            "json": "extract-results.json",
+        },
+        "diagnostics": {
+            "warnings": unique_warnings(warnings),
+            "dedupe": dedupe,
+        },
+    }
+    from src.sift_farm_extract import count_by_type
+
+    result["counts"]["by_type"] = count_by_type(deduped)
+    return result
+
+
+def render_extract_run_markdown(result: dict[str, Any]) -> str:
+    coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
+    lines = [
+        f"# Extract Run {result.get('run_id', '')}",
+        "",
+        f"Status: `{result.get('status', '')}`",
+        f"Preset: `{result.get('preset', '')}`",
+        f"Coverage: `{coverage.get('status', '')}`",
+        f"Items: `{(result.get('counts') or {}).get('items', 0)}`",
+    ]
+    if result.get("focus"):
+        lines.append(f"Focus: {result.get('focus')}")
+    lines.extend(["", "## Items", ""])
+    items = [item for item in result.get("items", []) if isinstance(item, dict)]
+    if not items:
+        lines.append("No extract items found.")
+    for item in items:
+        lines.append(f"- `{item.get('type', '')}` {item.get('text', '')}")
+        sources = [source for source in item.get("sources", []) if isinstance(source, dict)]
+        if sources:
+            source = sources[0]
+            location = source.get("file") or ""
+            if source.get("char_start") is not None and source.get("char_end") is not None:
+                location = f"{location}@{source.get('char_start')}-{source.get('char_end')}"
+            lines.append(f"  - Source: `{location}`")
+    failures = [item for item in result.get("failures", []) if isinstance(item, dict)]
+    if failures:
+        lines.extend(["", "## Failures", ""])
+        for failure in failures:
+            detail = failure.get("failure") if isinstance(failure.get("failure"), dict) else {}
+            lines.append(
+                f"- `{failure.get('file', '')}`: {detail.get('code', 'unknown')} - "
+                f"{detail.get('recommended_action') or failure.get('error') or ''}"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_extract_run_results(run_dir: Path, status: dict[str, Any]) -> dict[str, Any]:
+    result = build_extract_run_results(run_dir, status)
+    write_json(run_dir / "extract-results.json", result)
+    (run_dir / "EXTRACT_RESULTS.md").write_text(render_extract_run_markdown(result), encoding="utf-8")
+    status.setdefault("artifacts", {})["extract_results_json"] = "extract-results.json"
+    status.setdefault("artifacts", {})["extract_results_md"] = "EXTRACT_RESULTS.md"
+    return result
 
 
 def execute_job(
@@ -1643,6 +2072,11 @@ def resolve_run_agent_and_config(
     chunk_overlap_tokens: int | None = None,
     snippets: str | None = None,
     snippet_max_chars: int | None = None,
+    extract_preset: str | None = None,
+    extract_focus: str | None = None,
+    extract_max_items_per_file: int | None = None,
+    extract_max_items_per_chunk: int | None = None,
+    extract_snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
     max_attempts: int | None = None,
@@ -1671,6 +2105,11 @@ def resolve_run_agent_and_config(
             chunk_overlap_tokens=chunk_overlap_tokens,
             snippets=snippets,
             snippet_max_chars=snippet_max_chars,
+            extract_preset=extract_preset,
+            extract_focus=extract_focus,
+            extract_max_items_per_file=extract_max_items_per_file,
+            extract_max_items_per_chunk=extract_max_items_per_chunk,
+            extract_snippet_max_chars=extract_snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
             max_attempts=max_attempts,
@@ -1974,6 +2413,11 @@ def run_farm(
     chunk_overlap_tokens: int | None = None,
     snippets: str | None = None,
     snippet_max_chars: int | None = None,
+    extract_preset: str | None = None,
+    extract_focus: str | None = None,
+    extract_max_items_per_file: int | None = None,
+    extract_max_items_per_chunk: int | None = None,
+    extract_snippet_max_chars: int | None = None,
     parallel_jobs: int | None = None,
     parallel_chunks: int | None = None,
     runtime_config: dict[str, Any] | None = None,
@@ -1993,6 +2437,8 @@ def run_farm(
         raise ValueError(f"Unsupported farm mode: {mode}")
     if mode == "prompt" and not instructions:
         raise ValueError("prompt mode requires --instructions.")
+    if mode == "extract" and instructions:
+        raise ValueError("extract mode uses --extract-focus for brief steering; do not pass --instructions.")
 
     if runtime_config is None:
         agent, runtime_config = resolve_run_agent_and_config(
@@ -2014,6 +2460,11 @@ def run_farm(
             chunk_overlap_tokens=chunk_overlap_tokens,
             snippets=snippets,
             snippet_max_chars=snippet_max_chars,
+            extract_preset=extract_preset,
+            extract_focus=extract_focus,
+            extract_max_items_per_file=extract_max_items_per_file,
+            extract_max_items_per_chunk=extract_max_items_per_chunk,
+            extract_snippet_max_chars=extract_snippet_max_chars,
             parallel_jobs=parallel_jobs,
             parallel_chunks=parallel_chunks,
             max_attempts=max_attempts,
@@ -2033,12 +2484,38 @@ def run_farm(
 
     runtime_config.setdefault("failure_policy", default_failure_policy())
     runtime_config.setdefault("discovery", default_discovery())
+    runtime_config.setdefault("extract", {})
     if preserve_heading_ancestry is not None:
         runtime_config["summarize"]["preserve_heading_ancestry"] = preserve_heading_ancestry
+        if mode == "extract":
+            runtime_config["extract"]["preserve_heading_ancestry"] = preserve_heading_ancestry
     if chunk_overlap_chars is not None:
         runtime_config["summarize"]["chunk_overlap_chars"] = chunk_overlap_chars
+        if mode == "extract":
+            runtime_config["extract"]["chunk_overlap_chars"] = chunk_overlap_chars
     if chunk_overlap_tokens is not None:
         runtime_config["summarize"]["chunk_overlap_tokens"] = chunk_overlap_tokens
+        if mode == "extract":
+            runtime_config["extract"]["chunk_overlap_tokens"] = chunk_overlap_tokens
+    if mode == "extract":
+        if chunk_strategy is not None:
+            runtime_config["extract"]["chunk_strategy"] = chunk_strategy
+        if chunk_chars is not None:
+            runtime_config["extract"]["chunk_chars"] = chunk_chars
+        if chunk_tokens is not None:
+            runtime_config["extract"]["chunk_tokens"] = chunk_tokens
+        if token_safety_margin is not None:
+            runtime_config["extract"]["token_safety_margin"] = token_safety_margin
+        if extract_preset is not None:
+            runtime_config["extract"]["preset"] = extract_preset
+        if extract_focus is not None:
+            runtime_config["extract"]["focus"] = extract_focus
+        if extract_max_items_per_file is not None:
+            runtime_config["extract"]["max_items_per_file"] = extract_max_items_per_file
+        if extract_max_items_per_chunk is not None:
+            runtime_config["extract"]["max_items_per_chunk"] = extract_max_items_per_chunk
+        if extract_snippet_max_chars is not None:
+            runtime_config["extract"]["snippet_max_chars"] = extract_snippet_max_chars
     if max_attempts is not None:
         runtime_config["failure_policy"]["max_attempts"] = max_attempts
     if per_file_timeout_seconds is not None:
@@ -2049,7 +2526,10 @@ def run_farm(
         runtime_config["failure_policy"]["reduce_max_attempts"] = reduce_max_attempts
     validate_resolved_config(runtime_config)
 
-    if runtime_config["summarize"].get("chunk_strategy") == "token" and token_counter is None:
+    token_needed = runtime_config["summarize"].get("chunk_strategy") == "token"
+    if mode == "extract":
+        token_needed = runtime_config["extract"].get("chunk_strategy") == "token"
+    if token_needed and token_counter is None:
         token_counter = token_counter_loader(
             root=root,
             model=str(agent["model"]),
@@ -2118,6 +2598,8 @@ def run_farm(
         mode=mode,
         agent=agent,
         instructions=instructions,
+        extract_preset=str(runtime_config.get("extract", {}).get("preset", DEFAULT_EXTRACT_PRESET)) if mode == "extract" else None,
+        extract_focus=runtime_config.get("extract", {}).get("focus") if mode == "extract" else None,
         input_folder=input_folder,
         jobs=jobs,
         skipped_files=discovery.skipped,
@@ -2150,6 +2632,8 @@ def run_farm(
     completed_at = timestamp_now()
     status["timing"]["completed_at"] = completed_at
     status["timing"]["duration_ms"] = duration_between(status["timing"].get("started_at"), completed_at)
+    if mode == "extract":
+        write_extract_run_results(run_dir, status)
     write_status(run_dir, status)
     write_timing_summary(run_dir, status)
     return status

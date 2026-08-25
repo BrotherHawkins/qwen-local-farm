@@ -28,7 +28,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0003 | Open | 0000 | Run CI on Windows and macOS hosted runners | Keep hardware/model-free assumptions intact. |
 | BL-0004 | Open | 0000 | Optional local Ollama/model integration tests | Should stay opt-in/local unless runner hardware is known. |
 | BL-0005 | Open | 0000 | Scheduled benchmark checks on known hardware | Requires stable machine profile and benchmark corpus. |
-| BL-0006 | Open | 0001 | CLI spelling for future non-MVP modes | Revisit before adding `extract`, `classify`, or `review`. |
+| BL-0006 | Implemented | 0001, 0036 | CLI spelling for future non-MVP modes | 0036 added first-class `extract` mode spelling while leaving classify/review for later specs. |
 | BL-0007 | Implemented | 0001, 0016 | Full schema files for status/result validation | 0016 implemented tracked schemas and model-free validation coverage for key farm JSON artifacts. |
 | BL-0008 | Implemented | 0001, 0030 | Skip-list overrides | 0030 added include/exclude controls for farm file discovery while keeping built-in safety skips intact. |
 | BL-0009 | Implemented | 0001, 0025 | Caller-provided retry/timeout behavior | 0025 implemented configurable failure-policy fields for attempts and model-call timeout behavior. |
@@ -46,7 +46,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0021 | Implemented | 0003, 0006, 0015, 0020 | Benchmark-based profile recommendation | 0020 implemented measured local profile, chunking, resource-mode, and concurrency recommendations. |
 | BL-0022 | Implemented | 0003, 0006, 0015, 0021 | Automatic config writing from recommendation output | 0021 implemented a safe preview/write workflow for applying recommendation JSON to `.sift-farm.json`; doctor and recommend remain read-only by default. |
 | BL-0023 | Implemented | 0003, 0015, 0033 | Hardware-specific model installation guidance | 0033 added human and machine-readable model installation guidance plus doctor/recommend pointers. |
-| BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
+| BL-0024 | Implemented | 0003, 0036 | Per-mode profile fields beyond summarize and prompt | 0036 added a first-class `extract` runtime config namespace; future modes can add their own namespaces when specified. |
 | BL-0025 | Open | 0003, 0025 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures; 0025 only drafts fixed retry policy knobs. |
 | BL-0026 | Open | 0003 | Remote/frontier model profiles | Allow profile-style config for non-local model execution if supported later. |
 | BL-0027 | Implemented | 0004 | Bounded file-job scheduler concurrency | Implemented by 0004. |
@@ -65,7 +65,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0040 | Open | 0006 | Estimated token fallback | Provide clearly labeled estimated token counting when exact local tokenization is unavailable. |
 | BL-0041 | Open | 0005, 0006, 0027 | Token-per-second metrics | Capture backend eval/generation token metrics when available. |
 | BL-0042 | Open | 0006 | Progressive reduce quality tuning | Improve multi-batch reduce quality after first-pass token budget safety exists. |
-| BL-0043 | Open | 0006, 0026 | Token-aware chunking for non-summarize modes | Extend token-aware sizing beyond summarize once those modes have chunk-safe contracts. |
+| BL-0043 | Implemented | 0006, 0026, 0036 | Token-aware chunking for non-summarize modes | 0036 extended token-aware chunking to extract mode after defining its chunk-safe contract. |
 | BL-0044 | Implemented | 0007, 0008 | Advanced snippet ranking | 0008 implemented deterministic scoring, diversity, and diagnostics; semantic ranking remains separate in BL-0047. |
 | BL-0045 | Implemented | 0007, 0010 | Cross-file snippet packs | 0010 implemented deterministic Markdown/JSON snippet packs from existing summarize run artifacts for later synthesis workflows. |
 | BL-0046 | Open | 0007, 0010 | Quote and citation export formats | Export verified snippets in formats useful for citation-heavy downstream writing; 0010 only proposes generic Markdown/JSON packs. |
@@ -77,7 +77,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0052 | Open | 0009 | Dogfood quality dashboard or charts | Build charts or a small dashboard for quality and timing trends if JSON/Markdown comparisons become too hard to scan. |
 | BL-0053 | Open | 0009 | Statistical quality thresholds or CI gates | Define objective thresholds before adding pass/fail gates for subjective quality measures. |
 | BL-0054 | Open | 0009, 0033 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles; 0033 keeps hardware recommendations conservative until this exists. |
-| BL-0055 | Open | 0009 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows when additional farm modes mature. |
+| BL-0055 | Open | 0009, 0036 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows now that extract mode exists. |
 | BL-0056 | Open | 0010, 0034 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable; 0034 keeps the package-shaping work single-run only. |
 | BL-0057 | Open | 0010, 0034 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough; 0034 keeps browser/UI support deferred. |
 | BL-0058 | Implemented | 0010, 0012 | Run-ID lookup for post-run helpers | 0012 implemented exact known run ID lookup for `farm snippets pack`, `farm synthesis bundle`, and `farm dogfood record` while preserving full path input. |
@@ -117,7 +117,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0092 | Open | 0026 | Frontmatter-aware note splitting | Treat note metadata/frontmatter as structured context when chunking Markdown-like notes. |
 | BL-0093 | Open | 0026, 0027 | Chunk visualization UI or dashboard | Make chunk boundaries, heading ancestry, overlap, live progress, and reduce flow easier to inspect visually if artifacts are not enough. |
 | BL-0094 | Open | 0026 | Automatic overlap tuning | Adjust overlap from quality/timing evidence only after fixed overlap settings prove useful. |
-| BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
+| BL-0095 | Open | 0026, 0036 | First-class chunking for extract/classify/review modes | 0036 implemented first-class chunking for extract; classify and review still need mode-specific chunk safety, aggregation, and output contracts. |
 | BL-0096 | Open | 0027 | `farm status --watch` or live polling helpers | Add a user-friendly watch/polling surface after stable in-progress status fields exist. |
 | BL-0097 | Open | 0027, 0028, 0029 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
 | BL-0098 | Implemented | 0029 | Failure classification and retry guidance | 0029 added durable failure codes, categories, retryability flags, retry-after-fix guidance, and recommended actions to failed job artifacts and status/retry surfaces. |
@@ -136,6 +136,11 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0111 | Open | 0032, 0035 | Specialized Sift skills | Add focused skills for dogfood benchmarking, model extension, article ingestion, or advanced troubleshooting after the initial setup/operator skills are dogfooded. |
 | BL-0112 | Open | 0032, 0035 | Skill manifest JSON Schema | Add a tracked schema for `skills/index.json` if the manifest starts being consumed by automation beyond the first model-free sync tests. |
 | BL-0113 | Open | 0033, 0035 | Automatic Ollama/model installation helpers | Add explicit user-approved helper commands only after hardware-specific guidance proves accurate; 0035 installs AI skill folders only, not models. |
+| BL-0114 | Open | 0036 | Model-assisted extract dedupe and ranking | Add an optional second-pass local model reduce for near-duplicate clustering and ranking after deterministic extract dedupe is dogfooded. |
+| BL-0115 | Open | 0036 | Custom extraction schemas | Let callers define custom extraction fields or item types only after preset-based extract proves stable. |
+| BL-0116 | Open | 0036 | First-class extract package helper | Add a post-run extract package helper if automatic `extract-results.json` and `farm collect` are not enough for frontier handoff. |
+| BL-0117 | Open | 0036 | Semantic extract grouping | Consider embeddings, retrieval, or semantic clustering for extract only after deterministic grouping hits a clear quality ceiling. |
+| BL-0118 | Open | 0036 | Source-offset citation exports | Export extract or snippet source references into citation-friendly formats using verified snippets and original-file character offsets. |
 
 ## Notes
 

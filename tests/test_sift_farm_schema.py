@@ -337,6 +337,63 @@ class FarmSchemaTests(unittest.TestCase):
 
         self.assertValid(result, "farm-retry-failed.schema.json")
 
+    def test_extract_results_json_validates_and_auto_detects(self) -> None:
+        result = {
+            "schema_version": 1,
+            "run_id": "farm-run-extract",
+            "mode": "extract",
+            "preset": "research",
+            "focus": "Capture models.",
+            "status": "complete",
+            "coverage": {
+                "status": "complete",
+                "total_jobs": 1,
+                "completed_jobs": 1,
+                "failed_jobs": 0,
+                "skipped_files": 0,
+            },
+            "counts": {
+                "items": 1,
+                "by_type": {"claim": 1},
+            },
+            "items": [
+                {
+                    "id": "claim-001",
+                    "type": "claim",
+                    "text": "Local workers help frontier models.",
+                    "attributes": {},
+                    "rank_score": 0.95,
+                    "source_support": "snippet_verified",
+                    "sources": [
+                        {
+                            "file": "article.txt",
+                            "chunk_id": None,
+                            "snippet": "Local workers help frontier models",
+                            "source_support": "snippet_verified",
+                            "char_start": 0,
+                            "char_end": 35,
+                        }
+                    ],
+                }
+            ],
+            "failures": [],
+            "artifacts": {
+                "markdown": "EXTRACT_RESULTS.md",
+                "json": "extract-results.json",
+            },
+            "diagnostics": {
+                "warnings": [],
+                "dedupe": {"candidate_items": 1, "selected_items": 1},
+            },
+        }
+
+        self.assertValid(result, "farm-extract-results.schema.json")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "extract-results.json"
+            path.write_text(json.dumps(result), encoding="utf-8")
+            detected = sift_farm_schema.detect_schema(ROOT, result)
+            self.assertEqual(detected["path"], "schemas/farm-extract-results.schema.json")
+
     def test_failed_job_result_with_failure_validates(self) -> None:
         result = {
             "schema_version": "0.1",

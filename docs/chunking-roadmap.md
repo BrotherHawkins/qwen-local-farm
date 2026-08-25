@@ -40,7 +40,8 @@ The first useful version now supports:
 - size/context detection
 - fallback paragraph splitting
 - per-chunk outputs
-- a reduce pass for final summary/extraction output
+- a reduce pass for final summary output
+- map-only extract with deterministic Python dedupe and aggregation
 - token-aware chunk sizing for supported Qwen/Ollama tokenizers
 - timing metrics and configurable retries for chunk map and reduce calls
 

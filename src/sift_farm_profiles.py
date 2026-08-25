@@ -13,6 +13,15 @@ from src.sift_farm_snippets import (
     DEFAULT_SNIPPET_POLICY,
     SNIPPET_POLICIES,
 )
+from src.sift_farm_extract import (
+    DEFAULT_EXTRACT_CHUNK_CHARS,
+    DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK,
+    DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE,
+    DEFAULT_EXTRACT_PRESET,
+    DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
+    validate_extract_focus,
+    validate_extract_preset,
+)
 
 
 CONFIG_FILE_NAME = ".sift-farm.json"
@@ -21,7 +30,7 @@ DEFAULT_PROFILE = "local-8gb"
 RESOURCE_MODES = {"auto", "gpu", "hybrid", "cpu"}
 EFFECTIVE_RESOURCE_MODES = {"gpu", "hybrid", "cpu"}
 
-TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency", "failure_policy", "discovery"}
+TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "extract", "concurrency", "failure_policy", "discovery"}
 CHUNK_STRATEGIES = {"character", "token"}
 SUMMARIZE_FIELDS = {
     "chunk_strategy",
@@ -40,6 +49,20 @@ SUMMARIZE_FIELDS = {
     "snippet_max_chars",
 }
 CONCURRENCY_FIELDS = {"jobs", "chunks"}
+EXTRACT_FIELDS = {
+    "preset",
+    "focus",
+    "chunk_strategy",
+    "chunk_chars",
+    "chunk_tokens",
+    "token_safety_margin",
+    "preserve_heading_ancestry",
+    "chunk_overlap_chars",
+    "chunk_overlap_tokens",
+    "max_items_per_file",
+    "max_items_per_chunk",
+    "snippet_max_chars",
+}
 FAILURE_POLICY_FIELDS = {
     "max_attempts",
     "per_file_timeout_seconds",
@@ -80,6 +103,11 @@ class RuntimeOverrides:
     snippet_min_count: int | None = None
     snippet_max_count: int | None = None
     snippet_max_chars: int | None = None
+    extract_preset: str | None = None
+    extract_focus: str | None = None
+    extract_max_items_per_file: int | None = None
+    extract_max_items_per_chunk: int | None = None
+    extract_snippet_max_chars: int | None = None
     parallel_jobs: int | None = None
     parallel_chunks: int | None = None
     max_attempts: int | None = None
@@ -121,6 +149,23 @@ def default_chunk_context_fields() -> dict[str, Any]:
         "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
         "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
         "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
+    }
+
+
+def default_extract_fields(chunk_chars: int = DEFAULT_EXTRACT_CHUNK_CHARS) -> dict[str, Any]:
+    return {
+        "preset": DEFAULT_EXTRACT_PRESET,
+        "focus": None,
+        "chunk_strategy": DEFAULT_CHUNK_STRATEGY,
+        "chunk_chars": chunk_chars,
+        "chunk_tokens": None,
+        "token_safety_margin": DEFAULT_TOKEN_SAFETY_MARGIN,
+        "preserve_heading_ancestry": DEFAULT_PRESERVE_HEADING_ANCESTRY,
+        "chunk_overlap_chars": DEFAULT_CHUNK_OVERLAP_CHARS,
+        "chunk_overlap_tokens": DEFAULT_CHUNK_OVERLAP_TOKENS,
+        "max_items_per_file": DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE,
+        "max_items_per_chunk": DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK,
+        "snippet_max_chars": DEFAULT_EXTRACT_SNIPPET_MAX_CHARS,
     }
 
 
@@ -262,7 +307,11 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             "discovery": default_discovery(),
         },
     }
-    return deepcopy(profiles[profile])
+    selected = deepcopy(profiles[profile])
+    selected["extract"] = default_extract_fields(
+        chunk_chars=min(DEFAULT_EXTRACT_CHUNK_CHARS, int(selected["summarize"]["chunk_chars"]))
+    )
+    return selected
 
 
 def validate_positive_int(value: Any, field_path: str) -> int:
@@ -312,6 +361,14 @@ def validate_chunk_strategy(value: Any) -> str:
     if strategy not in CHUNK_STRATEGIES:
         allowed = ", ".join(sorted(CHUNK_STRATEGIES))
         raise ValueError(f"summarize.chunk_strategy must be one of: {allowed}.")
+    return strategy
+
+
+def validate_chunk_strategy_for(value: Any, field_path: str) -> str:
+    strategy = str(value).strip().lower()
+    if strategy not in CHUNK_STRATEGIES:
+        allowed = ", ".join(sorted(CHUNK_STRATEGIES))
+        raise ValueError(f"{field_path} must be one of: {allowed}.")
     return strategy
 
 
@@ -466,6 +523,54 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
                 summarize["snippet_max_chars"], "summarize.snippet_max_chars"
             )
         validate_snippet_settings({**default_snippet_fields(), **normalized["summarize"]})
+    if "extract" in data:
+        extract = data["extract"]
+        if not isinstance(extract, dict):
+            raise ValueError("extract must be an object.")
+        reject_unknown_fields(extract, EXTRACT_FIELDS, "extract")
+        normalized["extract"] = {}
+        if "preset" in extract:
+            normalized["extract"]["preset"] = validate_extract_preset(extract["preset"])
+        if "focus" in extract:
+            normalized["extract"]["focus"] = validate_extract_focus(extract["focus"])
+        if "chunk_strategy" in extract:
+            normalized["extract"]["chunk_strategy"] = validate_chunk_strategy_for(
+                extract["chunk_strategy"], "extract.chunk_strategy"
+            )
+        if "chunk_chars" in extract:
+            normalized["extract"]["chunk_chars"] = validate_positive_int(extract["chunk_chars"], "extract.chunk_chars")
+        if "chunk_tokens" in extract:
+            normalized["extract"]["chunk_tokens"] = validate_positive_int(
+                extract["chunk_tokens"], "extract.chunk_tokens"
+            )
+        if "token_safety_margin" in extract:
+            normalized["extract"]["token_safety_margin"] = validate_safety_margin(
+                extract["token_safety_margin"], "extract.token_safety_margin"
+            )
+        if "preserve_heading_ancestry" in extract:
+            normalized["extract"]["preserve_heading_ancestry"] = validate_bool(
+                extract["preserve_heading_ancestry"], "extract.preserve_heading_ancestry"
+            )
+        if "chunk_overlap_chars" in extract:
+            normalized["extract"]["chunk_overlap_chars"] = validate_non_negative_int(
+                extract["chunk_overlap_chars"], "extract.chunk_overlap_chars"
+            )
+        if "chunk_overlap_tokens" in extract:
+            normalized["extract"]["chunk_overlap_tokens"] = validate_non_negative_int(
+                extract["chunk_overlap_tokens"], "extract.chunk_overlap_tokens"
+            )
+        if "max_items_per_file" in extract:
+            normalized["extract"]["max_items_per_file"] = validate_positive_int(
+                extract["max_items_per_file"], "extract.max_items_per_file"
+            )
+        if "max_items_per_chunk" in extract:
+            normalized["extract"]["max_items_per_chunk"] = validate_positive_int(
+                extract["max_items_per_chunk"], "extract.max_items_per_chunk"
+            )
+        if "snippet_max_chars" in extract:
+            normalized["extract"]["snippet_max_chars"] = validate_positive_int(
+                extract["snippet_max_chars"], "extract.snippet_max_chars"
+            )
     if "concurrency" in data:
         concurrency = data["concurrency"]
         if not isinstance(concurrency, dict):
@@ -520,6 +625,9 @@ def merge_config(target: dict[str, Any], update: dict[str, Any]) -> None:
         target["model"] = update["model"]
     if "summarize" in update:
         target["summarize"].update(update["summarize"])
+    if "extract" in update:
+        target.setdefault("extract", default_extract_fields())
+        target["extract"].update(update["extract"])
     if "concurrency" in update:
         target["concurrency"].update(update["concurrency"])
     if "failure_policy" in update:
@@ -589,6 +697,26 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
         summarize["snippet_max_chars"] = validate_positive_int(overrides.snippet_max_chars, "--snippet-max-chars")
     if summarize:
         data["summarize"] = summarize
+
+    extract: dict[str, Any] = {}
+    if overrides.extract_preset is not None:
+        extract["preset"] = validate_extract_preset(overrides.extract_preset)
+    if overrides.extract_focus is not None:
+        extract["focus"] = validate_extract_focus(overrides.extract_focus, field_path="--extract-focus")
+    if overrides.extract_max_items_per_file is not None:
+        extract["max_items_per_file"] = validate_positive_int(
+            overrides.extract_max_items_per_file, "--extract-max-items-per-file"
+        )
+    if overrides.extract_max_items_per_chunk is not None:
+        extract["max_items_per_chunk"] = validate_positive_int(
+            overrides.extract_max_items_per_chunk, "--extract-max-items-per-chunk"
+        )
+    if overrides.extract_snippet_max_chars is not None:
+        extract["snippet_max_chars"] = validate_positive_int(
+            overrides.extract_snippet_max_chars, "--extract-snippet-max-chars"
+        )
+    if extract:
+        data["extract"] = extract
 
     concurrency: dict[str, Any] = {}
     if overrides.parallel_jobs is not None:
@@ -726,6 +854,34 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
         "summarize.chunk_overlap_tokens",
     )
     validate_snippet_settings(summarize)
+    extract = config.get("extract")
+    if not isinstance(extract, dict):
+        raise ValueError("resolved extract config must be an object.")
+    validate_extract_preset(extract.get("preset", DEFAULT_EXTRACT_PRESET))
+    validate_extract_focus(extract.get("focus"))
+    validate_chunk_strategy_for(extract.get("chunk_strategy", DEFAULT_CHUNK_STRATEGY), "extract.chunk_strategy")
+    validate_positive_int(extract.get("chunk_chars"), "extract.chunk_chars")
+    if extract.get("chunk_tokens") is not None:
+        validate_positive_int(extract.get("chunk_tokens"), "extract.chunk_tokens")
+    validate_safety_margin(
+        extract.get("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN),
+        "extract.token_safety_margin",
+    )
+    validate_bool(
+        extract.get("preserve_heading_ancestry", DEFAULT_PRESERVE_HEADING_ANCESTRY),
+        "extract.preserve_heading_ancestry",
+    )
+    validate_non_negative_int(
+        extract.get("chunk_overlap_chars", DEFAULT_CHUNK_OVERLAP_CHARS),
+        "extract.chunk_overlap_chars",
+    )
+    validate_non_negative_int(
+        extract.get("chunk_overlap_tokens", DEFAULT_CHUNK_OVERLAP_TOKENS),
+        "extract.chunk_overlap_tokens",
+    )
+    validate_positive_int(extract.get("max_items_per_file"), "extract.max_items_per_file")
+    validate_positive_int(extract.get("max_items_per_chunk"), "extract.max_items_per_chunk")
+    validate_positive_int(extract.get("snippet_max_chars"), "extract.snippet_max_chars")
     concurrency = config.get("concurrency")
     if not isinstance(concurrency, dict):
         raise ValueError("resolved concurrency config must be an object.")
@@ -790,6 +946,22 @@ def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dic
             budget = derive_token_budget(num_ctx, float(summarize["token_safety_margin"]))
             summarize.setdefault("chunk_tokens", budget)
             summarize.setdefault("reduce_tokens", budget)
+    extract = updated.setdefault("extract", default_extract_fields())
+    extract.setdefault("preset", DEFAULT_EXTRACT_PRESET)
+    extract.setdefault("focus", None)
+    extract.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
+    extract.setdefault("chunk_chars", DEFAULT_EXTRACT_CHUNK_CHARS)
+    extract.setdefault("chunk_tokens", None)
+    extract.setdefault("token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN)
+    extract.update({**default_chunk_context_fields(), **extract})
+    extract.setdefault("max_items_per_file", DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE)
+    extract.setdefault("max_items_per_chunk", DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK)
+    extract.setdefault("snippet_max_chars", DEFAULT_EXTRACT_SNIPPET_MAX_CHARS)
+    if extract["chunk_strategy"] == "token" and extract.get("chunk_tokens") is None:
+        num_ctx = agent_context_tokens(agent)
+        if num_ctx is None:
+            raise ValueError("Token-aware extract chunking requires agent options.num_ctx or explicit token budget.")
+        extract["chunk_tokens"] = derive_token_budget(num_ctx, float(extract["token_safety_margin"]))
     validate_resolved_config(updated)
     return updated
 
@@ -909,6 +1081,34 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
             ),
             "snippet_max_chars": runtime_config["summarize"].get(
                 "snippet_max_chars", DEFAULT_SNIPPET_MAX_CHARS
+            ),
+        },
+        "extract": {
+            "preset": runtime_config["extract"].get("preset", DEFAULT_EXTRACT_PRESET),
+            "focus": runtime_config["extract"].get("focus"),
+            "chunk_strategy": runtime_config["extract"].get("chunk_strategy", DEFAULT_CHUNK_STRATEGY),
+            "chunk_chars": runtime_config["extract"]["chunk_chars"],
+            "chunk_tokens": runtime_config["extract"].get("chunk_tokens"),
+            "token_safety_margin": runtime_config["extract"].get(
+                "token_safety_margin", DEFAULT_TOKEN_SAFETY_MARGIN
+            ),
+            "preserve_heading_ancestry": runtime_config["extract"].get(
+                "preserve_heading_ancestry", DEFAULT_PRESERVE_HEADING_ANCESTRY
+            ),
+            "chunk_overlap_chars": runtime_config["extract"].get(
+                "chunk_overlap_chars", DEFAULT_CHUNK_OVERLAP_CHARS
+            ),
+            "chunk_overlap_tokens": runtime_config["extract"].get(
+                "chunk_overlap_tokens", DEFAULT_CHUNK_OVERLAP_TOKENS
+            ),
+            "max_items_per_file": runtime_config["extract"].get(
+                "max_items_per_file", DEFAULT_EXTRACT_MAX_ITEMS_PER_FILE
+            ),
+            "max_items_per_chunk": runtime_config["extract"].get(
+                "max_items_per_chunk", DEFAULT_EXTRACT_MAX_ITEMS_PER_CHUNK
+            ),
+            "snippet_max_chars": runtime_config["extract"].get(
+                "snippet_max_chars", DEFAULT_EXTRACT_SNIPPET_MAX_CHARS
             ),
         },
         "concurrency": {

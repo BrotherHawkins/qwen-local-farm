@@ -19,6 +19,7 @@ The goal is to make setup feel guided and beginner-friendly. Prefer Sift's read-
 - `python sift.py farm tokenizer status`
 - `python sift.py farm tokenizer setup`
 - `python sift.py farm run <input-folder> --mode summarize --output <output-folder>`
+- `python sift.py farm run <input-folder> --mode extract --extract-preset research --output <output-folder>`
 - `python sift.py farm status <run-ref> --json`
 - `python sift.py farm schema validate <path> --json`
 

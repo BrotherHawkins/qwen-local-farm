@@ -613,6 +613,11 @@ def handle_farm(args: argparse.Namespace) -> None:
             chunk_overlap_tokens=args.chunk_overlap_tokens,
             snippets=args.snippets,
             snippet_max_chars=args.snippet_max_chars,
+            extract_preset=args.extract_preset,
+            extract_focus=args.extract_focus,
+            extract_max_items_per_file=args.extract_max_items_per_file,
+            extract_max_items_per_chunk=args.extract_max_items_per_chunk,
+            extract_snippet_max_chars=args.extract_snippet_max_chars,
             parallel_jobs=args.parallel_jobs,
             parallel_chunks=args.parallel_chunks,
             max_attempts=args.max_attempts,
@@ -744,8 +749,13 @@ def parse_args() -> argparse.Namespace:
     farm_run = farm_subparsers.add_parser("run")
     farm_run.add_argument("input_folder")
     farm_run.add_argument("--output")
-    farm_run.add_argument("--mode", choices=["summarize", "prompt"], default="summarize")
+    farm_run.add_argument("--mode", choices=["summarize", "prompt", "extract"], default="summarize")
     farm_run.add_argument("--instructions")
+    farm_run.add_argument("--extract-preset", choices=["evidence", "entities", "work", "research"])
+    farm_run.add_argument("--extract-focus")
+    farm_run.add_argument("--extract-max-items-per-file", type=int)
+    farm_run.add_argument("--extract-max-items-per-chunk", type=int)
+    farm_run.add_argument("--extract-snippet-max-chars", type=int)
     farm_run.add_argument("--agent", default="default")
     farm_run.add_argument("--config")
     farm_run.add_argument("--profile")

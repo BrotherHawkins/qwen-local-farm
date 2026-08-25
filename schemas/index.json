@@ -68,6 +68,12 @@
       "status": "current"
     },
     {
+      "id": "https://sift.local/schemas/farm-extract-results.schema.json",
+      "path": "schemas/farm-extract-results.schema.json",
+      "surface": "persisted extract-results.json",
+      "status": "current"
+    },
+    {
       "id": "https://sift.local/schemas/farm-retry-failed.schema.json",
       "path": "schemas/farm-retry-failed.schema.json",
       "surface": "python sift.py farm retry-failed --json",

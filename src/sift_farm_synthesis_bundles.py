@@ -5,11 +5,15 @@ from pathlib import Path
 from typing import Any
 
 from src.sift_farm_snippet_packs import (
+    DEFAULT_CHARS_PER_TOKEN,
     DEFAULT_MAX_SNIPPETS,
     DEFAULT_PER_FILE_SNIPPETS,
     PACK_SOURCE,
     PACKABLE_JOB_STATUSES,
     apply_caps,
+    effective_max_chars,
+    empty_budget_metadata,
+    estimate_tokens_from_chars,
     dedupe_snippets,
     normalize_snippet,
     read_json_object,
@@ -25,47 +29,14 @@ from src.sift_farm_snippet_packs import (
 
 
 SYNTHESIS_BUNDLE_SCHEMA_VERSION = 1
-DEFAULT_CHARS_PER_TOKEN = 4.0
-BUDGET_SCHEMA_VERSION = 1
-
-
-def estimate_tokens_from_chars(char_count: int, chars_per_token: float = DEFAULT_CHARS_PER_TOKEN) -> int:
-    if char_count <= 0:
-        return 0
-    return int((char_count + chars_per_token - 1) // chars_per_token)
-
-
-def validate_budget_options(
-    *,
-    max_chars: int | None = None,
-    max_estimated_tokens: int | None = None,
-    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
-) -> None:
-    if max_chars is not None and max_chars <= 0:
-        raise ValueError("--max-chars must be a positive integer.")
-    if max_estimated_tokens is not None and max_estimated_tokens <= 0:
-        raise ValueError("--max-estimated-tokens must be a positive integer.")
-    if chars_per_token <= 0:
-        raise ValueError("--chars-per-token must be a positive number.")
-
-
-def effective_max_chars(
-    *,
-    max_chars: int | None = None,
-    max_estimated_tokens: int | None = None,
-    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
-) -> int | None:
-    validate_budget_options(
-        max_chars=max_chars,
-        max_estimated_tokens=max_estimated_tokens,
-        chars_per_token=chars_per_token,
-    )
-    caps = []
-    if max_chars is not None:
-        caps.append(max_chars)
-    if max_estimated_tokens is not None:
-        caps.append(int(max_estimated_tokens * chars_per_token))
-    return min(caps) if caps else None
+SUMMARY_FIELDS = ("title", "abstract", "bullets", "open_questions", "confidence")
+SUMMARY_TEMPLATES = {
+    "standard": SUMMARY_FIELDS,
+    "compact": ("title", "abstract"),
+    "claims": ("title", "abstract", "bullets"),
+    "questions": ("title", "abstract", "open_questions"),
+}
+FIT_POLICIES = {"summary-first", "evidence-first", "balanced"}
 
 
 def count_bundle_snippets(items: list[dict[str, Any]]) -> int:
@@ -80,37 +51,54 @@ def refresh_bundle_counts(bundle: dict[str, Any]) -> None:
     counts["snippets_selected"] = count_bundle_snippets(items)
 
 
-def empty_budget_metadata(
+def validate_budget_options(
     *,
-    max_chars: int | None,
-    max_estimated_tokens: int | None,
-    chars_per_token: float,
-    effective_chars: int | None,
-) -> dict[str, Any]:
-    return {
-        "schema_version": BUDGET_SCHEMA_VERSION,
-        "max_chars": max_chars,
-        "max_estimated_tokens": max_estimated_tokens,
-        "chars_per_token": chars_per_token,
-        "effective_max_chars": effective_chars,
-        "input": {
-            "chars": 0,
-            "estimated_tokens": 0,
-        },
-        "output": {
-            "chars": 0,
-            "estimated_tokens": 0,
-        },
-        "fit": True,
-        "was_capped": False,
-        "dropped": {
-            "snippets": 0,
-            "open_questions": 0,
-            "bullets": 0,
-            "items": 0,
-        },
-        "warnings": [],
-    }
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+) -> None:
+    effective_max_chars(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+
+
+def resolve_summary_fields(*, summary_template: str, summary_fields: str | None) -> list[str]:
+    template = summary_template.strip().lower()
+    if template not in SUMMARY_TEMPLATES:
+        raise ValueError(f"--summary-template must be one of: {', '.join(sorted(SUMMARY_TEMPLATES))}.")
+
+    if summary_fields is None:
+        return list(SUMMARY_TEMPLATES[template])
+
+    seen: set[str] = set()
+    resolved: list[str] = []
+    requested = [field.strip().lower() for field in summary_fields.split(",")]
+    for field in requested:
+        if not field:
+            continue
+        if field not in SUMMARY_FIELDS:
+            raise ValueError(f"--summary-fields contains unknown field: {field}.")
+        if field not in seen:
+            seen.add(field)
+
+    if not seen:
+        raise ValueError("--summary-fields must include at least one supported field.")
+
+    for field in SUMMARY_FIELDS:
+        if field in seen:
+            resolved.append(field)
+    return resolved
+
+
+def shape_summary(summary: dict[str, Any], fields: list[str]) -> dict[str, Any]:
+    shaped: dict[str, Any] = {}
+    for field in fields:
+        if field not in summary:
+            continue
+        shaped[field] = summary[field]
+    return shaped
 
 
 def normalize_string_list(value: Any) -> list[str]:
@@ -221,9 +209,8 @@ def attach_snippets(items: list[dict[str, Any]], snippets: list[dict[str, Any]])
         item.setdefault("snippets", []).append(snippet)
 
 
-def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int]) -> bool:
+def drop_one_snippet(bundle: dict[str, Any], dropped: dict[str, int]) -> bool:
     items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
-
     for item in reversed(items):
         snippets = [snippet for snippet in item.get("snippets", []) if isinstance(snippet, dict)]
         if snippets:
@@ -231,7 +218,11 @@ def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int]) -> boo
             dropped["snippets"] += 1
             refresh_bundle_counts(bundle)
             return True
+    return False
 
+
+def drop_one_summary_detail(bundle: dict[str, Any], dropped: dict[str, int]) -> bool:
+    items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
     for item in reversed(items):
         summary = item.get("summary", {}) if isinstance(item.get("summary"), dict) else {}
         open_questions = normalize_string_list(summary.get("open_questions", []))
@@ -247,7 +238,11 @@ def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int]) -> boo
             summary["bullets"] = bullets[:-1]
             dropped["bullets"] += 1
             return True
+    return False
 
+
+def drop_one_summary_only_item(bundle: dict[str, Any], dropped: dict[str, int]) -> bool:
+    items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
     for index in range(len(items) - 1, -1, -1):
         if not items[index].get("snippets"):
             del items[index]
@@ -257,6 +252,35 @@ def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int]) -> boo
             return True
 
     return False
+
+
+def drop_one_budget_unit(bundle: dict[str, Any], dropped: dict[str, int], fit_policy: str) -> bool:
+    if fit_policy == "summary-first":
+        return (
+            drop_one_snippet(bundle, dropped)
+            or drop_one_summary_detail(bundle, dropped)
+            or drop_one_summary_only_item(bundle, dropped)
+        )
+    if fit_policy == "evidence-first":
+        return (
+            drop_one_summary_detail(bundle, dropped)
+            or drop_one_summary_only_item(bundle, dropped)
+            or drop_one_snippet(bundle, dropped)
+        )
+
+    detail_drops = int(dropped.get("open_questions", 0)) + int(dropped.get("bullets", 0)) + int(dropped.get("items", 0))
+    snippet_drops = int(dropped.get("snippets", 0))
+    if detail_drops <= snippet_drops:
+        return (
+            drop_one_summary_detail(bundle, dropped)
+            or drop_one_summary_only_item(bundle, dropped)
+            or drop_one_snippet(bundle, dropped)
+        )
+    return (
+        drop_one_snippet(bundle, dropped)
+        or drop_one_summary_detail(bundle, dropped)
+        or drop_one_summary_only_item(bundle, dropped)
+    )
 
 
 def update_budget_sizes(bundle: dict[str, Any], markdown: str, chars_per_token: float) -> None:
@@ -287,6 +311,7 @@ def apply_budget(
     max_chars: int | None,
     max_estimated_tokens: int | None,
     chars_per_token: float,
+    fit_policy: str,
 ) -> None:
     effective_chars = effective_max_chars(
         max_chars=max_chars,
@@ -298,6 +323,7 @@ def apply_budget(
         max_estimated_tokens=max_estimated_tokens,
         chars_per_token=chars_per_token,
         effective_chars=effective_chars,
+        fit_policy=fit_policy,
     )
     bundle["budget"] = budget
     full_markdown = settle_budget_output_size(bundle, chars_per_token)
@@ -319,7 +345,7 @@ def apply_budget(
         if len(markdown) <= effective_chars:
             budget["fit"] = True
             return
-        if not drop_one_budget_unit(bundle, budget["dropped"]):
+        if not drop_one_budget_unit(bundle, budget["dropped"], fit_policy):
             budget["fit"] = False
             budget["warnings"].append("minimum_bundle_exceeds_budget")
             settle_budget_output_size(bundle, chars_per_token)
@@ -335,6 +361,9 @@ def build_synthesis_bundle(
     max_chars: int | None = None,
     max_estimated_tokens: int | None = None,
     chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+    summary_template: str = "standard",
+    summary_fields: str | None = None,
+    fit_policy: str = "summary-first",
     created_at: str | None = None,
 ) -> dict[str, Any]:
     if max_snippets < 0:
@@ -346,6 +375,13 @@ def build_synthesis_bundle(
         max_estimated_tokens=max_estimated_tokens,
         chars_per_token=chars_per_token,
     )
+    resolved_summary_fields = resolve_summary_fields(
+        summary_template=summary_template,
+        summary_fields=summary_fields,
+    )
+    fit_policy = fit_policy.strip().lower()
+    if fit_policy not in FIT_POLICIES:
+        raise ValueError(f"--fit-policy must be one of: {', '.join(sorted(FIT_POLICIES))}.")
 
     status = read_json_object(run_dir / "farm-status.json")
     run_label = label or str(status.get("run_id") or run_dir.name)
@@ -353,6 +389,9 @@ def build_synthesis_bundle(
     deduped, duplicates_dropped = dedupe_snippets(candidates)
     selected = renumber_snippets(apply_caps(deduped, max_snippets=max_snippets, per_file=per_file))
     attach_snippets(items, selected)
+    for item in items:
+        summary = item.get("summary", {}) if isinstance(item.get("summary"), dict) else {}
+        item["summary"] = shape_summary(summary, resolved_summary_fields)
 
     bundle = {
         "schema_version": SYNTHESIS_BUNDLE_SCHEMA_VERSION,
@@ -366,6 +405,8 @@ def build_synthesis_bundle(
             "max_snippets": max_snippets,
             "per_file": per_file,
             "snippet_source": PACK_SOURCE,
+            "summary_template": summary_template.strip().lower(),
+            "summary_fields": resolved_summary_fields,
         },
         "counts": {
             "jobs_seen": len([job for job in status.get("jobs", []) if isinstance(job, dict)]),
@@ -384,6 +425,7 @@ def build_synthesis_bundle(
         max_chars=max_chars,
         max_estimated_tokens=max_estimated_tokens,
         chars_per_token=chars_per_token,
+        fit_policy=fit_policy,
     )
     refresh_bundle_counts(bundle)
     return bundle
@@ -398,11 +440,13 @@ def render_list_section(lines: list[str], heading: str, items: list[str]) -> Non
 
 def render_synthesis_bundle_markdown(bundle: dict[str, Any]) -> str:
     counts = bundle.get("counts", {}) if isinstance(bundle.get("counts"), dict) else {}
+    limits = bundle.get("limits", {}) if isinstance(bundle.get("limits"), dict) else {}
     budget = bundle.get("budget", {}) if isinstance(bundle.get("budget"), dict) else {}
     output = budget.get("output", {}) if isinstance(budget.get("output"), dict) else {}
     cap = budget.get("effective_max_chars")
     cap_text = f"; cap {cap:,} chars" if cap is not None else "; no cap"
     fit_text = "yes" if budget.get("fit", True) else "no"
+    policy_text = f"; policy {budget.get('fit_policy')}" if budget.get("fit_policy") else ""
     lines = [
         f"# Synthesis Bundle {bundle.get('label')}",
         "",
@@ -412,11 +456,13 @@ def render_synthesis_bundle_markdown(bundle: dict[str, Any]) -> str:
         f"Selected snippets: {counts.get('snippets_selected', 0)}",
         (
             f"Budget: {int(output.get('chars', 0)):,} chars, "
-            f"~{int(output.get('estimated_tokens', 0)):,} tokens estimated{cap_text}; fit {fit_text}"
+            f"~{int(output.get('estimated_tokens', 0)):,} tokens estimated{cap_text}; fit {fit_text}{policy_text}"
         ),
         "",
     ]
 
+    selected_fields = limits.get("summary_fields") if isinstance(limits.get("summary_fields"), list) else list(SUMMARY_FIELDS)
+    show_title = "title" in selected_fields and selected_fields != list(SUMMARY_FIELDS)
     items = [item for item in bundle.get("items", []) if isinstance(item, dict)]
     if not items:
         lines.extend(["No summary items included.", ""])
@@ -424,6 +470,9 @@ def render_synthesis_bundle_markdown(bundle: dict[str, Any]) -> str:
         input_path = str(item.get("input_path", ""))
         summary = item.get("summary", {}) if isinstance(item.get("summary"), dict) else {}
         lines.extend([f"## {Path(input_path).name}", ""])
+        title = str(summary.get("title", "")).strip()
+        if show_title and title:
+            lines.extend([f"Title: {title}"])
         abstract = str(summary.get("abstract", "")).strip()
         if abstract:
             lines.extend([f"Summary: {abstract}"])

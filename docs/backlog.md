@@ -15,9 +15,9 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
-| 2 | BL-0107 | Platform-specific skill installation helpers | Builds naturally on the repo-shipped skills and new model installation guidance. |
-| 3 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
+| 1 | BL-0107 | Platform-specific skill installation helpers | Builds naturally on the repo-shipped skills and new model installation guidance. |
+| 2 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
+| 3 | BL-0065 | Reserved prompt-wrapper budget | Builds naturally on the new package budget controls by budgeting for surrounding downstream prompt text. |
 
 ## Spec-Deferred Items
 
@@ -78,21 +78,21 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0053 | Open | 0009 | Statistical quality thresholds or CI gates | Define objective thresholds before adding pass/fail gates for subjective quality measures. |
 | BL-0054 | Open | 0009, 0033 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles; 0033 keeps hardware recommendations conservative until this exists. |
 | BL-0055 | Open | 0009 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows when additional farm modes mature. |
-| BL-0056 | Open | 0010 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable. |
-| BL-0057 | Open | 0010 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough. |
+| BL-0056 | Open | 0010, 0034 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable; 0034 keeps the package-shaping work single-run only. |
+| BL-0057 | Open | 0010, 0034 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough; 0034 keeps browser/UI support deferred. |
 | BL-0058 | Implemented | 0010, 0012 | Run-ID lookup for post-run helpers | 0012 implemented exact known run ID lookup for `farm snippets pack`, `farm synthesis bundle`, and `farm dogfood record` while preserving full path input. |
 | BL-0059 | Implemented | 0010, 0011 | Summary-plus-snippet synthesis bundles | 0011 implemented post-run Markdown/JSON bundles that combine compact per-file summaries with selected verified snippets. |
-| BL-0060 | Open | 0011 | Summary bundle field filters and templates | Let callers choose which summary fields appear in synthesis bundles. |
+| BL-0060 | Implemented | 0011, 0034 | Summary bundle field filters and templates | 0034 implemented summary templates and explicit field filters for synthesis bundles. |
 | BL-0061 | Implemented | 0011, 0014 | Bundle token or character budget planning | 0014 implemented size estimates plus optional character and estimated-token caps for synthesis bundles. |
-| BL-0062 | Open | 0011 | Cross-run synthesis bundles | Merge summary/snippet evidence across separate farm runs after single-run bundles are stable. |
-| BL-0063 | Open | 0014 | Exact downstream bundle tokenizer adapters | Add exact token counters for common downstream/frontier targets after estimated bundle budgets prove useful. |
-| BL-0064 | Open | 0014 | Configurable bundle fitting policies | Let callers choose evidence-first, summary-first, or balanced budget fitting instead of one deterministic default. |
-| BL-0065 | Open | 0014 | Reserved prompt-wrapper budget | Let callers reserve prompt space around a bundle so total downstream prompt size, not just bundle size, fits. |
-| BL-0066 | Open | 0014 | Budget planning for snippet packs | Add similar size estimation and optional caps to snippet-only packs. |
+| BL-0062 | Open | 0011, 0034 | Cross-run synthesis bundles | Merge summary/snippet evidence across separate farm runs after single-run bundles are stable; 0034 keeps package shaping scoped to one run. |
+| BL-0063 | Open | 0014, 0034 | Exact downstream bundle tokenizer adapters | Add exact token counters for common downstream/frontier targets after estimated bundle budgets prove useful; 0034 continues using deterministic estimates. |
+| BL-0064 | Implemented | 0014, 0034 | Configurable bundle fitting policies | 0034 implemented `summary-first`, `evidence-first`, and `balanced` synthesis bundle budget fitting policies. |
+| BL-0065 | Open | 0014, 0034 | Reserved prompt-wrapper budget | Let callers reserve prompt space around a bundle so total downstream prompt size, not just bundle size, fits; 0034 leaves wrapper budgets deferred. |
+| BL-0066 | Implemented | 0014, 0034 | Budget planning for snippet packs | 0034 implemented size estimation and optional character/estimated-token caps for snippet-only packs. |
 | BL-0067 | Implemented | 0016, 0018 | Schemas for post-run package artifacts | 0018 implemented schemas and validator auto-detection for timing summaries, snippet packs, synthesis bundles, dogfood history, and comparison outputs. |
 | BL-0068 | Implemented | 0016, 0017 | Public schema validation CLI | 0017 implemented `farm schema validate <path>` with explicit schema selection, auto-detection, JSON output, and script-friendly exit codes. |
 | BL-0069 | Open | 0016 | Schema version migration guidance | Define compatibility and migration guidance across persisted farm artifact versions and newer CLI/report envelope versions. |
-| BL-0070 | Open | 0016 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize. |
+| BL-0070 | Open | 0016, 0034 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize; 0034 updates schemas but does not generate prose from them. |
 | BL-0071 | Open | 0016 | Strict schema mode | Add a stricter validation mode that rejects unknown/additional fields after artifact contracts mature. |
 | BL-0072 | Implemented | 0020, 0022 | Resource-aware runtime mode and routing | 0022 implemented first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes in config, CLI, resolved artifacts, doctor, recommend, and recommendation apply. |
 | BL-0073 | Open | 0022, 0033 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |

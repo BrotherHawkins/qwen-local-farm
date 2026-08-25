@@ -11,6 +11,8 @@ from typing import Any
 SNIPPET_PACK_SCHEMA_VERSION = 1
 DEFAULT_MAX_SNIPPETS = 24
 DEFAULT_PER_FILE_SNIPPETS = 4
+DEFAULT_CHARS_PER_TOKEN = 4.0
+BUDGET_SCHEMA_VERSION = 1
 PACK_SOURCE = "selected"
 PACKABLE_JOB_STATUSES = {"complete", "complete_with_warnings"}
 
@@ -44,6 +46,86 @@ def to_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def estimate_tokens_from_chars(char_count: int, chars_per_token: float = DEFAULT_CHARS_PER_TOKEN) -> int:
+    if char_count <= 0:
+        return 0
+    return int((char_count + chars_per_token - 1) // chars_per_token)
+
+
+def validate_budget_options(
+    *,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+) -> None:
+    if max_chars is not None and max_chars <= 0:
+        raise ValueError("--max-chars must be a positive integer.")
+    if max_estimated_tokens is not None and max_estimated_tokens <= 0:
+        raise ValueError("--max-estimated-tokens must be a positive integer.")
+    if chars_per_token <= 0:
+        raise ValueError("--chars-per-token must be a positive number.")
+
+
+def effective_max_chars(
+    *,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
+) -> int | None:
+    validate_budget_options(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    caps = []
+    if max_chars is not None:
+        caps.append(max_chars)
+    if max_estimated_tokens is not None:
+        caps.append(int(max_estimated_tokens * chars_per_token))
+    return min(caps) if caps else None
+
+
+def empty_budget_metadata(
+    *,
+    max_chars: int | None,
+    max_estimated_tokens: int | None,
+    chars_per_token: float,
+    effective_chars: int | None,
+    fit_policy: str | None = None,
+) -> dict[str, Any]:
+    budget: dict[str, Any] = {
+        "schema_version": BUDGET_SCHEMA_VERSION,
+        "max_chars": max_chars,
+        "max_estimated_tokens": max_estimated_tokens,
+        "chars_per_token": chars_per_token,
+        "effective_max_chars": effective_chars,
+        "input": {
+            "chars": 0,
+            "estimated_tokens": 0,
+        },
+        "output": {
+            "chars": 0,
+            "estimated_tokens": 0,
+        },
+        "fit": True,
+        "was_capped": False,
+        "dropped": {
+            "snippets": 0,
+        },
+        "warnings": [],
+    }
+    if fit_policy is not None:
+        budget["fit_policy"] = fit_policy
+        budget["dropped"].update(
+            {
+                "open_questions": 0,
+                "bullets": 0,
+                "items": 0,
+            }
+        )
+    return budget
 
 
 def normalize_duplicate_key(text: str) -> str:
@@ -236,18 +318,110 @@ def renumber_snippets(snippets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
+def refresh_snippet_pack_counts(pack: dict[str, Any]) -> None:
+    snippets = [snippet for snippet in pack.get("snippets", []) if isinstance(snippet, dict)]
+    counts = pack.setdefault("counts", {})
+    counts["selected"] = len(snippets)
+    counts["jobs_with_snippets"] = len({str(snippet.get("input_path", "")) for snippet in snippets})
+
+
+def update_budget_sizes(pack: dict[str, Any], markdown: str, chars_per_token: float) -> None:
+    budget = pack.setdefault("budget", {})
+    char_count = len(markdown)
+    budget["output"] = {
+        "chars": char_count,
+        "estimated_tokens": estimate_tokens_from_chars(char_count, chars_per_token),
+    }
+    effective_chars = budget.get("effective_max_chars")
+    budget["fit"] = effective_chars is None or char_count <= effective_chars
+
+
+def settle_snippet_pack_budget_output_size(pack: dict[str, Any], chars_per_token: float) -> str:
+    markdown = ""
+    for _ in range(5):
+        markdown = render_snippet_pack_markdown(pack)
+        previous = dict((pack.get("budget") or {}).get("output") or {})
+        update_budget_sizes(pack, markdown, chars_per_token)
+        if previous == (pack.get("budget") or {}).get("output"):
+            return render_snippet_pack_markdown(pack)
+    return render_snippet_pack_markdown(pack)
+
+
+def drop_one_snippet_for_budget(pack: dict[str, Any], dropped: dict[str, int]) -> bool:
+    snippets = [snippet for snippet in pack.get("snippets", []) if isinstance(snippet, dict)]
+    if not snippets:
+        return False
+    pack["snippets"] = snippets[:-1]
+    dropped["snippets"] += 1
+    refresh_snippet_pack_counts(pack)
+    return True
+
+
+def apply_budget(
+    pack: dict[str, Any],
+    *,
+    max_chars: int | None,
+    max_estimated_tokens: int | None,
+    chars_per_token: float,
+) -> None:
+    effective_chars = effective_max_chars(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    budget = empty_budget_metadata(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+        effective_chars=effective_chars,
+    )
+    pack["budget"] = budget
+    full_markdown = settle_snippet_pack_budget_output_size(pack, chars_per_token)
+    budget["input"] = {
+        "chars": len(full_markdown),
+        "estimated_tokens": estimate_tokens_from_chars(len(full_markdown), chars_per_token),
+    }
+    budget["output"] = dict(budget["input"])
+    budget["fit"] = effective_chars is None or len(full_markdown) <= effective_chars
+
+    if effective_chars is None or budget["fit"]:
+        budget["was_capped"] = False
+        settle_snippet_pack_budget_output_size(pack, chars_per_token)
+        return
+
+    budget["was_capped"] = True
+    while True:
+        markdown = settle_snippet_pack_budget_output_size(pack, chars_per_token)
+        if len(markdown) <= effective_chars:
+            budget["fit"] = True
+            return
+        if not drop_one_snippet_for_budget(pack, budget["dropped"]):
+            budget["fit"] = False
+            budget["warnings"].append("minimum_pack_exceeds_budget")
+            settle_snippet_pack_budget_output_size(pack, chars_per_token)
+            return
+
+
 def build_snippet_pack(
     *,
     run_dir: Path,
     label: str | None = None,
     max_snippets: int = DEFAULT_MAX_SNIPPETS,
     per_file: int = DEFAULT_PER_FILE_SNIPPETS,
+    max_chars: int | None = None,
+    max_estimated_tokens: int | None = None,
+    chars_per_token: float = DEFAULT_CHARS_PER_TOKEN,
     created_at: str | None = None,
 ) -> dict[str, Any]:
     if max_snippets < 0:
         raise ValueError("--max-snippets must be a non-negative integer.")
     if per_file < 0:
         raise ValueError("--per-file must be a non-negative integer.")
+    validate_budget_options(
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
 
     status = read_json_object(run_dir / "farm-status.json")
     run_label = label or str(status.get("run_id") or run_dir.name)
@@ -256,7 +430,7 @@ def build_snippet_pack(
     selected = renumber_snippets(apply_caps(deduped, max_snippets=max_snippets, per_file=per_file))
     input_paths = {str(snippet.get("input_path", "")) for snippet in candidates}
 
-    return {
+    pack = {
         "schema_version": SNIPPET_PACK_SCHEMA_VERSION,
         "created_at": created_at or utc_now(),
         "label": run_label,
@@ -280,6 +454,14 @@ def build_snippet_pack(
         "snippets": selected,
         "diagnostics": diagnostics,
     }
+    apply_budget(
+        pack,
+        max_chars=max_chars,
+        max_estimated_tokens=max_estimated_tokens,
+        chars_per_token=chars_per_token,
+    )
+    refresh_snippet_pack_counts(pack)
+    return pack
 
 
 def source_description(snippet: dict[str, Any]) -> str:
@@ -297,12 +479,21 @@ def source_description(snippet: dict[str, Any]) -> str:
 
 
 def render_snippet_pack_markdown(pack: dict[str, Any]) -> str:
+    budget = pack.get("budget", {}) if isinstance(pack.get("budget"), dict) else {}
+    output = budget.get("output", {}) if isinstance(budget.get("output"), dict) else {}
+    cap = budget.get("effective_max_chars")
+    cap_text = f"; cap {cap:,} chars" if cap is not None else "; no cap"
+    fit_text = "yes" if budget.get("fit", True) else "no"
     lines = [
         f"# Snippet Pack {pack.get('label')}",
         "",
         f"Run: {pack.get('run_id') or ''}",
         f"Model: {pack.get('model') or ''}",
         f"Selected snippets: {(pack.get('counts') or {}).get('selected', 0)}",
+        (
+            f"Budget: {int(output.get('chars', 0)):,} chars, "
+            f"~{int(output.get('estimated_tokens', 0)):,} tokens estimated{cap_text}; fit {fit_text}"
+        ),
         "",
     ]
 

@@ -42,7 +42,7 @@
     },
     "limits": {
       "type": "object",
-      "required": ["max_snippets", "per_file", "snippet_source"],
+      "required": ["max_snippets", "per_file", "snippet_source", "summary_template", "summary_fields"],
       "properties": {
         "max_snippets": {
           "type": "integer"
@@ -52,6 +52,18 @@
         },
         "snippet_source": {
           "const": "selected"
+        },
+        "summary_template": {
+          "type": "string",
+          "enum": ["standard", "compact", "claims", "questions"]
+        },
+        "summary_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["title", "abstract", "bullets", "open_questions", "confidence"]
+          }
         }
       }
     },
@@ -116,7 +128,6 @@
           },
           "summary": {
             "type": "object",
-            "required": ["title", "abstract", "bullets", "open_questions", "confidence"],
             "properties": {
               "title": {
                 "type": "string"
@@ -182,6 +193,7 @@
         "fit",
         "was_capped",
         "dropped",
+        "fit_policy",
         "warnings"
       ],
       "properties": {
@@ -247,6 +259,10 @@
               "type": "integer"
             }
           }
+        },
+        "fit_policy": {
+          "type": "string",
+          "enum": ["summary-first", "evidence-first", "balanced"]
         },
         "warnings": {
           "type": "array",

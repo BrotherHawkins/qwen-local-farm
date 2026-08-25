@@ -103,6 +103,11 @@ class SnippetPackTests(unittest.TestCase):
             self.assertEqual(pack["counts"]["jobs_with_snippets"], 2)
             self.assertEqual(pack["counts"]["candidates"], 3)
             self.assertEqual(pack["counts"]["selected"], 3)
+            self.assertEqual(pack["budget"]["schema_version"], 1)
+            self.assertIsNone(pack["budget"]["effective_max_chars"])
+            self.assertFalse(pack["budget"]["was_capped"])
+            self.assertGreater(pack["budget"]["output"]["chars"], 0)
+            self.assertGreater(pack["budget"]["output"]["estimated_tokens"], 0)
             self.assertEqual(pack["snippets"][0]["id"], "snippet-0001")
             self.assertIn(pack["snippets"][0]["input_path"], {"article-a.txt", "article-b.txt"})
             self.assertIn("score_reasons", pack["snippets"][0])
@@ -190,6 +195,49 @@ class SnippetPackTests(unittest.TestCase):
             self.assertIn("# Snippet Pack bad label/ok", markdown)
             self.assertIn("## article-a.txt", markdown)
             self.assertIn("Why it matters:", markdown)
+            self.assertIn("Budget:", markdown)
+
+    def test_invalid_budget_options_fail_before_building_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+
+            with self.assertRaisesRegex(ValueError, "--max-chars"):
+                sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, max_chars=0)
+            with self.assertRaisesRegex(ValueError, "--max-estimated-tokens"):
+                sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, max_estimated_tokens=0)
+            with self.assertRaisesRegex(ValueError, "--chars-per-token"):
+                sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, chars_per_token=0)
+
+    def test_character_budget_drops_whole_snippets_when_feasible(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            full = sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir)
+            max_chars = full["budget"]["output"]["chars"] - 120
+
+            capped = sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, max_chars=max_chars)
+
+            self.assertTrue(capped["budget"]["was_capped"])
+            self.assertTrue(capped["budget"]["fit"])
+            self.assertLessEqual(capped["budget"]["output"]["chars"], max_chars)
+            self.assertGreater(capped["budget"]["dropped"]["snippets"], 0)
+            remaining_texts = {snippet["text"] for snippet in capped["snippets"]}
+            original_texts = {snippet["text"] for snippet in full["snippets"]}
+            self.assertTrue(remaining_texts.issubset(original_texts))
+            self.assertEqual(capped["counts"]["selected"], len(capped["snippets"]))
+
+    def test_estimated_token_budget_resolves_to_character_cap(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+
+            capped = sift_farm_snippet_packs.build_snippet_pack(
+                run_dir=run_dir,
+                max_estimated_tokens=160,
+                chars_per_token=4.0,
+            )
+
+            self.assertEqual(capped["budget"]["effective_max_chars"], 640)
+            self.assertLessEqual(capped["budget"]["output"]["chars"], 640)
+            self.assertLessEqual(capped["budget"]["output"]["estimated_tokens"], 160)
 
 
 if __name__ == "__main__":

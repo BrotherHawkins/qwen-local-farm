@@ -25,7 +25,7 @@ The goal is not adaptive recovery yet. The goal is a small, explicit, model-free
 
 This change adds a first-pass farm failure policy:
 
-- config fields under `.qwen-farm.json`
+- config fields under `.sift-farm.json`
 - CLI overrides for the same fields
 - resolved runtime metadata for the effective policy
 - status/result/timing metadata that shows attempt behavior
@@ -52,9 +52,9 @@ The first policy fields are:
 CLI overrides:
 
 ```powershell
-python qwen.py farm run notes --max-attempts 1
-python qwen.py farm run notes --per-file-timeout-seconds 900
-python qwen.py farm run notes --chunk-max-attempts 3 --reduce-max-attempts 1
+python sift.py farm run notes --max-attempts 1
+python sift.py farm run notes --per-file-timeout-seconds 900
+python sift.py farm run notes --chunk-max-attempts 3 --reduce-max-attempts 1
 ```
 
 ## Non-Goals
@@ -97,7 +97,7 @@ The resolved runtime config should include:
 Resolution precedence should match existing runtime config behavior:
 
 1. profile defaults
-2. `.qwen-farm.json`
+2. `.sift-farm.json`
 3. CLI overrides
 
 Validation:
@@ -199,17 +199,17 @@ If a transient retry failure should surface to users, it may appear as a warning
 
 ## Acceptance Criteria
 
-- `.qwen-farm.json` accepts `failure_policy.max_attempts`.
-- `.qwen-farm.json` accepts `failure_policy.per_file_timeout_seconds`.
-- `.qwen-farm.json` accepts `failure_policy.chunk_max_attempts`.
-- `.qwen-farm.json` accepts `failure_policy.reduce_max_attempts`.
+- `.sift-farm.json` accepts `failure_policy.max_attempts`.
+- `.sift-farm.json` accepts `failure_policy.per_file_timeout_seconds`.
+- `.sift-farm.json` accepts `failure_policy.chunk_max_attempts`.
+- `.sift-farm.json` accepts `failure_policy.reduce_max_attempts`.
 - Unknown `failure_policy` fields fail validation before run folder creation.
 - Non-positive failure-policy values fail validation before run folder creation.
 - `farm run` accepts `--max-attempts`.
 - `farm run` accepts `--per-file-timeout-seconds`.
 - `farm run` accepts `--chunk-max-attempts`.
 - `farm run` accepts `--reduce-max-attempts`.
-- CLI failure-policy overrides take precedence over `.qwen-farm.json`.
+- CLI failure-policy overrides take precedence over `.sift-farm.json`.
 - `farm-config.resolved.json` includes the effective `failure_policy`.
 - `farm-status.json` and `FARM_STATUS.md` expose the effective failure policy.
 - Existing default behavior remains 2 file attempts and 600 seconds without config or CLI overrides.
@@ -250,7 +250,7 @@ Verification:
 ```powershell
 python -m src.qwen_spec_guard
 python -m unittest discover -s tests -p "test_*.py"
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 git diff --check
 ```
 
@@ -265,8 +265,8 @@ Use ignored artifacts only:
 Suggested smoke:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0025/input --output .run/dogfood_0025/farm-results --mode summarize --max-attempts 1 --chunk-max-attempts 1 --reduce-max-attempts 1
-python qwen.py farm status <run-id> --json
+python sift.py farm run .run/dogfood_0025/input --output .run/dogfood_0025/farm-results --mode summarize --max-attempts 1 --chunk-max-attempts 1 --reduce-max-attempts 1
+python sift.py farm status <run-id> --json
 ```
 
 If practical, include a local model smoke with a normal successful run to verify the new flags do not disturb ordinary execution.

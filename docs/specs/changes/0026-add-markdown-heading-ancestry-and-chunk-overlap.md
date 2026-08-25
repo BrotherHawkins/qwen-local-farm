@@ -52,10 +52,10 @@ Proposed config shape:
 Proposed CLI overrides:
 
 ```powershell
-python qwen.py farm run notes --mode summarize --preserve-heading-ancestry
-python qwen.py farm run notes --mode summarize --no-preserve-heading-ancestry
-python qwen.py farm run notes --mode summarize --chunk-overlap-chars 500
-python qwen.py farm run notes --mode summarize --chunk-strategy token --chunk-overlap-tokens 200
+python sift.py farm run notes --mode summarize --preserve-heading-ancestry
+python sift.py farm run notes --mode summarize --no-preserve-heading-ancestry
+python sift.py farm run notes --mode summarize --chunk-overlap-chars 500
+python sift.py farm run notes --mode summarize --chunk-strategy token --chunk-overlap-tokens 200
 ```
 
 Default behavior:
@@ -174,7 +174,7 @@ If overlap is too large for the configured chunk budget, validation should fail 
 The new summarize settings follow existing precedence:
 
 ```text
-built-in profile -> .qwen-farm.json -> CLI
+built-in profile -> .sift-farm.json -> CLI
 ```
 
 Validation:
@@ -221,9 +221,9 @@ Use `.run/` for dogfood artifacts.
 
 ## Acceptance Criteria
 
-- `.qwen-farm.json` accepts `summarize.preserve_heading_ancestry`.
-- `.qwen-farm.json` accepts `summarize.chunk_overlap_chars`.
-- `.qwen-farm.json` accepts `summarize.chunk_overlap_tokens`.
+- `.sift-farm.json` accepts `summarize.preserve_heading_ancestry`.
+- `.sift-farm.json` accepts `summarize.chunk_overlap_chars`.
+- `.sift-farm.json` accepts `summarize.chunk_overlap_tokens`.
 - CLI accepts heading ancestry and overlap overrides.
 - Unknown or invalid config values fail before creating a run folder.
 - Heading extraction ignores fenced code block headings.

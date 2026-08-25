@@ -28,7 +28,7 @@ class FarmHomeTests(unittest.TestCase):
             self.assertEqual(qwen_farm_files.farm_home(Path("/repo")), Path("/repo/.run/farm"))
 
     def test_farm_home_uses_environment_override(self) -> None:
-        with patch.dict("os.environ", {"QWEN_FARM_HOME": "/tmp/qwen-farm"}):
+        with patch.dict("os.environ", {"SIFT_FARM_HOME": "/tmp/qwen-farm"}):
             self.assertEqual(qwen_farm_files.farm_home(Path("/repo")), Path("/tmp/qwen-farm"))
 
 

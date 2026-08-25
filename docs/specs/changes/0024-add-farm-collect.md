@@ -35,13 +35,13 @@ This change adds a first-pass `farm collect` command that:
 The intended first command shape is:
 
 ```powershell
-python qwen.py farm collect <run-ref> --output .run/farm_collections --label dogfood-lite
+python sift.py farm collect <run-ref> --output .run/farm_collections --label dogfood-lite
 ```
 
 `<run-ref>` can be either:
 
 - a run directory path
-- a known run ID from `python qwen.py farm list`
+- a known run ID from `python sift.py farm list`
 
 ## Non-Goals
 
@@ -67,8 +67,8 @@ This change does not add:
 Add:
 
 ```powershell
-python qwen.py farm collect <run-ref>
-python qwen.py farm collect <run-ref> --output .run/farm_collections --label my-run
+python sift.py farm collect <run-ref>
+python sift.py farm collect <run-ref> --output .run/farm_collections --label my-run
 ```
 
 Defaults:
@@ -232,7 +232,7 @@ Those richer export modes are deferred until there is a clear user need and priv
 
 ## Acceptance Criteria
 
-- `python qwen.py farm collect <run-ref>` creates a collection from an existing farm run.
+- `python sift.py farm collect <run-ref>` creates a collection from an existing farm run.
 - `<run-ref>` accepts both run directory paths and known run IDs.
 - The default output is under `.run/farm_collections/`.
 - `--output` overrides the parent output directory.
@@ -278,7 +278,7 @@ Verification:
 ```powershell
 python -m src.qwen_spec_guard
 python -m unittest discover -s tests -p "test_*.py"
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 git diff --check
 ```
 
@@ -293,8 +293,8 @@ Use a new ignored folder only if implementation needs a manual smoke:
 Suggested smoke:
 
 ```powershell
-python qwen.py farm collect <known-lite-run-id-or-path> --output .run/dogfood_0024/farm_collections --label dogfood-lite-0024
-python qwen.py farm schema validate .run/dogfood_0024/farm_collections/dogfood-lite-0024/farm-collection.json
+python sift.py farm collect <known-lite-run-id-or-path> --output .run/dogfood_0024/farm_collections --label dogfood-lite-0024
+python sift.py farm schema validate .run/dogfood_0024/farm_collections/dogfood-lite-0024/farm-collection.json
 ```
 
 Inspect:

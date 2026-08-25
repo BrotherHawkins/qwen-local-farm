@@ -84,23 +84,23 @@ Completed checks:
 ```powershell
 python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm_snippet_packs tests.test_qwen_farm_synthesis_bundles tests.test_qwen_farm_dogfood
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Completed manual smoke with an existing local dogfood run:
 
 ```powershell
-python qwen.py farm schema validate .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf/timing-summary.json
-python qwen.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/snippet-packs --label schema-smoke
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/synthesis-bundles --label schema-smoke
-python qwen.py farm dogfood record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/dogfood-runs --label schema-smoke-baseline
-python qwen.py farm dogfood record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/dogfood-runs --label schema-smoke-candidate
-python qwen.py farm schema validate .run/schema-smoke/snippet-packs/schema-smoke.json
-python qwen.py farm schema validate .run/schema-smoke/synthesis-bundles/schema-smoke.json
-python qwen.py farm schema validate .run/schema-smoke/dogfood-runs/schema-smoke-baseline.json
-python qwen.py farm dogfood compare .run/schema-smoke/dogfood-runs/schema-smoke-baseline.json .run/schema-smoke/dogfood-runs/schema-smoke-candidate.json --output .run/schema-smoke/dogfood-comparisons
-python qwen.py farm schema validate .run/schema-smoke/dogfood-comparisons/schema-smoke-baseline--schema-smoke-candidate.json
+python sift.py farm schema validate .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf/timing-summary.json
+python sift.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/snippet-packs --label schema-smoke
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/synthesis-bundles --label schema-smoke
+python sift.py farm dogfood record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/dogfood-runs --label schema-smoke-baseline
+python sift.py farm dogfood record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/schema-smoke/dogfood-runs --label schema-smoke-candidate
+python sift.py farm schema validate .run/schema-smoke/snippet-packs/schema-smoke.json
+python sift.py farm schema validate .run/schema-smoke/synthesis-bundles/schema-smoke.json
+python sift.py farm schema validate .run/schema-smoke/dogfood-runs/schema-smoke-baseline.json
+python sift.py farm dogfood compare .run/schema-smoke/dogfood-runs/schema-smoke-baseline.json .run/schema-smoke/dogfood-runs/schema-smoke-candidate.json --output .run/schema-smoke/dogfood-comparisons
+python sift.py farm schema validate .run/schema-smoke/dogfood-comparisons/schema-smoke-baseline--schema-smoke-candidate.json
 ```
 
 ## Implementation Checklist

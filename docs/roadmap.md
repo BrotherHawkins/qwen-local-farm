@@ -1,6 +1,6 @@
 # Roadmap
 
-This project starts as a simple local Qwen service, but the intended direction is broader: a local worker layer that other AIs, scripts, and systems can use when work is better done offline, privately, slowly, or in parallel.
+Sift starts as a simple local worker service with Qwen as the tested default model family, but the intended direction is broader: a local worker layer that other AIs, scripts, and systems can use when work is better done offline, privately, slowly, or in parallel.
 
 The roadmap below is intentionally lightweight. It captures the shape of the next system without pretending every interface is already designed.
 
@@ -14,14 +14,14 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 
 ## Implemented Baseline
 
-- Immediate asks through `python qwen.py ask`.
+- Immediate asks through `python sift.py ask`.
 - Agent gateway for synchronous local chat.
 - Filesystem-backed worker-farm MVP:
-  - `python qwen.py farm run <input-folder> --mode summarize`
-  - `python qwen.py farm run <input-folder> --mode prompt --instructions <text>`
-  - `python qwen.py farm list`
-  - `python qwen.py farm status`
-  - `python qwen.py farm status <run-id>`
+  - `python sift.py farm run <input-folder> --mode summarize`
+  - `python sift.py farm run <input-folder> --mode prompt --instructions <text>`
+  - `python sift.py farm list`
+  - `python sift.py farm status`
+  - `python sift.py farm status <run-id>`
   - Markdown, JSON, raw response, and run status artifacts.
 - Runtime profiles for local capacity tiers, config files, CLI overrides, and resolved config artifacts.
 - Resource-aware runtime modes, doctor reports, recommendations, and safe recommendation config apply.
@@ -70,10 +70,10 @@ These decisions should guide the first worker-farm implementation PR:
 | Question | Decision |
 | --- | --- |
 | Storage | Filesystem first; consider SQLite later only if querying/history/concurrency becomes painful. |
-| Farm home | Default to `.run/farm/`; allow an override such as `QWEN_FARM_HOME`. |
+| Farm home | Default to `.run/farm/`; allow an override such as `SIFT_FARM_HOME`. |
 | Run ID | Use timestamp plus short random suffix, such as `farm-run-2026-08-23-143022-a7f3`. |
 | Output destination | Optional. If omitted, write under the run folder. If provided, create a run folder inside the destination. |
-| Command namespace | Use `python qwen.py farm ...` for worker-farm commands. |
+| Command namespace | Use `python sift.py farm ...` for worker-farm commands. |
 | First run behavior | Process immediately by default; add `--queue-only` later for submit-without-processing. |
 | First input shape | One folder, with each eligible readable text file treated as a sub-job. |
 | First mode | Implement `summarize` first, with a generic custom-prompt path underneath. |
@@ -85,19 +85,19 @@ The user-facing abstraction should stay files and folders. More technical storag
 
 Current state:
 
-- `python qwen.py ask "..." [agent-id]` supports immediate local asks.
+- `python sift.py ask "..." [agent-id]` supports immediate local asks.
 - The gateway exposes synchronous chat endpoints.
-- `python qwen.py farm run <input-folder> --mode summarize` processes readable text files into durable farm artifacts.
-- `python qwen.py farm list` and `python qwen.py farm status [run-id]` inspect farm state.
-- `python qwen.py farm collect <run-id>` flattens completed job results into an inspectable post-run folder.
-- `python qwen.py farm retry-failed <run-id>` reruns only failed files from a prior run as a new normal run.
+- `python sift.py farm run <input-folder> --mode summarize` processes readable text files into durable farm artifacts.
+- `python sift.py farm list` and `python sift.py farm status [run-id]` inspect farm state.
+- `python sift.py farm collect <run-id>` flattens completed job results into an inspectable post-run folder.
+- `python sift.py farm retry-failed <run-id>` reruns only failed files from a prior run as a new normal run.
 
 Roadmap:
 
 - Add queue-only runs for offline work with a simple first contract: "work these inputs here, put results over there."
 - Continue hardening the stable run/job object and post-run helper contracts.
 - Add durable failure classifications so callers can tell transient retry candidates from failures that need input, config, or resource fixes first.
-- Add `python qwen.py farm scan` when drop-folder intake is ready.
+- Add `python sift.py farm scan` when drop-folder intake is ready.
 - Let immediate asks remain simple and separate from queued work.
 - Keep process-now as the default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
 
@@ -341,7 +341,7 @@ The farm should support both active invocation and filesystem intake over time:
 Start drop-folder support with manual scanning:
 
 ```bash
-python qwen.py farm scan
+python sift.py farm scan
 ```
 
 First request shape:
@@ -505,7 +505,7 @@ Capability discovery should report:
 Implemented first command:
 
 ```bash
-python qwen.py farm doctor
+python sift.py farm doctor
 ```
 
 Possible outputs:

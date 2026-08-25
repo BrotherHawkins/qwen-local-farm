@@ -60,7 +60,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_config_file_overrides_profile_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps(
                     {
                         "profile": "local-12gb",
@@ -174,7 +174,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_discovery_config_and_cli_patterns_merge(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps(
                     {
                         "discovery": {
@@ -201,7 +201,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_discovery_config_fields_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"discovery": {"surprise": ["*.md"]}}),
                 encoding="utf-8",
             )
@@ -212,7 +212,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_discovery_pattern_values_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"discovery": {"include": ["*.md", 3]}}),
                 encoding="utf-8",
             )
@@ -232,7 +232,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_unknown_fields_fail(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(json.dumps({"surprise": True}), encoding="utf-8")
+            (root / ".sift-farm.json").write_text(json.dumps({"surprise": True}), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "Unknown config field"):
                 resolve_runtime_config(root=root, default_model="qwen-test:1b")
@@ -249,7 +249,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_unknown_resource_mode_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(json.dumps({"resource_mode": "rocket"}), encoding="utf-8")
+            (root / ".sift-farm.json").write_text(json.dumps({"resource_mode": "rocket"}), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "resource_mode"):
                 resolve_runtime_config(root=root, default_model="qwen-test:1b")
@@ -332,7 +332,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_token_strategy_config_is_valid(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps(
                     {
                         "summarize": {
@@ -374,7 +374,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_snippet_auto_config_is_valid(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps(
                     {
                         "summarize": {
@@ -399,7 +399,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_snippets_override_can_disable_project_default(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"summarize": {"snippet_policy": "fixed", "snippet_count": 4}}),
                 encoding="utf-8",
             )
@@ -427,7 +427,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_snippet_policy_count_combination_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"summarize": {"snippet_policy": "auto", "snippet_count": 3}}),
                 encoding="utf-8",
             )
@@ -438,7 +438,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_chunk_strategy_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"summarize": {"chunk_strategy": "semantic-ish"}}),
                 encoding="utf-8",
             )
@@ -458,7 +458,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_heading_ancestry_config_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"summarize": {"preserve_heading_ancestry": "yes"}}),
                 encoding="utf-8",
             )
@@ -469,7 +469,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_invalid_chunk_overlap_config_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"summarize": {"chunk_overlap_chars": -1}}),
                 encoding="utf-8",
             )
@@ -489,7 +489,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_unknown_failure_policy_field_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"failure_policy": {"surprise": 1}}),
                 encoding="utf-8",
             )
@@ -500,7 +500,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
     def test_non_positive_failure_policy_value_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            (root / ".qwen-farm.json").write_text(
+            (root / ".sift-farm.json").write_text(
                 json.dumps({"failure_policy": {"chunk_max_attempts": 0}}),
                 encoding="utf-8",
             )

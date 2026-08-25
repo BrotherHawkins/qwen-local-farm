@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-recommendation.schema.json",
-  "title": "Qwen Local Farm Recommendation Report",
-  "description": "Benchmark-based local farm recommendation JSON written by python qwen.py farm recommend.",
+  "$id": "https://sift.local/schemas/farm-recommendation.schema.json",
+  "title": "Sift Recommendation Report",
+  "description": "Benchmark-based local farm recommendation JSON written by python sift.py farm recommend.",
   "type": "object",
   "required": [
     "schema_version",

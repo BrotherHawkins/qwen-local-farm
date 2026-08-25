@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
-  "title": "Qwen Local Farm Snippet Pack",
+  "$id": "https://sift.local/schemas/farm-snippet-pack.schema.json",
+  "title": "Sift Snippet Pack",
   "description": "Post-run selected source evidence package written by farm snippets pack.",
   "type": "object",
   "required": [

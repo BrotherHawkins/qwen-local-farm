@@ -3,10 +3,10 @@
 This project is designed around a cross-platform Python operator script:
 
 ```bash
-python qwen.py setup
-python qwen.py start
-python qwen.py ask "Say hello."
-python qwen.py stop
+python sift.py setup
+python sift.py start
+python sift.py ask "Say hello."
+python sift.py stop
 ```
 
 The gateway itself uses only the Python standard library. Ollama is the main external dependency.
@@ -19,9 +19,9 @@ Different systems expose Python under different command names:
 
 | Platform | Try first | Common fallback |
 | --- | --- | --- |
-| Windows | `python qwen.py status` | `py -3 qwen.py status` |
-| macOS | `python3 qwen.py status` | `python qwen.py status` |
-| Linux | `python3 qwen.py status` | `python qwen.py status` |
+| Windows | `python sift.py status` | `py -3 sift.py status` |
+| macOS | `python3 sift.py status` | `python sift.py status` |
+| Linux | `python3 sift.py status` | `python sift.py status` |
 
 Python 3.10 or newer is recommended.
 
@@ -42,8 +42,8 @@ On macOS/Linux, use `python3 -m pip ...` if `python` is not available.
 Cache and verify tokenizer assets:
 
 ```bash
-python qwen.py farm tokenizer setup
-python qwen.py farm tokenizer status
+python sift.py farm tokenizer setup
+python sift.py farm tokenizer status
 ```
 
 The cache and status reports live under:
@@ -63,11 +63,11 @@ Supported first-pass tokenizer mappings:
 | `qwen3:8b` | `Qwen/Qwen3-8B` |
 | `qwen3:14b` | `Qwen/Qwen3-14B` |
 
-If token-aware chunking reports a missing tokenizer, rerun `python qwen.py farm tokenizer setup`. To avoid tokenizer setup entirely, use the default character strategy or pass `--chunk-strategy character`.
+If token-aware chunking reports a missing tokenizer, rerun `python sift.py farm tokenizer setup`. To avoid tokenizer setup entirely, use the default character strategy or pass `--chunk-strategy character`.
 
 ## Ollama Install
 
-`python qwen.py setup` checks for Ollama and prints platform-specific install help if it is missing.
+`python sift.py setup` checks for Ollama and prints platform-specific install help if it is missing.
 
 Common install paths:
 
@@ -80,10 +80,10 @@ Common install paths:
 After installing Ollama, rerun:
 
 ```bash
-python qwen.py setup
+python sift.py setup
 ```
 
-On macOS/Linux, use `python3 qwen.py setup` if `python` is not available.
+On macOS/Linux, use `python3 sift.py setup` if `python` is not available.
 
 ## Startup And Shutdown
 
@@ -98,9 +98,9 @@ The cross-platform script stores process IDs and logs in `.run/`:
 .run/ollama.err.log
 ```
 
-`python qwen.py start` starts Ollama if it is not already reachable, pulls the selected model if needed, and starts the gateway.
+`python sift.py start` starts Ollama if it is not already reachable, pulls the selected model if needed, and starts the gateway.
 
-`python qwen.py stop` stops the gateway process started by this project, unloads the selected model from Ollama, and stops the Ollama process if this project started it.
+`python sift.py stop` stops the gateway process started by this project, unloads the selected model from Ollama, and stops the Ollama process if this project started it.
 
 If Ollama was already running before this project started, `stop` may unload the selected model but leave the existing Ollama service alone.
 
@@ -109,22 +109,22 @@ If Ollama was already running before this project started, `stop` may unload the
 macOS/Linux shells:
 
 ```bash
-QWEN_MODEL="qwen3:8b" python qwen.py start
-QWEN_GATEWAY_HOST="0.0.0.0" python qwen.py start
+SIFT_MODEL="qwen3:8b" python sift.py start
+SIFT_GATEWAY_HOST="0.0.0.0" python sift.py start
 ```
 
 PowerShell:
 
 ```powershell
-$env:QWEN_MODEL = "qwen3:8b"
-python qwen.py start
+$env:SIFT_MODEL = "qwen3:8b"
+python sift.py start
 ```
 
 Command Prompt:
 
 ```cmd
-set QWEN_MODEL=qwen3:8b
-python qwen.py start
+set SIFT_MODEL=qwen3:8b
+python sift.py start
 ```
 
 ## Windows Notes
@@ -132,16 +132,16 @@ python qwen.py start
 Windows users can use either:
 
 ```powershell
-python qwen.py start
+python sift.py start
 ```
 
 or the convenience wrapper:
 
 ```powershell
-.\qwen.ps1 start
+.\sift.ps1 start
 ```
 
-If PowerShell blocks script execution for `qwen.ps1`, use:
+If PowerShell blocks script execution for `sift.ps1`, use:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -156,9 +156,9 @@ For REST examples, Windows 10/11 usually includes `curl.exe`. In PowerShell, use
 This project has not been benchmarked on macOS in this PR. The expected path is:
 
 ```bash
-python3 qwen.py setup
-python3 qwen.py start
-python3 qwen.py ask "Say hello."
+python3 sift.py setup
+python3 sift.py start
+python3 sift.py ask "Say hello."
 ```
 
 Apple Silicon machines use unified memory instead of separate NVIDIA-style VRAM. Ollama may use Metal acceleration when available. The `nvidia-smi` status output will not appear on macOS, which is expected.
@@ -170,9 +170,9 @@ If you installed Ollama as a GUI app and the `ollama` command is not on `PATH`, 
 This project has not been benchmarked on Linux in this PR. The expected path is:
 
 ```bash
-python3 qwen.py setup
-python3 qwen.py start
-python3 qwen.py ask "Say hello."
+python3 sift.py setup
+python3 sift.py start
+python3 sift.py ask "Say hello."
 ```
 
 GPU support depends on the local driver stack. NVIDIA users should verify:
@@ -190,7 +190,7 @@ The gateway binds to `127.0.0.1` by default. That keeps access limited to the lo
 To expose it to other machines on a trusted private network:
 
 ```bash
-QWEN_GATEWAY_HOST="0.0.0.0" python qwen.py start
+SIFT_GATEWAY_HOST="0.0.0.0" python sift.py start
 ```
 
 Then allow the gateway port, default `8765`, through the local OS firewall if needed.

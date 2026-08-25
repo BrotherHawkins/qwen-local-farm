@@ -73,8 +73,8 @@ git diff --check
 Planned lite dogfood smoke:
 
 ```powershell
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-full
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-capped --max-chars 60000
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-full
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-capped --max-chars 60000
 ```
 
 After the dogfood smoke, inspect the capped JSON output and report the `budget` object plus whether the resulting Markdown stayed useful.

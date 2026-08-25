@@ -171,7 +171,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -186,7 +186,7 @@ Use a new ignored folder:
 Run the same lite article set:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0008/lite-ranked/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --chunk-strategy token --snippets auto
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0008/lite-ranked/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --chunk-strategy token --snippets auto
 ```
 
 Compare against final 0007 run:

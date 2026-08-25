@@ -19,8 +19,8 @@ Implement `farm doctor` as a read-only setup/capability report:
    - `qwen_farm.load_runs`
    - `qwen_farm_tokenizer.tokenizer_status` without download
 3. Add CLI support.
-   - `python qwen.py farm doctor`
-   - `python qwen.py farm doctor --json`
+   - `python sift.py farm doctor`
+   - `python sift.py farm doctor --json`
    - `--output`
    - `--agent`
    - `--profile`
@@ -34,7 +34,7 @@ Implement `farm doctor` as a read-only setup/capability report:
 5. Update docs and lifecycle records.
    - README quick command
    - AI usage setup guidance
-   - roadmap command sketch from `python qwen.py doctor` to `python qwen.py farm doctor`
+   - roadmap command sketch from `python sift.py doctor` to `python sift.py farm doctor`
    - 0015 spec and plan status to implemented in the implementation PR
    - BL-0020 implemented while keeping BL-0021, BL-0022, BL-0023, BL-0028, and BL-0029 open
 6. Add model-free tests.
@@ -58,15 +58,15 @@ Use conservative status calculation:
 
 ## Non-Goals
 
-This implementation will not add benchmark-based profile recommendations, automatic config writing, hardware-specific model install selection, GPU/VRAM probing, Ollama service management, tokenizer downloads, model pulls, or top-level `python qwen.py doctor`.
+This implementation will not add benchmark-based profile recommendations, automatic config writing, hardware-specific model install selection, GPU/VRAM probing, Ollama service management, tokenizer downloads, model pulls, or top-level `python sift.py doctor`.
 
 ## Verification
 
 Implemented with:
 
 - `src/qwen_farm_doctor.py`
-- `python qwen.py farm doctor`
-- `python qwen.py farm doctor --json`
+- `python sift.py farm doctor`
+- `python sift.py farm doctor --json`
 - report writing under `.run/reports/`
 - read-only checks for environment, Ollama, selected agent/model, runtime config, tokenizer readiness, and recent runs
 - README, AI usage, and roadmap docs
@@ -83,8 +83,8 @@ git diff --check
 Manual smoke:
 
 ```powershell
-python qwen.py farm doctor
-python qwen.py farm doctor --json
+python sift.py farm doctor
+python sift.py farm doctor --json
 ```
 
 Inspect:

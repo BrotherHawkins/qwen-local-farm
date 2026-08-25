@@ -27,10 +27,10 @@ OLLAMA_OUT_LOG = RUN_DIR / "ollama.out.log"
 OLLAMA_ERR_LOG = RUN_DIR / "ollama.err.log"
 
 DEFAULT_MODEL = "qwen3.5:4b"
-MODEL = os.environ.get("QWEN_MODEL", DEFAULT_MODEL)
+MODEL = os.environ.get("SIFT_MODEL", DEFAULT_MODEL)
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
-GATEWAY_HOST = os.environ.get("QWEN_GATEWAY_HOST", "127.0.0.1")
-GATEWAY_PORT = int(os.environ.get("QWEN_GATEWAY_PORT", "8765"))
+GATEWAY_HOST = os.environ.get("SIFT_GATEWAY_HOST", "127.0.0.1")
+GATEWAY_PORT = int(os.environ.get("SIFT_GATEWAY_PORT", "8765"))
 GATEWAY_BASE_URL = f"http://127.0.0.1:{GATEWAY_PORT}"
 
 
@@ -108,7 +108,7 @@ def print_ollama_install_help() -> None:
         print("  https://ollama.com/download/linux")
     print("")
     print("After installing Ollama, rerun:")
-    print("  python qwen.py setup")
+    print("  python sift.py setup")
     print("")
     print("More platform notes are in docs/platforms.md.")
 
@@ -210,10 +210,10 @@ def start_gateway() -> None:
         return
 
     env = os.environ.copy()
-    env["QWEN_MODEL"] = MODEL
+    env["SIFT_MODEL"] = MODEL
     env["OLLAMA_BASE_URL"] = OLLAMA_BASE_URL
-    env["QWEN_GATEWAY_HOST"] = GATEWAY_HOST
-    env["QWEN_GATEWAY_PORT"] = str(GATEWAY_PORT)
+    env["SIFT_GATEWAY_HOST"] = GATEWAY_HOST
+    env["SIFT_GATEWAY_PORT"] = str(GATEWAY_PORT)
     server = ROOT / "src" / "qwen_gateway.py"
 
     proc = subprocess.Popen(
@@ -664,7 +664,7 @@ def handle_farm(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Manage the local Qwen worker service.")
+    parser = argparse.ArgumentParser(description="Manage Sift local worker services.")
     subparsers = parser.add_subparsers(dest="command", required=False)
 
     for name in ["setup", "start", "stop", "status", "pull", "logs"]:
@@ -825,7 +825,7 @@ def main() -> None:
             raise RuntimeError("Python 3.10+ is required.")
         ensure_model()
         print("")
-        print("Setup complete. Run `python qwen.py start` when you want the local service.")
+        print("Setup complete. Run `python sift.py start` when you want the local service.")
     elif args.command == "start":
         ensure_model()
         start_gateway()

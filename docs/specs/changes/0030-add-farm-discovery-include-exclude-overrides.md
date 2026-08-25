@@ -20,13 +20,13 @@ The product principle is: discovery should stay safe by default, but callers sho
 Add first-pass file discovery overrides for `farm run`:
 
 ```powershell
-python qwen.py farm run notes --include "*.md"
-python qwen.py farm run notes --include "articles/*.txt" --include "notes/**/*.md"
-python qwen.py farm run notes --exclude "drafts/**" --exclude "*.tmp"
-python qwen.py farm run notes --include "**/*.txt" --exclude "**/raw/**"
+python sift.py farm run notes --include "*.md"
+python sift.py farm run notes --include "articles/*.txt" --include "notes/**/*.md"
+python sift.py farm run notes --exclude "drafts/**" --exclude "*.tmp"
+python sift.py farm run notes --include "**/*.txt" --exclude "**/raw/**"
 ```
 
-Add matching config support under `.qwen-farm.json`:
+Add matching config support under `.sift-farm.json`:
 
 ```json
 {
@@ -131,8 +131,8 @@ This change does not add:
 
 - `farm run` accepts repeated `--include` flags.
 - `farm run` accepts repeated `--exclude` flags.
-- `.qwen-farm.json` accepts `discovery.include` as an array of strings.
-- `.qwen-farm.json` accepts `discovery.exclude` as an array of strings.
+- `.sift-farm.json` accepts `discovery.include` as an array of strings.
+- `.sift-farm.json` accepts `discovery.exclude` as an array of strings.
 - Unknown `discovery` fields fail config validation before creating a run folder.
 - Non-string include/exclude config entries fail config validation before creating a run folder.
 - Effective include/exclude values are present in `farm-config.resolved.json`.
@@ -176,7 +176,7 @@ Run:
 python -m src.qwen_spec_guard
 python -m unittest tests.test_qwen_farm_files tests.test_qwen_farm_profiles tests.test_qwen_farm tests.test_qwen_cli tests.test_qwen_farm_status tests.test_qwen_farm_schema
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -194,9 +194,9 @@ Suggested smoke:
 2. Run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0030/input --output .run/dogfood_0030/include --include "**/*.txt"
-python qwen.py farm run .run/dogfood_0030/input --output .run/dogfood_0030/exclude --exclude "**/raw/**"
-python qwen.py farm status <run-id> --json
+python sift.py farm run .run/dogfood_0030/input --output .run/dogfood_0030/include --include "**/*.txt"
+python sift.py farm run .run/dogfood_0030/input --output .run/dogfood_0030/exclude --exclude "**/raw/**"
+python sift.py farm status <run-id> --json
 ```
 
 Inspect:

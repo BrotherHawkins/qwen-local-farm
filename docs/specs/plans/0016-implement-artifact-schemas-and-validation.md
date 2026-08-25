@@ -57,9 +57,9 @@ Treat these as separate contracts:
 
 - `farm-status.schema.json`: persisted run status file.
 - `farm-job-result.schema.json`: persisted per-job result file.
-- `farm-status-overview.schema.json`: `python qwen.py farm status --json`.
-- `farm-status-run.schema.json`: `python qwen.py farm status <run-id> --json`.
-- `farm-doctor.schema.json`: `python qwen.py farm doctor --json` and `.run/reports/setup-doctor.json`.
+- `farm-status-overview.schema.json`: `python sift.py farm status --json`.
+- `farm-status-run.schema.json`: `python sift.py farm status <run-id> --json`.
+- `farm-doctor.schema.json`: `python sift.py farm doctor --json` and `.run/reports/setup-doctor.json`.
 
 Do not collapse persisted artifacts and command envelopes into one schema just because they share fields.
 
@@ -111,15 +111,15 @@ Checks:
 ```powershell
 python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_doctor
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Optional local smoke:
 
 ```powershell
-python qwen.py farm status --json
-python qwen.py farm doctor --json
+python sift.py farm status --json
+python sift.py farm doctor --json
 ```
 
 If a private validation helper is easy to expose through tests, use recent local outputs only as manual examples; do not rely on `.run/` artifacts for CI.

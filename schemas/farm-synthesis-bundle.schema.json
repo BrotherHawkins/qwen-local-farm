@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-synthesis-bundle.schema.json",
-  "title": "Qwen Local Farm Synthesis Bundle",
+  "$id": "https://sift.local/schemas/farm-synthesis-bundle.schema.json",
+  "title": "Sift Synthesis Bundle",
   "description": "Post-run summary-plus-evidence bundle written by farm synthesis bundle.",
   "type": "object",
   "required": [

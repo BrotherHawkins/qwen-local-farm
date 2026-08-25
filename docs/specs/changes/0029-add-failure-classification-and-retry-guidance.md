@@ -143,7 +143,7 @@ Run:
 python -m src.qwen_spec_guard
 python -m unittest tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_schema tests.test_qwen_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -162,8 +162,8 @@ Suggested smoke:
 3. Run:
 
 ```powershell
-python qwen.py farm status <run-id> --json
-python qwen.py farm retry-failed <run-id> --json
+python sift.py farm status <run-id> --json
+python sift.py farm retry-failed <run-id> --json
 ```
 
 Verify that a primary AI can tell:

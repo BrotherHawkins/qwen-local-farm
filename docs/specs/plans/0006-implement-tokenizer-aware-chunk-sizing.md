@@ -60,7 +60,7 @@ Copy the same article text files from the existing dogfood corpus:
 Run the current character chunker with stable settings:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/baseline/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/baseline/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1
 ```
 
 Record:
@@ -102,8 +102,8 @@ Keep tokenizer cache files under `.run/tokenizers/` or another ignored path.
 Add a command such as:
 
 ```powershell
-python qwen.py farm tokenizer setup
-python qwen.py farm tokenizer status
+python sift.py farm tokenizer setup
+python sift.py farm tokenizer status
 ```
 
 or an equivalently clear command shape chosen during implementation.
@@ -213,7 +213,7 @@ Update:
 After implementation, enable token-aware chunking in settings or CLI and run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/token-aware/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1 --chunk-strategy token
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/token-aware/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1 --chunk-strategy token
 ```
 
 Write:
@@ -255,23 +255,23 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Local tokenizer verification:
 
 ```powershell
-python qwen.py farm tokenizer setup
-python qwen.py farm tokenizer status
+python sift.py farm tokenizer setup
+python sift.py farm tokenizer status
 ```
 
 Dogfood verification:
 
 ```powershell
-python qwen.py farm list
-python qwen.py farm status <baseline-run-id>
-python qwen.py farm status <token-aware-run-id>
+python sift.py farm list
+python sift.py farm status <baseline-run-id>
+python sift.py farm status <token-aware-run-id>
 ```
 
 Inspect:

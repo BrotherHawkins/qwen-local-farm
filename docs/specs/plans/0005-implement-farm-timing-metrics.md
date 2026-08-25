@@ -188,7 +188,7 @@ Use a new ignored folder:
 Copy the same article text files from the previous dogfood set if available, then run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0005/articles-text --output .run/dogfood_0005/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 2
+python sift.py farm run .run/dogfood_0005/articles-text --output .run/dogfood_0005/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 2
 ```
 
 Inspect:
@@ -219,7 +219,7 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

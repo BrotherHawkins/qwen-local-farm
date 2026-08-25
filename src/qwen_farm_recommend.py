@@ -70,7 +70,7 @@ def recommendation_summary(root: Path, output_dir: Path | None = None) -> dict[s
             "path": str(path),
             "status": "missing",
             "generated_at": None,
-            "command": "python qwen.py farm recommend",
+            "command": "python sift.py farm recommend",
         }
 
     profile = report.get("profile") if isinstance(report.get("profile"), dict) else {}
@@ -93,7 +93,7 @@ def recommendation_summary(root: Path, output_dir: Path | None = None) -> dict[s
         "resource_mode": resource_mode.get("recommended"),
         "parallel_jobs": parallel_jobs.get("recommended"),
         "ollama_num_parallel": ollama_parallel.get("recommended"),
-        "command": "python qwen.py farm recommend",
+        "command": "python sift.py farm recommend",
     }
 
 
@@ -136,11 +136,11 @@ def build_recommendation_report(
         warnings.append(runtime_error)
         next_actions.append(action("runtime.config", "required", runtime_error))
     if not ollama["found"]:
-        next_actions.append(action("ollama.install", "required", "Install Ollama, then run setup.", "python qwen.py setup"))
+        next_actions.append(action("ollama.install", "required", "Install Ollama, then run setup.", "python sift.py setup"))
     elif not ollama["endpoint_ready"]:
-        next_actions.append(action("ollama.start", "recommended", "Start Ollama before measuring local performance.", "python qwen.py start"))
+        next_actions.append(action("ollama.start", "recommended", "Start Ollama before measuring local performance.", "python sift.py start"))
     elif ollama["model_installed"] is False:
-        next_actions.append(action("model.setup", "recommended", f"Pull or configure `{model}`.", "python qwen.py setup"))
+        next_actions.append(action("model.setup", "recommended", f"Pull or configure `{model}`.", "python sift.py setup"))
 
     tokenizer = _safe_tokenizer_status(root=root, tokenizer_status_fn=tokenizer_status_fn)
     if not tokenizer.get("ready"):
@@ -149,7 +149,7 @@ def build_recommendation_report(
                 "tokenizer.setup",
                 "optional",
                 "Run tokenizer setup before using token-aware chunking.",
-                "python qwen.py farm tokenizer setup",
+                "python sift.py farm tokenizer setup",
             )
         )
 
@@ -495,10 +495,10 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
             "## Copyable Commands",
             "",
             "```powershell",
-            "python qwen.py farm doctor --json",
-            "python qwen.py farm recommend --agent default --profile local-8gb --resource-mode auto --output .run/recommendations",
-            "python qwen.py farm schema validate .run/recommendations/farm-recommendation.json",
-            "python qwen.py farm recommend apply",
+            "python sift.py farm doctor --json",
+            "python sift.py farm recommend --agent default --profile local-8gb --resource-mode auto --output .run/recommendations",
+            "python sift.py farm schema validate .run/recommendations/farm-recommendation.json",
+            "python sift.py farm recommend apply",
             "```",
             "",
         ]
@@ -528,7 +528,7 @@ def build_config_apply_report(
 ) -> dict[str, Any]:
     report_dir = output_dir or default_output_dir(root)
     recommendation_source = recommendation_path or latest_recommendation_path(root)
-    target_config = config_path or root / ".qwen-farm.json"
+    target_config = config_path or root / ".sift-farm.json"
     dry_run = not write
     generated = generated_at or utc_timestamp()
 
@@ -578,7 +578,7 @@ def build_config_apply_report(
                 "config.verify",
                 "optional",
                 "Verify the resolved setup after applying config.",
-                "python qwen.py farm doctor",
+                "python sift.py farm doctor",
             )
         )
 
@@ -763,7 +763,7 @@ def safe_timestamp() -> str:
 
 
 def apply_command(recommendation_path: Path, config_path: Path, output_dir: Path, *, write: bool) -> str:
-    pieces = ["python qwen.py farm recommend apply", str(recommendation_path)]
+    pieces = ["python sift.py farm recommend apply", str(recommendation_path)]
     pieces.extend(["--config", str(config_path)])
     pieces.extend(["--output", str(output_dir)])
     if write:

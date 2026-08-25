@@ -2219,7 +2219,7 @@ def resolve_run_reference(root: Path, run_ref: str) -> Path:
         return find_run_dir(root, run_ref)
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"Unknown farm run reference: {run_ref}. Run `python qwen.py farm list` to see known runs, "
+            f"Unknown farm run reference: {run_ref}. Run `python sift.py farm list` to see known runs, "
             "or pass a full run directory path."
         ) from exc
 

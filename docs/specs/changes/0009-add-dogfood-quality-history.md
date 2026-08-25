@@ -154,8 +154,8 @@ If a future project wants tracked aggregate history, that should be a separate e
 The first implementation should prefer simple commands. Exact names can be refined during planning, but the shape should be close to:
 
 ```powershell
-python qwen.py farm dogfood record <run-dir> --label 0009-lite-candidate --notes .run/dogfood_0009/quality-notes.json
-python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output .run/dogfood_history/comparisons
+python sift.py farm dogfood record <run-dir> --label 0009-lite-candidate --notes .run/dogfood_0009/quality-notes.json
+python sift.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output .run/dogfood_history/comparisons
 ```
 
 If nesting under `farm dogfood` makes the parser awkward, a small script under `scripts/` is acceptable for the first implementation as long as it is reproducible and documented.
@@ -214,7 +214,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

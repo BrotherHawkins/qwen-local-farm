@@ -21,9 +21,9 @@ This change favors:
 
 This change adds a JSON output option for farm status:
 
-- add `--json` to `python qwen.py farm status`
-- support `python qwen.py farm status --json` for an overview of known runs
-- support `python qwen.py farm status <run-id> --json` for one run
+- add `--json` to `python sift.py farm status`
+- support `python sift.py farm status --json` for an overview of known runs
+- support `python sift.py farm status <run-id> --json` for one run
 - print valid JSON to stdout with no Markdown, prose, or code fences
 - reuse existing run loading and ordering behavior
 - preserve current Markdown output when `--json` is omitted
@@ -51,15 +51,15 @@ This change does not add:
 Human-readable output remains the default:
 
 ```powershell
-python qwen.py farm status
-python qwen.py farm status <run-id>
+python sift.py farm status
+python sift.py farm status <run-id>
 ```
 
 Machine-readable output uses `--json`:
 
 ```powershell
-python qwen.py farm status --json
-python qwen.py farm status <run-id> --json
+python sift.py farm status --json
+python sift.py farm status <run-id> --json
 ```
 
 The flag may appear before or after the optional run ID if `argparse` supports it naturally.
@@ -136,10 +136,10 @@ Unknown run IDs should keep the existing failure semantics. The first version do
 
 ## Acceptance Criteria
 
-- `python qwen.py farm status` still prints the existing human-readable farm overview.
-- `python qwen.py farm status <run-id>` still prints the existing human-readable single-run status.
-- `python qwen.py farm status --json` prints valid JSON for the overview with `schema_version`, `scope`, `counts`, and `runs`.
-- `python qwen.py farm status <run-id> --json` prints valid JSON for one run with `schema_version`, `scope`, `run_id`, and `run`.
+- `python sift.py farm status` still prints the existing human-readable farm overview.
+- `python sift.py farm status <run-id>` still prints the existing human-readable single-run status.
+- `python sift.py farm status --json` prints valid JSON for the overview with `schema_version`, `scope`, `counts`, and `runs`.
+- `python sift.py farm status <run-id> --json` prints valid JSON for one run with `schema_version`, `scope`, `run_id`, and `run`.
 - JSON output contains no Markdown or explanatory prose.
 - JSON overview uses the same known-run discovery and ordering as the human overview/listing.
 - JSON single-run lookup uses the same run ID semantics as human `farm status <run-id>`.
@@ -169,8 +169,8 @@ python -m unittest discover -s tests
 Manual smoke, using any local indexed farm run:
 
 ```powershell
-python qwen.py farm status --json
-python qwen.py farm status <run-id> --json
+python sift.py farm status --json
+python sift.py farm status <run-id> --json
 ```
 
 ## Deferred To Roadmap

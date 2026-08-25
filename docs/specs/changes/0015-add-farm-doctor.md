@@ -22,8 +22,8 @@ This change favors:
 
 This change adds a first farm doctor command:
 
-- add `python qwen.py farm doctor`
-- add `python qwen.py farm doctor --json`
+- add `python sift.py farm doctor`
+- add `python sift.py farm doctor --json`
 - inspect OS, Python version, repo root, and key local paths
 - inspect whether the Ollama executable is discoverable
 - inspect whether the configured Ollama endpoint responds
@@ -49,7 +49,7 @@ This change does not add:
 - tokenizer downloads
 - starting or stopping Ollama
 - GPU/VRAM probing beyond fields that are already cheap and reliable in standard Python
-- changing `.qwen-farm.json`
+- changing `.sift-farm.json`
 - changing agent files
 - CI checks that require Ollama or a model
 - exact performance prediction
@@ -62,24 +62,24 @@ This change does not add:
 Human-readable default:
 
 ```powershell
-python qwen.py farm doctor
+python sift.py farm doctor
 ```
 
 Machine-readable output:
 
 ```powershell
-python qwen.py farm doctor --json
+python sift.py farm doctor --json
 ```
 
 Suggested options:
 
 ```powershell
-python qwen.py farm doctor --output .run/reports
-python qwen.py farm doctor --agent default
-python qwen.py farm doctor --profile local-8gb
+python sift.py farm doctor --output .run/reports
+python sift.py farm doctor --agent default
+python sift.py farm doctor --profile local-8gb
 ```
 
-The first implementation should prefer `farm doctor` over the older roadmap sketch of top-level `python qwen.py doctor`, keeping farm diagnostics under the existing farm command group.
+The first implementation should prefer `farm doctor` over the older roadmap sketch of top-level `python sift.py doctor`, keeping farm diagnostics under the existing farm command group.
 
 ### Output Files
 
@@ -103,7 +103,7 @@ The first report shape should be stable enough for primary AI inspection:
   "schema_version": 1,
   "generated_at": "2026-08-24T18:30:00Z",
   "status": "ready_with_warnings",
-  "root": "C:/Github/GHE/qwen-local-farm",
+  "root": "C:/Github/GHE/sift",
   "environment": {
     "os": "Windows",
     "python": "3.13.5",
@@ -149,7 +149,7 @@ The first report shape should be stable enough for primary AI inspection:
       "id": "tokenizer.setup",
       "priority": "optional",
       "message": "Run tokenizer setup before enabling token-aware chunking.",
-      "command": "python qwen.py farm tokenizer setup"
+      "command": "python sift.py farm tokenizer setup"
     }
   ],
   "report_paths": {
@@ -177,10 +177,10 @@ Doctor should not fail just because Ollama is not running. It should record the 
 Recommendations should be concrete and low-risk. Examples:
 
 - install Ollama if missing
-- run `python qwen.py setup`
-- start Ollama / run `python qwen.py start`
+- run `python sift.py setup`
+- start Ollama / run `python sift.py start`
 - pull or configure the default model
-- run `python qwen.py farm tokenizer setup` before token-aware chunking
+- run `python sift.py farm tokenizer setup` before token-aware chunking
 - use `local-8gb` or `cpu-small` as conservative starting profiles
 - run a tiny smoke farm job before increasing concurrency
 
@@ -188,10 +188,10 @@ Doctor may mention benchmark/profile and auto-config follow-ups, but must not im
 
 ## Acceptance Criteria
 
-- `python qwen.py farm doctor` runs without requiring Ollama to be installed or running.
-- `python qwen.py farm doctor` writes `.run/reports/setup-doctor.md` and `.run/reports/setup-doctor.json` by default.
-- `python qwen.py farm doctor` prints human-readable Markdown to stdout.
-- `python qwen.py farm doctor --json` prints valid JSON to stdout with no Markdown/prose.
+- `python sift.py farm doctor` runs without requiring Ollama to be installed or running.
+- `python sift.py farm doctor` writes `.run/reports/setup-doctor.md` and `.run/reports/setup-doctor.json` by default.
+- `python sift.py farm doctor` prints human-readable Markdown to stdout.
+- `python sift.py farm doctor --json` prints valid JSON to stdout with no Markdown/prose.
 - The JSON report includes schema version, generated timestamp, report status, environment, Ollama, agent, runtime, tokenizer, recent-run, check, recommendation, and report-path sections.
 - The Markdown report includes the same major sections in a form a non-technical user can read with a primary AI.
 - Missing Ollama executable is reported as setup-needed with an install/setup recommendation instead of crashing.
@@ -234,8 +234,8 @@ git diff --check
 Manual smoke:
 
 ```powershell
-python qwen.py farm doctor
-python qwen.py farm doctor --json
+python sift.py farm doctor
+python sift.py farm doctor --json
 ```
 
 Inspect:
@@ -251,4 +251,4 @@ Inspect:
 - BL-0028 safe concurrency recommendation for `parallel_jobs` and `OLLAMA_NUM_PARALLEL`.
 - BL-0029 CLI helpers for starting Ollama with recommended concurrency environment variables.
 - GPU/VRAM probing through platform-specific helpers.
-- Top-level `python qwen.py doctor` alias, if the command proves useful enough outside `farm`.
+- Top-level `python sift.py doctor` alias, if the command proves useful enough outside `farm`.

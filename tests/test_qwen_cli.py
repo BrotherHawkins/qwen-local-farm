@@ -9,29 +9,29 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
-import qwen
+import sift
 
 
 class OllamaHostValueTests(unittest.TestCase):
     def test_ollama_host_value_uses_parsed_netloc(self) -> None:
-        with patch.object(qwen, "OLLAMA_BASE_URL", "http://0.0.0.0:11434"):
-            self.assertEqual(qwen.ollama_host_value(), "0.0.0.0:11434")
+        with patch.object(sift, "OLLAMA_BASE_URL", "http://0.0.0.0:11434"):
+            self.assertEqual(sift.ollama_host_value(), "0.0.0.0:11434")
 
     def test_ollama_host_value_falls_back_to_default_host(self) -> None:
-        with patch.object(qwen, "OLLAMA_BASE_URL", "not-a-url"):
-            self.assertEqual(qwen.ollama_host_value(), "127.0.0.1:11434")
+        with patch.object(sift, "OLLAMA_BASE_URL", "not-a-url"):
+            self.assertEqual(sift.ollama_host_value(), "127.0.0.1:11434")
 
 
 class ParseArgsTests(unittest.TestCase):
     def test_parse_args_defaults_to_status(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "status")
 
     def test_parse_args_accepts_ask_agent(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "ask", "hello", "coder"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "ask", "hello", "coder"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "ask")
         self.assertEqual(args.message, "hello")
@@ -42,7 +42,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "run",
                 "notes",
@@ -62,7 +62,7 @@ class ParseArgsTests(unittest.TestCase):
                 "**/raw/**",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "run")
@@ -79,7 +79,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "run",
                 "notes",
@@ -93,7 +93,7 @@ class ParseArgsTests(unittest.TestCase):
                 "0.15",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.chunk_strategy, "token")
         self.assertEqual(args.chunk_tokens, 6500)
@@ -105,7 +105,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "run",
                 "notes",
@@ -116,7 +116,7 @@ class ParseArgsTests(unittest.TestCase):
                 "120",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertFalse(args.preserve_heading_ancestry)
         self.assertEqual(args.chunk_overlap_chars, 500)
@@ -127,7 +127,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "run",
                 "notes",
@@ -137,7 +137,7 @@ class ParseArgsTests(unittest.TestCase):
                 "800",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.snippets, "auto")
         self.assertEqual(args.snippet_max_chars, 800)
@@ -147,7 +147,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "run",
                 "notes",
@@ -161,7 +161,7 @@ class ParseArgsTests(unittest.TestCase):
                 "1",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.max_attempts, 3)
         self.assertEqual(args.per_file_timeout_seconds, 900)
@@ -169,8 +169,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.reduce_max_attempts, 1)
 
     def test_parse_args_accepts_farm_tokenizer_status(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "farm", "tokenizer", "status", "--model", "qwen3:4b"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "farm", "tokenizer", "status", "--model", "qwen3:4b"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "tokenizer")
@@ -182,7 +182,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "doctor",
                 "--json",
@@ -196,7 +196,7 @@ class ParseArgsTests(unittest.TestCase):
                 "auto",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "doctor")
@@ -211,7 +211,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "recommend",
                 "--json",
@@ -225,7 +225,7 @@ class ParseArgsTests(unittest.TestCase):
                 "gpu",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "recommend")
@@ -241,26 +241,26 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "recommend",
                 "apply",
                 ".run/recommendations/farm-recommendation.json",
                 "--config",
-                ".run/dogfood_0021/.qwen-farm.json",
+                ".run/dogfood_0021/.sift-farm.json",
                 "--output",
                 ".run/recommendations",
                 "--write",
                 "--json",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "recommend")
         self.assertEqual(args.recommend_command, "apply")
         self.assertEqual(args.recommendation_path, ".run/recommendations/farm-recommendation.json")
-        self.assertEqual(args.config, ".run/dogfood_0021/.qwen-farm.json")
+        self.assertEqual(args.config, ".run/dogfood_0021/.sift-farm.json")
         self.assertEqual(args.output, ".run/recommendations")
         self.assertTrue(args.write)
         self.assertTrue(args.json)
@@ -270,7 +270,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "schema",
                 "validate",
@@ -280,7 +280,7 @@ class ParseArgsTests(unittest.TestCase):
                 "--json",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "schema")
@@ -294,7 +294,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "collect",
                 "farm-run-test",
@@ -304,7 +304,7 @@ class ParseArgsTests(unittest.TestCase):
                 "review",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "collect")
@@ -317,7 +317,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "retry-failed",
                 "farm-run-test",
@@ -330,7 +330,7 @@ class ParseArgsTests(unittest.TestCase):
                 "--json",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "retry-failed")
@@ -341,8 +341,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "farm", "status", "farm-run-1"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
@@ -350,8 +350,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertFalse(args.json)
 
     def test_parse_args_accepts_farm_status_json_overview(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "--json"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "farm", "status", "--json"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
@@ -359,8 +359,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_status_json_run_id(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1", "--json"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "farm", "status", "farm-run-1", "--json"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
@@ -368,8 +368,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_status_json_before_run_id(self) -> None:
-        with patch.object(sys, "argv", ["qwen.py", "farm", "status", "--json", "farm-run-1"]):
-            args = qwen.parse_args()
+        with patch.object(sys, "argv", ["sift.py", "farm", "status", "--json", "farm-run-1"]):
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "status")
@@ -381,7 +381,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "dogfood",
                 "record",
@@ -392,7 +392,7 @@ class ParseArgsTests(unittest.TestCase):
                 "notes.json",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "dogfood")
@@ -406,7 +406,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "dogfood",
                 "compare",
@@ -416,7 +416,7 @@ class ParseArgsTests(unittest.TestCase):
                 ".run/dogfood_history/comparisons",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "dogfood")
@@ -430,7 +430,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "dogfood",
                 "timing",
@@ -442,7 +442,7 @@ class ParseArgsTests(unittest.TestCase):
                 ".run/dogfood_timing/runs",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "dogfood")
@@ -457,7 +457,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "dogfood",
                 "timing",
@@ -468,7 +468,7 @@ class ParseArgsTests(unittest.TestCase):
                 ".run/dogfood_timing/comparisons",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "dogfood")
@@ -483,7 +483,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "snippets",
                 "pack",
@@ -498,7 +498,7 @@ class ParseArgsTests(unittest.TestCase):
                 "3",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "snippets")
@@ -514,7 +514,7 @@ class ParseArgsTests(unittest.TestCase):
             sys,
             "argv",
             [
-                "qwen.py",
+                "sift.py",
                 "farm",
                 "synthesis",
                 "bundle",
@@ -535,7 +535,7 @@ class ParseArgsTests(unittest.TestCase):
                 "4.5",
             ],
         ):
-            args = qwen.parse_args()
+            args = sift.parse_args()
 
         self.assertEqual(args.command, "farm")
         self.assertEqual(args.farm_command, "synthesis")
@@ -565,10 +565,10 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_schema.validate_artifact", return_value=result) as validate_artifact,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         validate_artifact.assert_called_once_with(
-            root=qwen.ROOT,
+            root=sift.ROOT,
             artifact_path=Path("artifact.json"),
             schema_reference="schemas/farm-doctor.schema.json",
         )
@@ -590,7 +590,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_schema.render_validation_result", return_value="Valid: artifact.json") as render,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         render.assert_called_once_with(result)
         printed.assert_called_once_with("Valid: artifact.json")
@@ -611,7 +611,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("builtins.print"),
         ):
             with self.assertRaises(SystemExit) as raised:
-                qwen.handle_farm(args)
+                sift.handle_farm(args)
 
         self.assertEqual(raised.exception.code, 1)
 
@@ -630,7 +630,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("builtins.print"),
         ):
             with self.assertRaises(SystemExit) as raised:
-                qwen.handle_farm(args)
+                sift.handle_farm(args)
 
         self.assertEqual(raised.exception.code, 2)
 
@@ -650,9 +650,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_doctor.write_doctor_report") as write,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["root"], sift.ROOT)
         self.assertEqual(build.call_args.kwargs["agent_id"], "default")
         self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
         self.assertEqual(build.call_args.kwargs["resource_mode"], "cpu")
@@ -677,7 +677,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_doctor.render_doctor_markdown", return_value="# Farm Doctor") as render,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         render.assert_called_once_with(report)
         printed.assert_called_once_with("# Farm Doctor")
@@ -699,9 +699,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))) as write,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["root"], sift.ROOT)
         self.assertEqual(build.call_args.kwargs["agent_id"], "default")
         self.assertEqual(build.call_args.kwargs["profile"], "local-8gb")
         self.assertEqual(build.call_args.kwargs["resource_mode"], "hybrid")
@@ -728,7 +728,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_recommend.render_recommendation_markdown", return_value="# Farm Recommendation") as render,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         render.assert_called_once_with(report)
         printed.assert_has_calls(
@@ -756,9 +756,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))) as write,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        self.assertEqual(build.call_args.kwargs["root"], qwen.ROOT)
+        self.assertEqual(build.call_args.kwargs["root"], sift.ROOT)
         self.assertEqual(build.call_args.kwargs["recommendation_path"], Path("rec.json"))
         self.assertEqual(build.call_args.kwargs["config_path"], Path("config.json"))
         self.assertEqual(build.call_args.kwargs["output_dir"], Path("out"))
@@ -785,7 +785,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_recommend.render_config_apply_markdown", return_value="# Farm Config Apply") as render,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         render.assert_called_once_with(report)
         printed.assert_has_calls(
@@ -804,9 +804,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm.status_json", return_value=envelope) as status_json,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        status_json.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        status_json.assert_called_once_with(sift.ROOT, "farm-run-1")
         printed.assert_called_once()
         self.assertEqual(json.loads(printed.call_args.args[0]), envelope)
 
@@ -817,9 +817,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm.status_text", return_value="# Farm Overview") as status_text,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        status_text.assert_called_once_with(qwen.ROOT, None)
+        status_text.assert_called_once_with(sift.ROOT, None)
         printed.assert_has_calls([call("# Farm Overview")])
 
     def test_retry_failed_json_prints_json_result(self) -> None:
@@ -849,13 +849,13 @@ class FarmHandlerTests(unittest.TestCase):
         with (
             patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
             patch("src.qwen_farm.build_retry_failed_plan", return_value=plan) as build,
-            patch("qwen.ensure_model") as ensure,
+            patch("sift.ensure_model") as ensure,
             patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)) as run_retry,
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["source_run_dir"], resolved)
         self.assertEqual(build.call_args.kwargs["instructions"], "Retry instructions.")
         self.assertEqual(build.call_args.kwargs["agent_id"], "qwen8")
@@ -893,12 +893,12 @@ class FarmHandlerTests(unittest.TestCase):
         with (
             patch("src.qwen_farm.resolve_run_reference", return_value=resolved),
             patch("src.qwen_farm.build_retry_failed_plan", return_value=plan),
-            patch("qwen.ensure_model", side_effect=lambda _model: sys.stdout.write("Model is available\n")),
+            patch("sift.ensure_model", side_effect=lambda _model: sys.stdout.write("Model is available\n")),
             patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
             redirect_stdout(stdout),
             redirect_stderr(stderr),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         self.assertEqual(json.loads(stdout.getvalue()), result)
         self.assertNotIn("Model is available", stdout.getvalue())
@@ -924,11 +924,11 @@ class FarmHandlerTests(unittest.TestCase):
         with (
             patch("src.qwen_farm.resolve_run_reference", return_value=Path("resolved-run")),
             patch("src.qwen_farm.build_retry_failed_plan", return_value={"model": "qwen-test:1b"}),
-            patch("qwen.ensure_model"),
+            patch("sift.ensure_model"),
             patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
             patch("builtins.print") as printed,
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         printed.assert_has_calls(
             [
@@ -958,7 +958,7 @@ class FarmHandlerTests(unittest.TestCase):
             patch("builtins.print") as printed,
         ):
             with self.assertRaises(SystemExit) as raised:
-                qwen.handle_farm(args)
+                sift.handle_farm(args)
 
         self.assertEqual(raised.exception.code, 2)
         self.assertEqual(json.loads(printed.call_args.args[0])["errors"], ["Source run has no failed jobs."])
@@ -981,9 +981,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_snippet_packs.write_snippet_pack", return_value=(Path("pack.json"), Path("pack.md"))),
             patch("builtins.print"),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
 
     def test_synthesis_bundle_resolves_run_reference_before_building_bundle(self) -> None:
@@ -1013,9 +1013,9 @@ class FarmHandlerTests(unittest.TestCase):
             ),
             patch("builtins.print"),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
         self.assertEqual(build.call_args.kwargs["max_chars"], 60000)
         self.assertEqual(build.call_args.kwargs["max_estimated_tokens"], 15000)
@@ -1041,9 +1041,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_dogfood.write_quality_record", return_value=Path("record.json")),
             patch("builtins.print"),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
 
     def test_dogfood_timing_record_resolves_run_reference_before_building_record(self) -> None:
@@ -1066,9 +1066,9 @@ class FarmHandlerTests(unittest.TestCase):
             patch("src.qwen_farm_dogfood_timing.write_timing_record", return_value=Path("record.json")),
             patch("builtins.print"),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
-        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
 
     def test_dogfood_timing_compare_writes_json_and_markdown(self) -> None:
@@ -1093,7 +1093,7 @@ class FarmHandlerTests(unittest.TestCase):
             ) as write,
             patch("builtins.print"),
         ):
-            qwen.handle_farm(args)
+            sift.handle_farm(args)
 
         read_json.assert_has_calls([call(Path("baseline.json")), call(Path("candidate.json"))])
         compare.assert_called_once_with(baseline, candidate)

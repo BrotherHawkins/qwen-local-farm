@@ -280,7 +280,7 @@ class FarmRecommendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             recommendation_path = root / "farm-recommendation.json"
-            config_path = root / ".qwen-farm.json"
+            config_path = root / ".sift-farm.json"
             output = root / "reports"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
 
@@ -306,7 +306,7 @@ class FarmRecommendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             recommendation_path = root / "farm-recommendation.json"
-            config_path = root / ".qwen-farm.json"
+            config_path = root / ".sift-farm.json"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
 
             report = qwen_farm_recommend.build_config_apply_report(
@@ -330,7 +330,7 @@ class FarmRecommendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             recommendation_path = root / "farm-recommendation.json"
-            config_path = root / ".qwen-farm.json"
+            config_path = root / ".sift-farm.json"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
             config_path.write_text(
                 json.dumps(
@@ -365,7 +365,7 @@ class FarmRecommendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             recommendation_path = root / "farm-recommendation.json"
-            config_path = root / ".qwen-farm.json"
+            config_path = root / ".sift-farm.json"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
             config_path.write_text(json.dumps({"surprise": True}), encoding="utf-8")
 
@@ -388,7 +388,7 @@ class FarmRecommendTests(unittest.TestCase):
                 qwen_farm_recommend.build_config_apply_report(
                     root=ROOT,
                     recommendation_path=recommendation_path,
-                    config_path=root / ".qwen-farm.json",
+                    config_path=root / ".sift-farm.json",
                     output_dir=root / "reports",
                     write=True,
                 )
@@ -405,7 +405,7 @@ class FarmRecommendTests(unittest.TestCase):
                 qwen_farm_recommend.build_config_apply_report(
                     root=ROOT,
                     recommendation_path=recommendation_path,
-                    config_path=root / ".qwen-farm.json",
+                    config_path=root / ".sift-farm.json",
                     output_dir=root / "reports",
                 )
 
@@ -420,7 +420,7 @@ class FarmRecommendTests(unittest.TestCase):
             report = qwen_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
-                config_path=root / ".qwen-farm.json",
+                config_path=root / ".sift-farm.json",
                 output_dir=root / "reports",
             )
 
@@ -436,7 +436,7 @@ class FarmRecommendTests(unittest.TestCase):
             report = qwen_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
-                config_path=root / ".qwen-farm.json",
+                config_path=root / ".sift-farm.json",
                 output_dir=output,
             )
 

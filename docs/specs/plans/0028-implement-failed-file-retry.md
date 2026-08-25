@@ -14,7 +14,7 @@ Add a `farm retry-failed` command that creates a new normal farm run containing 
 - [x] Add a retry planning helper that loads a source run, selects failed jobs, resolves source files, and validates missing/no-failure cases before model calls.
 - [x] Add a retry execution helper that reuses the normal farm run path with a selected-file discovery result.
 - [x] Attach additive retry provenance to the retry run status.
-- [x] Add CLI parsing and handler support for `python qwen.py farm retry-failed <run-ref>`.
+- [x] Add CLI parsing and handler support for `python sift.py farm retry-failed <run-ref>`.
 - [x] Add JSON output for retry command results with a tracked schema.
 - [x] Update persisted status schema for optional `request` and `retry` fields.
 - [x] Update docs for human and primary-AI usage.
@@ -29,7 +29,7 @@ Run:
 python -m src.qwen_spec_guard
 python -m unittest tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_schema tests.test_qwen_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -38,9 +38,9 @@ git diff --check
 After implementation, create or reuse a failed run and run:
 
 ```powershell
-python qwen.py farm retry-failed <failed-run-id> --output .run/dogfood_0028/retry
-python qwen.py farm status <retry-run-id>
-python qwen.py farm status <retry-run-id> --json
+python sift.py farm retry-failed <failed-run-id> --output .run/dogfood_0028/retry
+python sift.py farm status <retry-run-id>
+python sift.py farm status <retry-run-id> --json
 ```
 
 Inspect that the source run is unchanged and the retry run contains only failed files plus retry provenance.

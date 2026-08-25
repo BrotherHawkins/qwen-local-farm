@@ -118,7 +118,7 @@ def build_doctor_report(
     else:
         checks.append(check("ollama.executable", "fail", "Ollama executable was not found."))
         recommendations.append(
-            recommendation("ollama.install", "required", "Install Ollama, then run setup.", "python qwen.py setup")
+            recommendation("ollama.install", "required", "Install Ollama, then run setup.", "python sift.py setup")
         )
 
     endpoint_ready = False
@@ -138,7 +138,7 @@ def build_doctor_report(
             checks.append(check("ollama.endpoint", "warn", "Ollama endpoint did not respond."))
             if ollama_found:
                 recommendations.append(
-                    recommendation("ollama.start", "recommended", "Start the local service and rerun doctor.", "python qwen.py start")
+                    recommendation("ollama.start", "recommended", "Start the local service and rerun doctor.", "python sift.py start")
                 )
 
     agent: dict[str, Any] = {
@@ -186,7 +186,7 @@ def build_doctor_report(
                         "model.setup",
                         "recommended",
                         f"Pull or configure the selected model `{model}`.",
-                        "python qwen.py setup",
+                        "python sift.py setup",
                     )
                 )
         else:
@@ -216,7 +216,7 @@ def build_doctor_report(
                 "tokenizer.setup",
                 "optional",
                 "Run tokenizer setup before enabling token-aware chunking.",
-                "python qwen.py farm tokenizer setup",
+                "python sift.py farm tokenizer setup",
             )
         )
 
@@ -235,7 +235,7 @@ def build_doctor_report(
             "smoke.run",
             "optional",
             "Run a tiny model-free-sized farm input before a large batch.",
-            "python qwen.py farm run <input-folder> --mode summarize",
+            "python sift.py farm run <input-folder> --mode summarize",
         )
     )
 
@@ -383,7 +383,7 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
         )
     else:
         lines.append(
-            f"- Missing measured recommendation. Run: `{profile_recommendation.get('command') or 'python qwen.py farm recommend'}`"
+            f"- Missing measured recommendation. Run: `{profile_recommendation.get('command') or 'python sift.py farm recommend'}`"
         )
 
     lines.extend(["", "## Checks", "", "| Check | Status | Message |", "| --- | --- | --- |"])
@@ -433,7 +433,7 @@ def latest_profile_recommendation(root: Path) -> dict[str, Any]:
             "path": str(path),
             "status": "missing",
             "generated_at": None,
-            "command": "python qwen.py farm recommend",
+            "command": "python sift.py farm recommend",
         }
 
     try:
@@ -445,7 +445,7 @@ def latest_profile_recommendation(root: Path) -> dict[str, Any]:
             "status": "unreadable",
             "generated_at": None,
             "error": str(exc),
-            "command": "python qwen.py farm recommend",
+            "command": "python sift.py farm recommend",
         }
     if not isinstance(data, dict):
         return {
@@ -454,7 +454,7 @@ def latest_profile_recommendation(root: Path) -> dict[str, Any]:
             "status": "unreadable",
             "generated_at": None,
             "error": "Recommendation JSON must contain an object.",
-            "command": "python qwen.py farm recommend",
+            "command": "python sift.py farm recommend",
         }
 
     profile = data.get("profile") if isinstance(data.get("profile"), dict) else {}
@@ -477,5 +477,5 @@ def latest_profile_recommendation(root: Path) -> dict[str, Any]:
         "resource_mode": resource_mode.get("recommended"),
         "parallel_jobs": parallel_jobs.get("recommended"),
         "ollama_num_parallel": ollama_parallel.get("recommended"),
-        "command": "python qwen.py farm recommend",
+        "command": "python sift.py farm recommend",
     }

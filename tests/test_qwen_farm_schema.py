@@ -647,7 +647,7 @@ class FarmSchemaTests(unittest.TestCase):
             report = qwen_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
-                config_path=root / ".qwen-farm.json",
+                config_path=root / ".sift-farm.json",
                 output_dir=root / "reports",
                 generated_at="2026-08-24T00:00:01Z",
             )
@@ -730,7 +730,7 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertEqual(qwen_farm_schema.validate_file(instance, schema), [])
 
     def test_resolve_schema_reference_accepts_index_id_and_path(self) -> None:
-        schema_id = "https://qwen-local-farm.local/schemas/farm-doctor.schema.json"
+        schema_id = "https://sift.local/schemas/farm-doctor.schema.json"
 
         by_id = qwen_farm_schema.resolve_schema_reference(ROOT, schema_id)
         by_path = qwen_farm_schema.resolve_schema_reference(ROOT, "schemas/farm-doctor.schema.json")
@@ -808,7 +808,7 @@ class FarmSchemaTests(unittest.TestCase):
                     "schema_version": 1,
                     "dry_run": True,
                     "recommendation_path": "farm-recommendation.json",
-                    "config_path": ".qwen-farm.json",
+                    "config_path": ".sift-farm.json",
                     "proposed_config": {},
                     "changes": [],
                     "not_applied": [],
@@ -940,7 +940,7 @@ class FarmSchemaTests(unittest.TestCase):
             report = qwen_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
-                config_path=root / ".qwen-farm.json",
+                config_path=root / ".sift-farm.json",
                 output_dir=root / "reports",
                 generated_at="2026-08-24T00:00:01Z",
             )
@@ -974,7 +974,7 @@ class FarmSchemaTests(unittest.TestCase):
             by_id = qwen_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
-                "https://qwen-local-farm.local/schemas/farm-recommendation.schema.json",
+                "https://sift.local/schemas/farm-recommendation.schema.json",
             )
 
             self.assertTrue(by_path["valid"])
@@ -991,7 +991,7 @@ class FarmSchemaTests(unittest.TestCase):
             report = qwen_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
-                config_path=root / ".qwen-farm.json",
+                config_path=root / ".sift-farm.json",
                 output_dir=root / "reports",
                 generated_at="2026-08-24T00:00:01Z",
             )
@@ -1005,7 +1005,7 @@ class FarmSchemaTests(unittest.TestCase):
             by_id = qwen_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
-                "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
+                "https://sift.local/schemas/farm-config-apply.schema.json",
             )
 
             self.assertTrue(by_path["valid"])
@@ -1033,7 +1033,7 @@ class FarmSchemaTests(unittest.TestCase):
             by_id = qwen_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
-                "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
+                "https://sift.local/schemas/farm-snippet-pack.schema.json",
             )
 
             self.assertTrue(by_path["valid"])
@@ -1096,7 +1096,7 @@ class FarmSchemaTests(unittest.TestCase):
                         "status": "maybe",
                         "dry_run": True,
                         "recommendation_path": "farm-recommendation.json",
-                        "config_path": ".qwen-farm.json",
+                        "config_path": ".sift-farm.json",
                         "backup_path": None,
                         "recommendation": {
                             "status": "ready",

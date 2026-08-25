@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 FARM_SCHEMA_VERSION = "0.1"
-FARM_HOME_ENV = "QWEN_FARM_HOME"
+FARM_HOME_ENV = "SIFT_FARM_HOME"
 DEFAULT_FARM_HOME = Path(".run") / "farm"
 
 SKIP_DIRS = {

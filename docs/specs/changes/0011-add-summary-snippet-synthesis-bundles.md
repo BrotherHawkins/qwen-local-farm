@@ -53,7 +53,7 @@ This change does not add:
 The first implementation should prefer a reproducible post-run command:
 
 ```powershell
-python qwen.py farm synthesis bundle <run-dir> --output .run/synthesis_bundles --label dogfood-lite --max-snippets 24 --per-file 4
+python sift.py farm synthesis bundle <run-dir> --output .run/synthesis_bundles --label dogfood-lite --max-snippets 24 --per-file 4
 ```
 
 Exact command names can be refined during planning. The command should clearly read existing run artifacts and must not start a new farm run or call a model.
@@ -255,7 +255,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -270,7 +270,7 @@ Use a new ignored folder:
 Create a synthesis bundle from the latest dogfood lite run with snippets:
 
 ```powershell
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0011/synthesis-bundles --label dogfood-lite-0011
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0011/synthesis-bundles --label dogfood-lite-0011
 ```
 
 Inspect:

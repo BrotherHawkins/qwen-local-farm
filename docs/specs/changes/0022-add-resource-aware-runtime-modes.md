@@ -29,7 +29,7 @@ This change adds first-class resource mode support:
 - enforce CPU placement by applying `num_gpu: 0` to the effective agent options
 - reject obvious conflicts, such as `--resource-mode gpu` with an agent that explicitly forces `num_gpu: 0`
 - preserve existing power-user agent selection
-- update recommendation apply so `resource_mode` is written to `.qwen-farm.json` instead of only listed as not-applied guidance
+- update recommendation apply so `resource_mode` is written to `.sift-farm.json` instead of only listed as not-applied guidance
 - include requested and effective resource mode in resolved run config, status JSON, timing/dogfood identity where applicable, and doctor JSON/Markdown
 - document the power-user CLI path and the primary-AI assisted setup path
 - update affected schemas when existing JSON artifacts gain stable resource-mode fields
@@ -38,12 +38,12 @@ This change adds first-class resource mode support:
 Suggested command shape:
 
 ```powershell
-python qwen.py farm run articles --mode summarize --resource-mode auto
-python qwen.py farm run articles --mode summarize --resource-mode cpu
-python qwen.py farm run articles --mode summarize --agent qwen14-hybrid --resource-mode hybrid
-python qwen.py farm doctor --resource-mode auto
-python qwen.py farm recommend --resource-mode auto
-python qwen.py farm recommend apply --write
+python sift.py farm run articles --mode summarize --resource-mode auto
+python sift.py farm run articles --mode summarize --resource-mode cpu
+python sift.py farm run articles --mode summarize --agent qwen14-hybrid --resource-mode hybrid
+python sift.py farm doctor --resource-mode auto
+python sift.py farm recommend --resource-mode auto
+python sift.py farm recommend apply --write
 ```
 
 Suggested config shape:
@@ -104,7 +104,7 @@ The farm recognizes four resource modes:
 Resource mode participates in the existing deterministic config resolution order:
 
 1. Start with the selected built-in profile.
-2. Apply discovered or explicit `.qwen-farm.json`.
+2. Apply discovered or explicit `.sift-farm.json`.
 3. Apply CLI overrides.
 4. Load the selected agent.
 5. Resolve requested resource mode to an effective resource mode.
@@ -210,7 +210,7 @@ Spec 0021 intentionally left recommendation `resource_mode` as not-applied guida
 
 After this change:
 
-- `farm recommend apply` should write supported `resource_mode` values into `.qwen-farm.json`
+- `farm recommend apply` should write supported `resource_mode` values into `.sift-farm.json`
 - apply reports should show the resource-mode change in `changes`
 - `resource_mode` should no longer appear in `not_applied` when it is valid and supported
 - `OLLAMA_NUM_PARALLEL` remains not-applied guidance
@@ -252,7 +252,7 @@ If implementation adds a new JSON artifact, it must add:
 
 ## Acceptance Criteria
 
-- `.qwen-farm.json` accepts a validated `resource_mode` field with values `auto`, `gpu`, `hybrid`, or `cpu`.
+- `.sift-farm.json` accepts a validated `resource_mode` field with values `auto`, `gpu`, `hybrid`, or `cpu`.
 - Farm run CLI accepts `--resource-mode`.
 - Runtime config resolution includes requested and effective resource mode.
 - `auto` resolves deterministically before model calls.
@@ -267,7 +267,7 @@ If implementation adds a new JSON artifact, it must add:
 - Timing/dogfood identity records include resource mode where they already capture runtime identity.
 - `farm doctor` reports resource mode resolution without running benchmarks.
 - `farm recommend` docs/next actions explain that resource mode can now be applied to config.
-- `farm recommend apply` writes valid resource mode recommendations to `.qwen-farm.json`.
+- `farm recommend apply` writes valid resource mode recommendations to `.sift-farm.json`.
 - `farm recommend apply` keeps `OLLAMA_NUM_PARALLEL` as not-applied guidance.
 - Invalid resource modes fail before a run starts or config is written.
 - Existing valid configs without `resource_mode` continue to work and resolve through profile defaults.
@@ -305,19 +305,19 @@ Verification:
 ```powershell
 python -m unittest tests.test_qwen_farm_profiles tests.test_qwen_farm tests.test_qwen_farm_doctor tests.test_qwen_farm_recommend tests.test_qwen_farm_schema tests.test_qwen_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual/local smoke:
 
 ```powershell
-python qwen.py farm doctor --resource-mode auto --json
-python qwen.py farm recommend --agent default --profile local-8gb --resource-mode auto --output .run/recommendations
-python qwen.py farm recommend apply --config .run/dogfood_0022/.qwen-farm.json --write
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0022/gpu --mode summarize --agent default --resource-mode gpu
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0022/cpu --mode summarize --agent default --resource-mode cpu
-python qwen.py farm status <run-id> --json
+python sift.py farm doctor --resource-mode auto --json
+python sift.py farm recommend --agent default --profile local-8gb --resource-mode auto --output .run/recommendations
+python sift.py farm recommend apply --config .run/dogfood_0022/.sift-farm.json --write
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0022/gpu --mode summarize --agent default --resource-mode gpu
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0022/cpu --mode summarize --agent default --resource-mode cpu
+python sift.py farm status <run-id> --json
 ```
 
 Save local smoke notes under:

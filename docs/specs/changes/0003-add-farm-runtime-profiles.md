@@ -5,7 +5,7 @@ Type: Add
 
 ## WHY
 
-Qwen Local Farm currently behaves as if every user is running the same local machine profile. That was useful for dogfooding on an 8GB GPU system, but it makes the farm harder to trust on smaller CPU-only machines and leaves performance unused on larger local systems.
+Sift currently behaves as if every user is running the same local machine profile. That was useful for dogfooding on an 8GB GPU system, but it makes the farm harder to trust on smaller CPU-only machines and leaves performance unused on larger local systems.
 
 The farm needs an explicit runtime profile layer so:
 
@@ -85,13 +85,13 @@ The farm can read a JSON config file for project or scripted setup.
 Default discovery:
 
 ```text
-.qwen-farm.json
+.sift-farm.json
 ```
 
 Explicit config:
 
 ```bash
-python qwen.py farm run input-folder --config path/to/qwen-farm.json
+python sift.py farm run input-folder --config path/to/qwen-farm.json
 ```
 
 The config file may select a profile and override individual fields:
@@ -118,9 +118,9 @@ Invalid config files fail before a run starts with a clear error. Unknown fields
 The farm run command accepts explicit overrides for common profile fields:
 
 ```bash
-python qwen.py farm run input-folder --profile local-12gb
-python qwen.py farm run input-folder --profile local-12gb --model qwen3.5:8b
-python qwen.py farm run input-folder --chunk-chars 18000 --parallel-jobs 2
+python sift.py farm run input-folder --profile local-12gb
+python sift.py farm run input-folder --profile local-12gb --model qwen3.5:8b
+python sift.py farm run input-folder --chunk-chars 18000 --parallel-jobs 2
 ```
 
 CLI overrides are intended for power users and for AI assistants that have already selected a safe profile.
@@ -174,8 +174,8 @@ Parallel chunks: 1
 
 The docs describe two setup paths:
 
-- power users edit `.qwen-farm.json` or pass CLI flags
-- AI assistants generate or update `.qwen-farm.json` after asking about machine size or using a future doctor/recommendation command
+- power users edit `.sift-farm.json` or pass CLI flags
+- AI assistants generate or update `.sift-farm.json` after asking about machine size or using a future doctor/recommendation command
 
 The assistant path must produce the same visible config file and resolved run artifact that power users can inspect.
 
@@ -183,7 +183,7 @@ The assistant path must produce the same visible config file and resolved run ar
 
 - The farm has built-in named profiles: `cpu-small`, `local-4gb`, `local-8gb`, `local-12gb`, `local-24gb`, and `custom`.
 - The default behavior resolves to `local-8gb` when no config file or CLI profile is provided.
-- A `.qwen-farm.json` config file can select a profile and override model, summarize sizing, and concurrency settings.
+- A `.sift-farm.json` config file can select a profile and override model, summarize sizing, and concurrency settings.
 - `--config` can point to an explicit config file.
 - CLI flags can override profile, model, summarize chunk sizing, and job concurrency.
 - Resolution order is deterministic and documented.

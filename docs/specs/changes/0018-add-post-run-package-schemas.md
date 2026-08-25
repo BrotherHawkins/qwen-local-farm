@@ -23,10 +23,10 @@ This change favors:
 This change adds tracked schemas for current post-run package artifacts:
 
 - `timing-summary.json`
-- snippet pack JSON from `python qwen.py farm snippets pack`
-- synthesis bundle JSON from `python qwen.py farm synthesis bundle`
-- dogfood quality record JSON from `python qwen.py farm dogfood record`
-- dogfood comparison JSON from `python qwen.py farm dogfood compare`
+- snippet pack JSON from `python sift.py farm snippets pack`
+- synthesis bundle JSON from `python sift.py farm synthesis bundle`
+- dogfood quality record JSON from `python sift.py farm dogfood record`
+- dogfood comparison JSON from `python sift.py farm dogfood compare`
 
 This change also:
 
@@ -164,27 +164,27 @@ Verification:
 ```powershell
 python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm_snippet_packs tests.test_qwen_farm_synthesis_bundles tests.test_qwen_farm_dogfood
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual smoke with existing local artifacts when available:
 
 ```powershell
-python qwen.py farm schema validate <run-dir>/timing-summary.json
-python qwen.py farm snippets pack <run-ref> --output .run/schema-smoke/snippet-packs --label schema-smoke
-python qwen.py farm synthesis bundle <run-ref> --output .run/schema-smoke/synthesis-bundles --label schema-smoke
-python qwen.py farm dogfood record <run-ref> --output .run/schema-smoke/dogfood-runs --label schema-smoke
-python qwen.py farm schema validate .run/schema-smoke/snippet-packs/schema-smoke.json
-python qwen.py farm schema validate .run/schema-smoke/synthesis-bundles/schema-smoke.json
-python qwen.py farm schema validate .run/schema-smoke/dogfood-runs/schema-smoke.json
+python sift.py farm schema validate <run-dir>/timing-summary.json
+python sift.py farm snippets pack <run-ref> --output .run/schema-smoke/snippet-packs --label schema-smoke
+python sift.py farm synthesis bundle <run-ref> --output .run/schema-smoke/synthesis-bundles --label schema-smoke
+python sift.py farm dogfood record <run-ref> --output .run/schema-smoke/dogfood-runs --label schema-smoke
+python sift.py farm schema validate .run/schema-smoke/snippet-packs/schema-smoke.json
+python sift.py farm schema validate .run/schema-smoke/synthesis-bundles/schema-smoke.json
+python sift.py farm schema validate .run/schema-smoke/dogfood-runs/schema-smoke.json
 ```
 
 If two dogfood records are available, also smoke:
 
 ```powershell
-python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output .run/schema-smoke/dogfood-comparisons
-python qwen.py farm schema validate <comparison.json>
+python sift.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output .run/schema-smoke/dogfood-comparisons
+python sift.py farm schema validate <comparison.json>
 ```
 
 ## Deferred To Roadmap

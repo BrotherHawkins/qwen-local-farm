@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-job-result.schema.json",
-  "title": "Qwen Local Farm Persisted Job Result",
+  "$id": "https://sift.local/schemas/farm-job-result.schema.json",
+  "title": "Sift Persisted Job Result",
   "description": "Current persisted per-job result artifact written as jobs/job-*/result.json.",
   "type": "object",
   "required": [

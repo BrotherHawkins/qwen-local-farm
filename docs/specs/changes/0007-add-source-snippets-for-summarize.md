@@ -56,7 +56,7 @@ This change does not add:
 Snippet extraction policy has normal farm config precedence:
 
 1. Built-in default/profile.
-2. Project `.qwen-farm.json` or explicit config file.
+2. Project `.sift-farm.json` or explicit config file.
 3. Per-request CLI override.
 
 That means a power user or assistant can set a project default once, while a specific run can still override it.
@@ -121,10 +121,10 @@ Project default example:
 Per-request CLI overrides:
 
 ```bash
-python qwen.py farm run notes --mode summarize --snippets auto
-python qwen.py farm run notes --mode summarize --snippets off
-python qwen.py farm run notes --mode summarize --snippets 3
-python qwen.py farm run notes --mode summarize --snippets 5 --snippet-max-chars 800
+python sift.py farm run notes --mode summarize --snippets auto
+python sift.py farm run notes --mode summarize --snippets off
+python sift.py farm run notes --mode summarize --snippets 3
+python sift.py farm run notes --mode summarize --snippets 5 --snippet-max-chars 800
 ```
 
 Rules:

@@ -15,7 +15,7 @@ Implement a safe recommendation-to-config workflow that previews by default, wri
    - extract supported farm config fields from the recommendation
    - list `resource_mode` and `OLLAMA_NUM_PARALLEL` as not-applied guidance
 2. Build proposed config safely.
-   - read existing `.qwen-farm.json` when present
+   - read existing `.sift-farm.json` when present
    - validate existing config through existing profile/config helpers before merging
    - merge supported recommendation fields while preserving safe existing fields
    - validate the proposed config through existing config normalization helpers
@@ -28,10 +28,10 @@ Implement a safe recommendation-to-config workflow that previews by default, wri
    - write config with deterministic JSON formatting
    - write the apply report JSON and Markdown in preview and write modes
 4. Wire CLI.
-   - implement the nested command `python qwen.py farm recommend apply`
+   - implement the nested command `python sift.py farm recommend apply`
    - support optional recommendation path
    - support `--config`, `--output`, `--write`, and `--json`
-   - preserve existing `python qwen.py farm recommend` behavior
+   - preserve existing `python sift.py farm recommend` behavior
    - print concise human output plus report paths in Markdown mode
 5. Define the apply report schema.
    - add `schemas/farm-config-apply.schema.json`
@@ -75,11 +75,11 @@ Implement a safe recommendation-to-config workflow that previews by default, wri
 Preferred command shape:
 
 ```powershell
-python qwen.py farm recommend apply
-python qwen.py farm recommend apply .run/recommendations/farm-recommendation.json
-python qwen.py farm recommend apply --config .qwen-farm.json
-python qwen.py farm recommend apply --write
-python qwen.py farm recommend apply --json
+python sift.py farm recommend apply
+python sift.py farm recommend apply .run/recommendations/farm-recommendation.json
+python sift.py farm recommend apply --config .sift-farm.json
+python sift.py farm recommend apply --write
+python sift.py farm recommend apply --json
 ```
 
 Expected outputs:
@@ -92,7 +92,7 @@ Expected outputs:
 Schema validation:
 
 ```powershell
-python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
+python sift.py farm schema validate .run/recommendations/farm-config-apply.json
 ```
 
 ## Apply Report Shape
@@ -127,18 +127,18 @@ Completed checks:
 ```powershell
 python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_profiles tests.test_qwen_farm_schema tests.test_qwen_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Completed manual/local smoke:
 
 ```powershell
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
-python qwen.py farm recommend apply
-python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
-python qwen.py farm recommend apply --config .run/dogfood_0021/.qwen-farm.json --write
-python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm recommend apply
+python sift.py farm schema validate .run/recommendations/farm-config-apply.json
+python sift.py farm recommend apply --config .run/dogfood_0021/.sift-farm.json --write
+python sift.py farm schema validate .run/recommendations/farm-config-apply.json
 ```
 
 Smoke report:
@@ -151,7 +151,7 @@ Smoke report:
 
 - [x] Add recommendation apply helpers.
 - [x] Validate recommendation JSON before use.
-- [x] Build proposed `.qwen-farm.json` from supported recommendation fields.
+- [x] Build proposed `.sift-farm.json` from supported recommendation fields.
 - [x] Preserve and merge valid existing config.
 - [x] Block invalid existing config.
 - [x] Compute field-level changes.

@@ -37,7 +37,7 @@ It currently tests Python:
 Run these before pushing when touching Python:
 
 ```bash
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 python -m unittest discover -s tests -p "test_*.py"
 python -m src.qwen_spec_guard
 ```

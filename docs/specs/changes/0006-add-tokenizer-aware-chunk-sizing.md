@@ -276,7 +276,7 @@ The report compares:
 ## Acceptance Criteria
 
 - Existing character-based summarize chunking remains the default.
-- Existing `.qwen-farm.json` files with `summarize.chunk_chars` and `summarize.reduce_chars` remain valid.
+- Existing `.sift-farm.json` files with `summarize.chunk_chars` and `summarize.reduce_chars` remain valid.
 - Settings can opt into tokenizer-aware summarize chunking.
 - CLI overrides can opt into tokenizer-aware summarize chunking for one run.
 - A tokenizer probe/setup path verifies exact local token counting for `qwen3.5:4b`, `qwen3:4b`, `qwen3:8b`, and `qwen3:14b`.

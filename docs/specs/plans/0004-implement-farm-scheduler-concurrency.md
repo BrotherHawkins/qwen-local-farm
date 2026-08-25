@@ -135,9 +135,9 @@ Manual verification:
 
 ```bash
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
-python qwen.py farm run <small-folder> --output .run/manual-concurrency --mode summarize --parallel-jobs 2
-python qwen.py farm status <run-id>
+python -m compileall sift.py src tests
+python sift.py farm run <small-folder> --output .run/manual-concurrency --mode summarize --parallel-jobs 2
+python sift.py farm status <run-id>
 ```
 
 ## Verification Plan
@@ -146,14 +146,14 @@ Before PR:
 
 ```bash
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Optional live smoke test:
 
 ```bash
-python qwen.py farm run .run/dogfood3/articles-text --output .run/manual-concurrency-dogfood --mode summarize --agent default --parallel-jobs 2
+python sift.py farm run .run/dogfood3/articles-text --output .run/manual-concurrency-dogfood --mode summarize --agent default --parallel-jobs 2
 ```
 
 The live smoke test should be optional because CI must remain model-free and because local Ollama parallel request behavior depends on user environment settings.

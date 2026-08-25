@@ -15,7 +15,7 @@ from src.qwen_farm_snippets import (
 )
 
 
-CONFIG_FILE_NAME = ".qwen-farm.json"
+CONFIG_FILE_NAME = ".sift-farm.json"
 PROFILE_NAMES = ["cpu-small", "local-4gb", "local-8gb", "local-12gb", "local-24gb", "custom"]
 DEFAULT_PROFILE = "local-8gb"
 RESOURCE_MODES = {"auto", "gpu", "hybrid", "cpu"}

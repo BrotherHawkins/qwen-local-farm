@@ -1,6 +1,6 @@
 # Specs
 
-This folder contains living behavioral specs for Qwen Local Farm.
+This folder contains living behavioral specs for Sift.
 
 Roadmaps describe where the project may go. Specs describe behavior that is being proposed, accepted, implemented, or deprecated.
 

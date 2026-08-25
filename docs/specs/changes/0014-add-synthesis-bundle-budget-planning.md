@@ -53,14 +53,14 @@ This change does not add:
 Current commands continue to work:
 
 ```powershell
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
 ```
 
 Budgeted commands may add:
 
 ```powershell
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
 ```
 
 Defaults:
@@ -210,7 +210,7 @@ git diff --check
 Optional dogfood smoke, using an existing local lite run:
 
 ```powershell
-python qwen.py farm synthesis bundle <run-id> --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-budget --max-chars 60000
+python sift.py farm synthesis bundle <run-id> --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-budget --max-chars 60000
 ```
 
 Inspect:

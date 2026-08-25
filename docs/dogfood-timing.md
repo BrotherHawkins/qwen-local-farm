@@ -13,7 +13,7 @@ Generated timing history lives under:
 Record an existing farm run:
 
 ```powershell
-python qwen.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
+python sift.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
 ```
 
 The default output folder is:
@@ -36,7 +36,7 @@ Timing records include:
 Compare two timing records:
 
 ```powershell
-python qwen.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json
+python sift.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json
 ```
 
 The default comparison output folder is:

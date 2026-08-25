@@ -54,17 +54,17 @@ This change does not add:
 Existing path-based commands remain valid:
 
 ```powershell
-python qwen.py farm snippets pack .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-pack
-python qwen.py farm synthesis bundle .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-bundle
-python qwen.py farm dogfood record .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-record
+python sift.py farm snippets pack .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-pack
+python sift.py farm synthesis bundle .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-bundle
+python sift.py farm dogfood record .run/dogfood_lite/farm-results/farm-run-2026-08-24-120000-abcd --label lite-record
 ```
 
 The same commands should also accept the known run ID:
 
 ```powershell
-python qwen.py farm snippets pack farm-run-2026-08-24-120000-abcd --label lite-pack
-python qwen.py farm synthesis bundle farm-run-2026-08-24-120000-abcd --label lite-bundle
-python qwen.py farm dogfood record farm-run-2026-08-24-120000-abcd --label lite-record
+python sift.py farm snippets pack farm-run-2026-08-24-120000-abcd --label lite-pack
+python sift.py farm synthesis bundle farm-run-2026-08-24-120000-abcd --label lite-bundle
+python sift.py farm dogfood record farm-run-2026-08-24-120000-abcd --label lite-record
 ```
 
 The parser may keep its internal argument name as `run_dir` for compatibility, but user-facing help and docs should call the positional value `<run-ref>` where practical.
@@ -125,10 +125,10 @@ python -m unittest discover -s tests
 Manual smoke, using any local indexed farm run:
 
 ```powershell
-python qwen.py farm list
-python qwen.py farm snippets pack <run-id> --output .run/smoke/snippet-packs
-python qwen.py farm synthesis bundle <run-id> --output .run/smoke/synthesis-bundles
-python qwen.py farm dogfood record <run-id> --output .run/smoke/dogfood-history
+python sift.py farm list
+python sift.py farm snippets pack <run-id> --output .run/smoke/snippet-packs
+python sift.py farm synthesis bundle <run-id> --output .run/smoke/synthesis-bundles
+python sift.py farm dogfood record <run-id> --output .run/smoke/dogfood-history
 ```
 
 ## Deferred To Roadmap

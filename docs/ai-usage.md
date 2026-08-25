@@ -93,7 +93,7 @@ Possible shape:
 
 ```json
 {
-  "service": "qwen-local-farm",
+  "service": "sift",
   "version": "0.1",
   "available": true,
   "interfaces": ["cli", "http", "drop_folder"],
@@ -146,7 +146,7 @@ Use this path when a user wants to try a new Ollama model without changing the f
 2. Add an agent JSON file under `agents/`.
 3. Set `model`, `model_family`, `backend`, `support`, `tokenizer`, and `options.num_ctx`.
 4. Start new non-Qwen models as `support: experimental` with `tokenizer.strategy: none`.
-5. Run `python qwen.py farm doctor --agent <agent-id>`.
+5. Run `python sift.py farm doctor --agent <agent-id>`.
 6. Run a tiny character-chunking smoke before any large batch.
 7. Promote to `support: tested` only after local dogfood quality and timing evidence exists.
 
@@ -159,7 +159,7 @@ Use these first-pass metadata values:
 | `support` | `tested`, `experimental`, `unknown` |
 | `tokenizer.strategy` | `huggingface`, `none`, `unknown` |
 
-Exact token-aware chunking for a new model requires a Hugging Face tokenizer ID declared in the agent with `tokenizer.strategy: huggingface` and `tokenizer.exact: true`, plus local tokenizer readiness verified by `python qwen.py farm tokenizer status --model <model>`. If the model is added as a bundled default or recognized alias, also update `src/qwen_farm_model_metadata.py` and add model-free tests. Otherwise keep character chunking as the recommended route.
+Exact token-aware chunking for a new model requires a Hugging Face tokenizer ID declared in the agent with `tokenizer.strategy: huggingface` and `tokenizer.exact: true`, plus local tokenizer readiness verified by `python sift.py farm tokenizer status --model <model>`. If the model is added as a bundled default or recognized alias, also update `src/qwen_farm_model_metadata.py` and add model-free tests. Otherwise keep character chunking as the recommended route.
 
 ## Immediate Ask Interface
 
@@ -168,7 +168,7 @@ Use immediate ask when the caller wants a simple local answer now.
 CLI:
 
 ```bash
-python qwen.py ask "Summarize this idea in five bullets." qwen8
+python sift.py ask "Summarize this idea in five bullets." qwen8
 ```
 
 HTTP:
@@ -186,7 +186,7 @@ The worker-farm interface supports active CLI invocation now. Drop-folder intake
 Active invocation:
 
 ```bash
-python qwen.py farm run input-folder --output results --mode summarize
+python sift.py farm run input-folder --output results --mode summarize
 ```
 
 In `summarize` mode, oversized text files are chunked automatically. Each chunk gets its own input and result artifacts under the job folder, then the farm reduces chunk summaries into the normal file-level `result.md` and `result.json`.
@@ -196,21 +196,21 @@ For speed, summarize calls use a compact labeled-text contract from the local mo
 Runtime profile invocation:
 
 ```bash
-python qwen.py farm run input-folder --mode summarize --profile local-12gb
-python qwen.py farm run input-folder --mode summarize --config .qwen-farm.json
-python qwen.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
-python qwen.py farm run input-folder --mode summarize --chunk-strategy token
-python qwen.py farm run input-folder --mode summarize --snippets auto
-python qwen.py farm run input-folder --mode summarize --resource-mode cpu
-python qwen.py farm run input-folder --mode summarize --max-attempts 1 --chunk-max-attempts 1
-python qwen.py farm run input-folder --mode summarize --chunk-overlap-chars 500
+python sift.py farm run input-folder --mode summarize --profile local-12gb
+python sift.py farm run input-folder --mode summarize --config .sift-farm.json
+python sift.py farm run input-folder --mode summarize --chunk-chars 18000 --parallel-jobs 2
+python sift.py farm run input-folder --mode summarize --chunk-strategy token
+python sift.py farm run input-folder --mode summarize --snippets auto
+python sift.py farm run input-folder --mode summarize --resource-mode cpu
+python sift.py farm run input-folder --mode summarize --max-attempts 1 --chunk-max-attempts 1
+python sift.py farm run input-folder --mode summarize --chunk-overlap-chars 500
 ```
 
 `--parallel-jobs` and `concurrency.jobs` are farm worker slots. They control how many file jobs the farm submits at once. They do not automatically configure Ollama parallel inference.
 
 For actual same-model parallel processing, the user's Ollama server may need external setup such as `OLLAMA_NUM_PARALLEL=2`, and memory use scales with context/KV cache. Assistants should treat this as an environment choice, not something the farm silently changes. Recommend small tests such as `--parallel-jobs 2` before increasing concurrency.
 
-Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.qwen-farm.json` for the user, then the farm writes the final effective settings into every run.
+Profiles are the current bridge between power-user control and assistant-operated setup. A primary AI can create or edit `.sift-farm.json` for the user, then the farm writes the final effective settings into every run.
 
 Failure-policy knobs follow the same precedence path. Use `failure_policy.max_attempts` or `--max-attempts` to control whole-file retries. Use `chunk_max_attempts` and `reduce_max_attempts` for chunked summarize model-call retries. `per_file_timeout_seconds` preserves the existing public timeout setting, but currently applies to each local model call rather than enforcing a true wall-clock cap over all retries/chunks for a file.
 
@@ -222,7 +222,7 @@ Use character chunking when:
 
 Use token-aware chunking when:
 
-- `python qwen.py farm tokenizer status` reports ready
+- `python sift.py farm tokenizer status` reports ready
 - large article-like inputs are being over-split by character budgets
 - the primary AI wants fewer local worker calls before frontier synthesis
 
@@ -232,14 +232,14 @@ Chunked summarize preserves Markdown heading ancestry by default. This means chu
 
 Overlap is opt-in. Use `--chunk-overlap-chars <n>` for character chunking or `--chunk-overlap-tokens <n>` for token-aware chunking when dogfood shows ideas are being split awkwardly across chunk boundaries. Keep overlap small because it spends prompt budget and can increase duplication in summaries. Runtime artifacts record the effective heading/overlap settings and chunk metadata records whether a chunk received prior-source overlap.
 
-For less technical users, prefer running `python qwen.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
+For less technical users, prefer running `python sift.py farm tokenizer setup` and leaving the resulting `.run/tokenizers/TOKENIZER_STATUS.md` report behind for inspection. If setup fails, explain the missing package/cache step or switch back to character chunking.
 
 For measured local settings guidance, use the recommendation workflow:
 
 ```bash
-python qwen.py farm doctor --json
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
-python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+python sift.py farm doctor --json
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm schema validate .run/recommendations/farm-recommendation.json
 ```
 
 `farm doctor` stays read-only and fast. It reports whether a latest recommendation exists and points to `farm recommend` when missing. `farm recommend` writes `.run/recommendations/farm-recommendation.json` plus Markdown, runs only a tiny user-invoked Ollama probe when the selected model is ready, and never edits config or service environment variables.
@@ -255,22 +255,22 @@ Primary AIs should read the recommendation JSON before suggesting settings. Trea
 
 Resource mode does not silently change model size or switch agent id. If the user wants a deeper model, choose an agent such as `qwen8` or `qwen14-hybrid` explicitly.
 
-If `status` is not `ready`, explain the warnings and next actions rather than treating the settings as measured truth. If confidence is low, run a small dogfood folder before changing `.qwen-farm.json`.
+If `status` is not `ready`, explain the warnings and next actions rather than treating the settings as measured truth. If confidence is low, run a small dogfood folder before changing `.sift-farm.json`.
 
 To safely turn a recommendation into project config, preview first:
 
 ```bash
-python qwen.py farm recommend apply
-python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
+python sift.py farm recommend apply
+python sift.py farm schema validate .run/recommendations/farm-config-apply.json
 ```
 
 Only apply after inspecting the preview:
 
 ```bash
-python qwen.py farm recommend apply --write
+python sift.py farm recommend apply --write
 ```
 
-Preview mode does not modify `.qwen-farm.json`. Write mode backs up an existing config first and writes only supported farm config fields. The apply report JSON lists exact field-level changes. `resource_mode` is applied when valid; `OLLAMA_NUM_PARALLEL` stays in `not_applied` guidance because the farm does not change Ollama service state.
+Preview mode does not modify `.sift-farm.json`. Write mode backs up an existing config first and writes only supported farm config fields. The apply report JSON lists exact field-level changes. `resource_mode` is applied when valid; `OLLAMA_NUM_PARALLEL` stays in `not_applied` guidance because the farm does not change Ollama service state.
 
 Use snippets when:
 
@@ -281,9 +281,9 @@ Use snippets when:
 Snippet policy follows normal farm config precedence. Project config can make snippets the default, and a request can override it with:
 
 ```bash
-python qwen.py farm run input-folder --mode summarize --snippets off
-python qwen.py farm run input-folder --mode summarize --snippets auto
-python qwen.py farm run input-folder --mode summarize --snippets 3
+python sift.py farm run input-folder --mode summarize --snippets off
+python sift.py farm run input-folder --mode summarize --snippets auto
+python sift.py farm run input-folder --mode summarize --snippets 3
 ```
 
 `--snippets auto` resolves a requested count per file/job from exact token count when available, otherwise from chunk count or file size. Fixed counts are useful for repeatable dogfood comparisons. The model suggests candidate snippets, but the farm only persists snippets that it can verify as exact source text.
@@ -293,28 +293,28 @@ The farm ranks verified candidates before final selection. `result.md` stays cle
 When a downstream synthesis model needs source-backed evidence across a whole run, create a post-run snippet pack:
 
 ```bash
-python qwen.py farm snippets pack <run-ref> --label research-pack --max-snippets 24 --per-file 4
+python sift.py farm snippets pack <run-ref> --label research-pack --max-snippets 24 --per-file 4
 ```
 
-`<run-ref>` can be either a run directory path or a known run ID from `python qwen.py farm list`. Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, and skipped-job diagnostics.
+`<run-ref>` can be either a run directory path or a known run ID from `python sift.py farm list`. Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, and skipped-job diagnostics.
 
 When the downstream synthesis model needs both orientation and evidence, prefer a synthesis bundle:
 
 ```bash
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
-python qwen.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
 ```
 
 Synthesis bundles read the same existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/synthesis_bundles/` by default. Use them when summaries alone are too thin and snippet-only packs lack enough article context. They include summary-only jobs when no snippets were selected, so the downstream model can still see every successful summarize result.
 
 Every synthesis bundle records character count and estimated tokens in its JSON `budget` object and Markdown header. Use `--max-chars` when a downstream prompt has a hard character budget. Use `--max-estimated-tokens` for rough frontier-model planning; it uses a deterministic character/token estimate, not an exact downstream tokenizer. When capped, the bundle drops optional whole snippets, open questions, bullets, and summary-only items in a stable order rather than truncating text mid-snippet.
 
-For dogfood quality comparisons, use `python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
+For dogfood quality comparisons, use `python sift.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python sift.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
 
-For dogfood timing comparisons, use `python qwen.py farm dogfood timing record <run-ref> --label <label>` after comparable runs, then `python qwen.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>`. Timing records live under `.run/dogfood_timing/` by default and highlight total, per-job, queue, chunk, call, and call-kind deltas plus comparability notes. Use `docs/dogfood-timing.md` when deciding why a run got faster or slower.
+For dogfood timing comparisons, use `python sift.py farm dogfood timing record <run-ref> --label <label>` after comparable runs, then `python sift.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>`. Timing records live under `.run/dogfood_timing/` by default and highlight total, per-job, queue, chunk, call, and call-kind deltas plus comparability notes. Use `docs/dogfood-timing.md` when deciding why a run got faster or slower.
 
-Example `.qwen-farm.json`:
+Example `.sift-farm.json`:
 
 ```json
 {
@@ -361,14 +361,14 @@ custom
 Custom prompt invocation:
 
 ```bash
-python qwen.py farm run input-folder --mode prompt --instructions "For each file, identify risks and next actions."
+python sift.py farm run input-folder --mode prompt --instructions "For each file, identify risks and next actions."
 ```
 
 Discovery filters:
 
 ```bash
-python qwen.py farm run input-folder --mode summarize --include "articles/*.txt"
-python qwen.py farm run input-folder --mode summarize --include "**/*.txt" --exclude "**/raw/**"
+python sift.py farm run input-folder --mode summarize --include "articles/*.txt"
+python sift.py farm run input-folder --mode summarize --include "**/*.txt" --exclude "**/raw/**"
 ```
 
 Use `--include` to narrow the eligible text files under the input folder. Use `--exclude` to remove noisy paths; exclude wins over include. Patterns match input-folder-relative paths with `/` separators. These filters do not force unsafe files into processing: built-in skips for binary files, unsupported suffixes, minified assets, generated folders, and vendor folders still apply. Inspect `farm-config.resolved.json`, `farm-status.json`, or `farm status <run-id> --json` to see effective `runtime.discovery` settings and discovery skip diagnostics.
@@ -376,11 +376,11 @@ Use `--include` to narrow the eligible text files under the input folder. Use `-
 Status inspection:
 
 ```bash
-python qwen.py farm list
-python qwen.py farm status
-python qwen.py farm status <run-id>
-python qwen.py farm status --json
-python qwen.py farm status <run-id> --json
+python sift.py farm list
+python sift.py farm status
+python sift.py farm status <run-id>
+python sift.py farm status --json
+python sift.py farm status <run-id> --json
 ```
 
 Use `farm status --json` when a script or primary AI needs a machine-readable overview of known runs. Use `farm status <run-id> --json` when it needs the full loaded status for one run without parsing Markdown.
@@ -390,8 +390,8 @@ For active chunked summarize runs, inspect each running job's `progress` object 
 When a completed run is `partial` or `failed`, prefer retrying failed files before rerunning the whole input folder:
 
 ```bash
-python qwen.py farm retry-failed <run-id>
-python qwen.py farm retry-failed <run-id> --json
+python sift.py farm retry-failed <run-id>
+python sift.py farm retry-failed <run-id> --json
 ```
 
 The retry command creates a new normal run containing only source jobs with `status: "failed"`. It preserves the source run's durable mode, agent, runtime config, and stored instructions when available. Use `--instructions` when retrying an older run that lacks `request.instructions`, or when the human wants to change the retry prompt. The source run is append-only evidence and is not modified.
@@ -422,7 +422,7 @@ farm-inbox/
 The drop-folder MVP should begin with manual scanning:
 
 ```bash
-python qwen.py farm scan
+python sift.py farm scan
 ```
 
 Long-running watchers and scheduled polling can come later.
@@ -484,11 +484,11 @@ Tracked JSON Schema-compatible contracts live in `schemas/`. Use `schemas/index.
 Use `farm schema validate` when a primary AI or script needs to confirm that an artifact matches the expected contract before consuming it:
 
 ```bash
-python qwen.py farm schema validate .run/reports/setup-doctor.json --json
-python qwen.py farm schema validate <run-dir>/farm-status.json
-python qwen.py farm schema validate <run-dir>/jobs/job-0001/result.json
-python qwen.py farm schema validate <run-dir>/timing-summary.json
-python qwen.py farm schema validate .run/synthesis_bundles/<label>.json
+python sift.py farm schema validate .run/reports/setup-doctor.json --json
+python sift.py farm schema validate <run-dir>/farm-status.json
+python sift.py farm schema validate <run-dir>/jobs/job-0001/result.json
+python sift.py farm schema validate <run-dir>/timing-summary.json
+python sift.py farm schema validate .run/synthesis_bundles/<label>.json
 ```
 
 Auto-detection covers the current core farm JSON artifacts and post-run package JSON artifacts. Pass `--schema <schema-path-or-id>` when validating a less obvious file or when a workflow wants an explicit contract.
@@ -508,7 +508,7 @@ Default farm home:
 Future override:
 
 ```text
-QWEN_FARM_HOME
+SIFT_FARM_HOME
 ```
 
 Run IDs use timestamp plus a short random suffix:
@@ -572,8 +572,8 @@ The farm supports a first read-only AI-guided setup path.
 Command:
 
 ```bash
-python qwen.py farm doctor
-python qwen.py farm doctor --json
+python sift.py farm doctor
+python sift.py farm doctor --json
 ```
 
 Expected outputs:
@@ -593,7 +593,7 @@ The doctor report should let a primary AI explain:
 - whether tokenizer dependencies or cache setup are still needed
 - whether more setup is needed
 
-Doctor is read-only. It should not install packages, download tokenizers, pull models, start services, stop services, or write `.qwen-farm.json`. Use its recommendations as next-step guidance for a human or primary AI.
+Doctor is read-only. It should not install packages, download tokenizers, pull models, start services, stop services, or write `.sift-farm.json`. Use its recommendations as next-step guidance for a human or primary AI.
 
 This keeps the experience approachable for non-technical users while still giving power users direct control.
 

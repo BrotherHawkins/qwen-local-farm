@@ -90,9 +90,9 @@ The first schema pass should distinguish these contract surfaces:
 
 1. **Persisted run status**: the contents of a run's `farm-status.json`.
 2. **Persisted job result**: the contents of a job's `result.json`, including the generic job envelope and summarize payload.
-3. **Status overview command output**: the envelope printed by `python qwen.py farm status --json`.
-4. **Status run command output**: the envelope printed by `python qwen.py farm status <run-id> --json`.
-5. **Doctor report output**: the contents of `.run/reports/setup-doctor.json` and `python qwen.py farm doctor --json`.
+3. **Status overview command output**: the envelope printed by `python sift.py farm status --json`.
+4. **Status run command output**: the envelope printed by `python sift.py farm status <run-id> --json`.
+5. **Doctor report output**: the contents of `.run/reports/setup-doctor.json` and `python sift.py farm doctor --json`.
 
 Persisted artifacts and CLI envelopes should not be collapsed into one schema just because they share fields. The schema names should tell callers which command or file they validate.
 
@@ -188,8 +188,8 @@ git diff --check
 Optional manual smoke:
 
 ```powershell
-python qwen.py farm status --json
-python qwen.py farm doctor --json
+python sift.py farm status --json
+python sift.py farm doctor --json
 ```
 
 If a validation helper or command is added during implementation, smoke it against a recent local run and the doctor report.

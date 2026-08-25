@@ -14,7 +14,7 @@ Implement a conservative measured recommendation workflow that gives power users
    - keep recommendations conservative when evidence is missing, stale, failed, or weak
    - represent confidence and reasons for each major recommendation
 2. Add the recommendation command.
-   - add `python qwen.py farm recommend`
+   - add `python sift.py farm recommend`
    - support `--agent`, `--profile`, and `--output`
    - default output to `.run/recommendations/`
    - write `.run/recommendations/farm-recommendation.json`
@@ -35,7 +35,7 @@ Implement a conservative measured recommendation workflow that gives power users
    - recommend `OLLAMA_NUM_PARALLEL`
    - recommend summarize chunk strategy and chunk/reduce sizing
    - include warnings and next actions for missing Ollama/model/tokenizer evidence
-   - do not write `.qwen-farm.json` or modify Ollama environment variables
+   - do not write `.sift-farm.json` or modify Ollama environment variables
 5. Integrate with doctor.
    - keep `farm doctor` fast and read-only
    - detect the latest recommendation report when present
@@ -80,9 +80,9 @@ Implement a conservative measured recommendation workflow that gives power users
 Preferred command shape:
 
 ```powershell
-python qwen.py farm recommend
-python qwen.py farm recommend --agent default --profile local-8gb
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm recommend
+python sift.py farm recommend --agent default --profile local-8gb
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
 ```
 
 Expected outputs:
@@ -95,7 +95,7 @@ Expected outputs:
 Schema validation:
 
 ```powershell
-python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
+python sift.py farm schema validate .run/recommendations/farm-recommendation.json
 ```
 
 ## Recommendation Shape
@@ -128,18 +128,18 @@ Completed checks:
 ```powershell
 python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_doctor tests.test_qwen_farm_schema tests.test_qwen_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Completed manual/local smoke:
 
 ```powershell
-python qwen.py farm doctor --json
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
-python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
-python qwen.py farm doctor
-python qwen.py farm doctor --json
+python sift.py farm doctor --json
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm schema validate .run/recommendations/farm-recommendation.json
+python sift.py farm doctor
+python sift.py farm doctor --json
 ```
 
 Smoke report:

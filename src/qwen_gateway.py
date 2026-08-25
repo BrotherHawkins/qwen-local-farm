@@ -15,10 +15,10 @@ from src.qwen_farm_model_metadata import apply_model_metadata
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS_DIR = ROOT / "agents"
-DEFAULT_MODEL = os.environ.get("QWEN_MODEL", "qwen3.5:4b")
+DEFAULT_MODEL = os.environ.get("SIFT_MODEL", "qwen3.5:4b")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
-HOST = os.environ.get("QWEN_GATEWAY_HOST", "127.0.0.1")
-PORT = int(os.environ.get("QWEN_GATEWAY_PORT", "8765"))
+HOST = os.environ.get("SIFT_GATEWAY_HOST", "127.0.0.1")
+PORT = int(os.environ.get("SIFT_GATEWAY_PORT", "8765"))
 
 
 def read_json_file(path: Path) -> dict[str, Any]:

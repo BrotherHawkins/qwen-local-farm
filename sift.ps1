@@ -18,10 +18,10 @@ $GatewayErrLog = Join-Path $RunDir "gateway.err.log"
 $OllamaOutLog = Join-Path $RunDir "ollama.out.log"
 $OllamaErrLog = Join-Path $RunDir "ollama.err.log"
 
-$Model = if ($env:QWEN_MODEL) { $env:QWEN_MODEL } else { "qwen3.5:4b" }
+$Model = if ($env:SIFT_MODEL) { $env:SIFT_MODEL } else { "qwen3.5:4b" }
 $OllamaBase = if ($env:OLLAMA_BASE_URL) { $env:OLLAMA_BASE_URL.TrimEnd("/") } else { "http://127.0.0.1:11434" }
-$GatewayHost = if ($env:QWEN_GATEWAY_HOST) { $env:QWEN_GATEWAY_HOST } else { "127.0.0.1" }
-$GatewayPort = if ($env:QWEN_GATEWAY_PORT) { [int]$env:QWEN_GATEWAY_PORT } else { 8765 }
+$GatewayHost = if ($env:SIFT_GATEWAY_HOST) { $env:SIFT_GATEWAY_HOST } else { "127.0.0.1" }
+$GatewayPort = if ($env:SIFT_GATEWAY_PORT) { [int]$env:SIFT_GATEWAY_PORT } else { 8765 }
 $GatewayBase = "http://127.0.0.1:$GatewayPort"
 
 function Ensure-RunDir {
@@ -98,7 +98,7 @@ function Start-Ollama {
 
     $ollama = Get-OllamaExe
     if (-not $ollama) {
-        throw "Ollama is not installed. Run .\qwen.ps1 setup first."
+        throw "Ollama is not installed. Run .\sift.ps1 setup first."
     }
 
     $env:OLLAMA_HOST = "127.0.0.1:11434"
@@ -111,7 +111,7 @@ function Start-Ollama {
 function Ensure-Model {
     $ollama = Get-OllamaExe
     if (-not $ollama) {
-        throw "Ollama is not installed. Run .\qwen.ps1 setup first."
+        throw "Ollama is not installed. Run .\sift.ps1 setup first."
     }
 
     Start-Ollama
@@ -136,10 +136,10 @@ function Start-Gateway {
 
     $python = Get-PythonExe
     $server = Join-Path $Root "src\qwen_gateway.py"
-    $env:QWEN_MODEL = $Model
+    $env:SIFT_MODEL = $Model
     $env:OLLAMA_BASE_URL = $OllamaBase
-    $env:QWEN_GATEWAY_HOST = $GatewayHost
-    $env:QWEN_GATEWAY_PORT = "$GatewayPort"
+    $env:SIFT_GATEWAY_HOST = $GatewayHost
+    $env:SIFT_GATEWAY_PORT = "$GatewayPort"
 
     $proc = Start-Process -FilePath $python -ArgumentList @($server) -WorkingDirectory $Root -WindowStyle Hidden -PassThru -RedirectStandardOutput $GatewayOutLog -RedirectStandardError $GatewayErrLog
     Set-Content -Path $GatewayPidFile -Value $proc.Id
@@ -181,7 +181,7 @@ function Install-Ollama {
 
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $winget) {
-        throw "winget was not found. Install Ollama from https://ollama.com/download/windows, then rerun .\qwen.ps1 setup."
+        throw "winget was not found. Install Ollama from https://ollama.com/download/windows, then rerun .\sift.ps1 setup."
     }
 
     Write-Host "Installing Ollama with winget..."
@@ -231,7 +231,7 @@ function Invoke-AgentPrompt {
     $agent = if ($Rest.Count -ge 2) { $Rest[1] } else { "default" }
 
     if (-not $message) {
-        throw 'Usage: .\qwen.ps1 ask "your prompt here" [agent-id]'
+        throw 'Usage: .\sift.ps1 ask "your prompt here" [agent-id]'
     }
 
     if (-not (Test-Url "$GatewayBase/health")) {
@@ -250,7 +250,7 @@ switch ($Command) {
         Install-Ollama
         Ensure-Model
         Write-Host ""
-        Write-Host "Setup complete. Run .\qwen.ps1 start when you want the local service."
+        Write-Host "Setup complete. Run .\sift.ps1 start when you want the local service."
     }
     "start" {
         Ensure-Model

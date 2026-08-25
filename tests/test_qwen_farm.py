@@ -1537,7 +1537,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "agents").mkdir()
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
-            (root / ".qwen-farm.json").write_text('{"unknown": true}', encoding="utf-8")
+            (root / ".sift-farm.json").write_text('{"unknown": true}', encoding="utf-8")
             output = root / "results"
 
             with self.assertRaisesRegex(ValueError, "Unknown config field"):
@@ -1573,7 +1573,7 @@ class FarmRunTests(unittest.TestCase):
             )
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
-            (root / ".qwen-farm.json").write_text(json.dumps({"model": "config-model:1b"}), encoding="utf-8")
+            (root / ".sift-farm.json").write_text(json.dumps({"model": "config-model:1b"}), encoding="utf-8")
 
             status = qwen_farm.run_farm(
                 root=root,

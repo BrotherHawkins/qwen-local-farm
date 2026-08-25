@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-retry-failed.schema.json",
-  "title": "Qwen Local Farm Retry Failed JSON",
-  "description": "CLI envelope printed by python qwen.py farm retry-failed --json.",
+  "$id": "https://sift.local/schemas/farm-retry-failed.schema.json",
+  "title": "Sift Retry Failed JSON",
+  "description": "CLI envelope printed by python sift.py farm retry-failed --json.",
   "type": "object",
   "required": ["schema_version", "status", "source_run", "retry_run", "failure_counts", "selected_jobs", "counts", "warnings", "errors"],
   "properties": {

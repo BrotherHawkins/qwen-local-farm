@@ -2,87 +2,87 @@
   "schema_version": 1,
   "schemas": [
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-status.schema.json",
+      "id": "https://sift.local/schemas/farm-status.schema.json",
       "path": "schemas/farm-status.schema.json",
       "surface": "persisted farm-status.json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-job-result.schema.json",
+      "id": "https://sift.local/schemas/farm-job-result.schema.json",
       "path": "schemas/farm-job-result.schema.json",
       "surface": "persisted jobs/job-*/result.json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-status-overview.schema.json",
+      "id": "https://sift.local/schemas/farm-status-overview.schema.json",
       "path": "schemas/farm-status-overview.schema.json",
-      "surface": "python qwen.py farm status --json",
+      "surface": "python sift.py farm status --json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-status-run.schema.json",
+      "id": "https://sift.local/schemas/farm-status-run.schema.json",
       "path": "schemas/farm-status-run.schema.json",
-      "surface": "python qwen.py farm status <run-id> --json",
+      "surface": "python sift.py farm status <run-id> --json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-doctor.schema.json",
+      "id": "https://sift.local/schemas/farm-doctor.schema.json",
       "path": "schemas/farm-doctor.schema.json",
-      "surface": "python qwen.py farm doctor --json",
+      "surface": "python sift.py farm doctor --json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-recommendation.schema.json",
+      "id": "https://sift.local/schemas/farm-recommendation.schema.json",
       "path": "schemas/farm-recommendation.schema.json",
-      "surface": "python qwen.py farm recommend",
+      "surface": "python sift.py farm recommend",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
+      "id": "https://sift.local/schemas/farm-config-apply.schema.json",
       "path": "schemas/farm-config-apply.schema.json",
-      "surface": "python qwen.py farm recommend apply",
+      "surface": "python sift.py farm recommend apply",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-timing-summary.schema.json",
+      "id": "https://sift.local/schemas/farm-timing-summary.schema.json",
       "path": "schemas/farm-timing-summary.schema.json",
       "surface": "persisted timing-summary.json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-snippet-pack.schema.json",
+      "id": "https://sift.local/schemas/farm-snippet-pack.schema.json",
       "path": "schemas/farm-snippet-pack.schema.json",
-      "surface": "python qwen.py farm snippets pack",
+      "surface": "python sift.py farm snippets pack",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-synthesis-bundle.schema.json",
+      "id": "https://sift.local/schemas/farm-synthesis-bundle.schema.json",
       "path": "schemas/farm-synthesis-bundle.schema.json",
-      "surface": "python qwen.py farm synthesis bundle",
+      "surface": "python sift.py farm synthesis bundle",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-collection.schema.json",
+      "id": "https://sift.local/schemas/farm-collection.schema.json",
       "path": "schemas/farm-collection.schema.json",
-      "surface": "python qwen.py farm collect",
+      "surface": "python sift.py farm collect",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-retry-failed.schema.json",
+      "id": "https://sift.local/schemas/farm-retry-failed.schema.json",
       "path": "schemas/farm-retry-failed.schema.json",
-      "surface": "python qwen.py farm retry-failed --json",
+      "surface": "python sift.py farm retry-failed --json",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
+      "id": "https://sift.local/schemas/farm-dogfood-record.schema.json",
       "path": "schemas/farm-dogfood-record.schema.json",
-      "surface": "python qwen.py farm dogfood record",
+      "surface": "python sift.py farm dogfood record",
       "status": "current"
     },
     {
-      "id": "https://qwen-local-farm.local/schemas/farm-dogfood-comparison.schema.json",
+      "id": "https://sift.local/schemas/farm-dogfood-comparison.schema.json",
       "path": "schemas/farm-dogfood-comparison.schema.json",
-      "surface": "python qwen.py farm dogfood compare",
+      "surface": "python sift.py farm dogfood compare",
       "status": "current"
     }
   ]

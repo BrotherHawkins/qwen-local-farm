@@ -65,7 +65,7 @@ def missing_dependency_message() -> str:
     return (
         "Tokenizer dependencies are not installed. Run "
         '`python -m pip install --user "transformers>=5.15" "tokenizers>=0.22"` '
-        "and then run `python qwen.py farm tokenizer setup`."
+        "and then run `python sift.py farm tokenizer setup`."
     )
 
 
@@ -105,7 +105,7 @@ def load_exact_token_counter(
         mode = "local cache" if local_files_only else "setup download"
         raise TokenizerUnavailableError(
             f"Could not load exact tokenizer for model `{model}` from {mode}. "
-            f"Tokenizer ID: `{tokenizer_id}`. Run `python qwen.py farm tokenizer setup` "
+            f"Tokenizer ID: `{tokenizer_id}`. Run `python sift.py farm tokenizer setup` "
             "or use `--chunk-strategy character`."
         ) from exc
 

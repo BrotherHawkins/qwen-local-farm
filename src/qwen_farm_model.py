@@ -250,7 +250,7 @@ def prepare_summary_content(content: str, max_chars: int = SUMMARY_MAX_INPUT_CHA
         return content, []
 
     clipped = content[:max_chars].rstrip()
-    clipped += f"\n\n[Input truncated by qwen-local-farm: summarized first {max_chars} of {len(content)} characters.]"
+    clipped += f"\n\n[Input truncated by sift: summarized first {max_chars} of {len(content)} characters.]"
     return clipped, ["input_truncated"]
 
 

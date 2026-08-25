@@ -8,6 +8,8 @@ Default model: `qwen3.5:4b`
 
 That is the comfortable default for an 8GB VRAM card. The larger installed models are available for slower offline work when you want more depth.
 
+Qwen is the tested default model family for this repo. The farm now normalizes model metadata through an adapter-style shape with backend, family, support level, tokenizer strategy, and context assumptions, so other Ollama model families can be added deliberately later. Non-Qwen or unknown families should be treated as experimental until they have dogfood quality and timing evidence.
+
 Installed local models:
 
 | Model | Size | Quantization | Best use |
@@ -256,6 +258,44 @@ Token-aware chunking can also be configured in `.qwen-farm.json`:
 If token budgets are omitted, the farm derives a conservative budget from the selected agent's `num_ctx` and caps summarize chunks at 4096 tokens for local-worker summary quality. Power users can raise `chunk_tokens` and `reduce_tokens` explicitly after dogfooding their hardware/model combination.
 
 If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
+
+Bundled agents declare model-family metadata such as:
+
+```json
+{
+  "model": "qwen3.5:4b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3.5-4B",
+    "exact": true
+  },
+  "options": {
+    "num_ctx": 8192
+  }
+}
+```
+
+For an experimental non-Qwen Ollama model, declare the family and keep tokenizer strategy `none` until an exact adapter is available:
+
+```json
+{
+  "model": "llama3.1:8b",
+  "model_family": "llama",
+  "backend": "ollama",
+  "support": "experimental",
+  "tokenizer": {
+    "strategy": "none"
+  },
+  "options": {
+    "num_ctx": 4096
+  }
+}
+```
+
+Character chunking can still run with experimental or unknown model families. Token-aware chunking requires exact tokenizer metadata and local tokenizer readiness.
 
 Markdown heading ancestry is enabled by default for chunked summarize inputs. Chunk input artifacts include a compact `Heading context` block so a worker processing chunk 4 still knows it is inside headings such as `# Title` and `## Section`. Overlap is opt-in:
 

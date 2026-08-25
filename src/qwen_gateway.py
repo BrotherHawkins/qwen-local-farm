@@ -10,6 +10,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from src.qwen_farm_model_metadata import apply_model_metadata
+
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENTS_DIR = ROOT / "agents"
@@ -40,7 +42,7 @@ def load_agents() -> dict[str, dict[str, Any]]:
         agent.setdefault("model", DEFAULT_MODEL)
         agent.setdefault("system_prompt", "")
         agent.setdefault("options", {})
-        agents[agent_id] = agent
+        agents[agent_id] = apply_model_metadata(agent)
     return agents
 
 
@@ -78,10 +80,13 @@ def ollama_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def public_agent(agent: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(agent.get("model_metadata"), dict):
+        agent = apply_model_metadata(dict(agent))
     return {
         "id": agent["id"],
         "name": agent.get("name", agent["id"]),
         "model": agent.get("model", DEFAULT_MODEL),
+        "model_metadata": agent.get("model_metadata", {}),
         "options": agent.get("options", {}),
     }
 

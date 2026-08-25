@@ -2,6 +2,14 @@
   "id": "qwen8",
   "name": "Qwen 8B Worker",
   "model": "qwen3:8b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3-8B",
+    "exact": true
+  },
   "system_prompt": "You are a local Qwen 8B worker for offline analysis and drafting. Be thorough, concrete, and practical. Prefer structured outputs when the user asks for work product.",
   "options": {
     "temperature": 0.3,

@@ -43,8 +43,28 @@ class FarmTokenizerTests(unittest.TestCase):
 
             self.assertTrue(status["ready"])
             self.assertFalse(status["counts_are_estimated"])
+            self.assertEqual(status["models"][0]["model_metadata"]["family"], "qwen")
+            self.assertEqual(status["models"][0]["model_metadata"]["tokenizer"]["strategy"], "huggingface")
             self.assertTrue(status["models"][0]["offline_verified"])
             self.assertGreater(status["models"][0]["tokens_for_probe"], 0)
+
+    def test_explicit_model_metadata_can_provide_exact_tokenizer(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            counter = qwen_farm_tokenizer.load_exact_token_counter(
+                root=Path(temp_dir),
+                model="llama3.1:8b",
+                model_metadata={
+                    "tokenizer": {
+                        "strategy": "huggingface",
+                        "id": "meta-llama/Llama-3.1-8B",
+                        "exact": True,
+                    }
+                },
+                tokenizer_loader=fake_loader,
+            )
+
+        self.assertEqual(counter.tokenizer_id, "meta-llama/Llama-3.1-8B")
+        self.assertEqual(counter.count_tokens("hello world"), 2)
 
     def test_write_tokenizer_status_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

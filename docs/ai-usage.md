@@ -84,6 +84,7 @@ The capability record should eventually answer:
 - Which modes are supported?
 - Which modes support chunking?
 - Which models/agents are available?
+- Which model family, backend, support level, tokenizer strategy, and context assumptions apply to the selected agent?
 - Which output schemas exist?
 - What are the known machine limits?
 - What should the caller do next?
@@ -113,6 +114,29 @@ Possible shape:
   }
 }
 ```
+
+## Model Family Posture
+
+Qwen is the tested default model family. Other Ollama model families may be configured through agent metadata, but should be treated as experimental or unknown until dogfood runs establish quality, timing, tokenizer behavior, and resource fit.
+
+Primary AIs should inspect `model_metadata` in doctor, recommendation, resolved config, and run status artifacts before assuming token-aware chunking or quality/performance behavior. The important fields are:
+
+```json
+{
+  "backend": "ollama",
+  "family": "qwen",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "exact": true
+  },
+  "context": {
+    "tokens": 8192
+  }
+}
+```
+
+If `support` is `experimental` or `unknown`, prefer character chunking and a small smoke run before large batches. If `tokenizer.exact` is not true, do not request token-aware chunking unless the user has deliberately added and verified an exact tokenizer adapter.
 
 ## Immediate Ask Interface
 

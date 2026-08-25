@@ -27,6 +27,7 @@ The roadmap below is intentionally lightweight. It captures the shape of the nex
 - Resource-aware runtime modes, doctor reports, recommendations, and safe recommendation config apply.
 - First-pass timing metrics for runs, jobs, model calls, chunk maps, reduces, and timing summary artifacts.
 - Opt-in tokenizer-aware summarize chunk sizing for supported Qwen/Ollama agents.
+- Qwen remains the tested default model family; broader local model-family support should be added through explicit adapter metadata rather than interface churn.
 - Opt-in verified source snippets for summarize results, including deterministic ranking and compact diagnostics.
 - Tracked schema contracts and public schema validation for core and post-run JSON artifacts.
 - Post-run farm collections that flatten ordinary job result artifacts into one inspectable folder.
@@ -58,7 +59,7 @@ The human should be able to enable or disable farm availability, but should not 
 
 1. Make partial failures easier to recover with failed-run retry helpers.
 2. Dogfood and refine file-discovery controls now that include/exclude overrides exist.
-3. Keep setup guidance improving for less-technical users through doctor, recommend, apply, and model-installation guidance.
+3. Add model-family adapter seams before Qwen-specific assumptions harden into the farm core.
 4. Mature post-run packages so summaries, snippets, and bundles are easier to feed into frontier-model workflows.
 5. Add new modes only after the summarize/chunk/status foundation stays pleasant under dogfood pressure.
 
@@ -441,6 +442,7 @@ Possible meanings:
 Current state:
 
 - Model choice is explicit through agent configs.
+- Qwen is the tested/default model family.
 - First-class `auto`, `gpu`, `hybrid`, and `cpu` resource modes exist in config/CLI/resolved artifacts.
 - Runtime profiles now make model, summarize chunk sizing, and concurrency assumptions explicit for each run.
 - Every run writes `farm-config.resolved.json`.
@@ -450,6 +452,7 @@ Current state:
 Roadmap:
 
 - Use runtime profiles as the stable configuration layer for both power users and AI-assisted setup.
+- Add model-family metadata for backend, family, tokenizer support, context assumptions, and support posture before adding more local model families.
 - Add model routing rules that consider speed, VRAM pressure, job type, and expected quality.
 - Add a simple worker scheduler:
   - max concurrent jobs
@@ -582,9 +585,9 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ## Groomed Next Decisions
 
-These are the active product decisions after the first 28 change specs:
+These are the active product decisions after the first 31 change specs:
 
 1. After dogfooding `include`/`exclude`, is `.qwenignore`, force-include, or richer discovery diagnostics the next useful file-discovery step?
-2. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
+2. How small can the model-family adapter foundation stay while making future Llama/Mistral/Gemma/Phi support straightforward?
 3. Which post-run package controls matter first: field filters, fitting policy, or snippet-pack budgets?
 4. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?

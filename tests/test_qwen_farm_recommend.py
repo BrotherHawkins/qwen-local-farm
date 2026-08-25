@@ -116,6 +116,8 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["status"], "ready")
             self.assertEqual(report["agent"], "default")
             self.assertEqual(report["model"], "qwen3.5:4b")
+            self.assertEqual(report["model_metadata"]["family"], "qwen")
+            self.assertEqual(report["model_metadata"]["support"], "tested")
             self.assertEqual(report["resource_mode"]["recommended"], "gpu")
             self.assertEqual(report["profile"]["recommended"], "local-8gb")
             self.assertEqual(report["concurrency"]["parallel_jobs"]["recommended"], 1)
@@ -124,6 +126,52 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["summarize"]["chunk_tokens"], 4096)
             self.assertEqual(report["evidence"]["benchmark"]["status"], "complete")
             self.assertEqual(report["next_actions"], [])
+
+    def test_experimental_non_qwen_recommendation_prefers_character_chunking(self) -> None:
+        def llama_ollama(method: str, url: str, **_kwargs: object) -> dict[str, Any]:
+            if method == "GET" and url.endswith("/api/tags"):
+                return {"models": [{"name": "llama3.1:8b"}]}
+            if method == "POST" and url.endswith("/api/chat"):
+                return {"message": {"content": "ready"}}
+            raise AssertionError(f"Unexpected request: {method} {url}")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agents = root / "agents"
+            agents.mkdir()
+            (agents / "llama-local.json").write_text(
+                json.dumps(
+                    {
+                        "id": "llama-local",
+                        "model": "llama3.1:8b",
+                        "model_family": "llama",
+                        "backend": "ollama",
+                        "support": "experimental",
+                        "tokenizer": {"strategy": "none"},
+                        "options": {"num_ctx": 4096},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = qwen_farm_recommend.build_recommendation_report(
+                root=root,
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                agent_id="llama-local",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=llama_ollama,
+                tokenizer_status_fn=ready_tokenizers,
+            )
+
+            markdown = qwen_farm_recommend.render_recommendation_markdown(report)
+
+            self.assertEqual(report["model_metadata"]["family"], "llama")
+            self.assertEqual(report["model_metadata"]["support"], "experimental")
+            self.assertEqual(report["summarize"]["chunk_strategy"], "character")
+            self.assertIn("not dogfood-tested", report["summarize"]["reason"])
+            self.assertIn("Model family: `llama`", markdown)
+            self.assertIn("Model support: `experimental`", markdown)
 
     def test_missing_ollama_degrades_to_needs_setup_without_probe(self) -> None:
         def failing_request(*_args: object, **_kwargs: object) -> dict[str, Any]:

@@ -47,6 +47,9 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertTrue(report["ollama"]["endpoint_ready"])
             self.assertEqual(report["ollama"]["models"], ["qwen3.5:4b"])
             self.assertEqual(report["agent"]["model"], "qwen3.5:4b")
+            self.assertEqual(report["agent"]["model_metadata"]["family"], "qwen")
+            self.assertEqual(report["agent"]["model_metadata"]["backend"], "ollama")
+            self.assertEqual(report["agent"]["model_metadata"]["support"], "tested")
             self.assertTrue(report["agent"]["model_installed"])
             self.assertEqual(report["runtime"]["profile"], "local-8gb")
             self.assertEqual(report["runtime"]["resource_mode"]["requested"], "auto")
@@ -142,8 +145,47 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertIn("## Ollama", markdown)
             self.assertIn("## Agent And Runtime", markdown)
             self.assertIn("Resource mode effective", markdown)
+            self.assertIn("Model family: `qwen`", markdown)
+            self.assertIn("Model support: `tested`", markdown)
             self.assertIn("## Profile Recommendation", markdown)
             self.assertIn("## Recommendations", markdown)
+
+    def test_doctor_reports_experimental_non_qwen_agent_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agents = root / "agents"
+            agents.mkdir()
+            (agents / "llama-local.json").write_text(
+                json.dumps(
+                    {
+                        "id": "llama-local",
+                        "model": "llama3.1:8b",
+                        "model_family": "llama",
+                        "backend": "ollama",
+                        "support": "experimental",
+                        "tokenizer": {"strategy": "none"},
+                        "options": {"num_ctx": 4096},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            report = qwen_farm_doctor.build_doctor_report(
+                root=root,
+                default_model="qwen3.5:4b",
+                ollama_base_url="http://127.0.0.1:11434",
+                agent_id="llama-local",
+                find_ollama_fn=lambda: "ollama",
+                request_json_fn=lambda *_args, **_kwargs: {"models": [{"name": "llama3.1:8b"}]},
+                tokenizer_status_fn=ready_tokenizers,
+            )
+
+            markdown = qwen_farm_doctor.render_doctor_markdown(report)
+
+            self.assertEqual(report["agent"]["model_metadata"]["family"], "llama")
+            self.assertEqual(report["agent"]["model_metadata"]["support"], "experimental")
+            self.assertIn("Model family: `llama`", markdown)
+            self.assertIn("Model support: `experimental`", markdown)
 
     def test_doctor_reports_latest_profile_recommendation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

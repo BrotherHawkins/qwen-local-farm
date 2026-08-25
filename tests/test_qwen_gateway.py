@@ -59,6 +59,21 @@ class AgentLoadingTests(unittest.TestCase):
                 "id": "coder",
                 "name": "Coder",
                 "model": "qwen-test:1b",
+                "model_metadata": {
+                    "model": "qwen-test:1b",
+                    "backend": "ollama",
+                    "family": "qwen",
+                    "support": "experimental",
+                    "tokenizer": {
+                        "strategy": "none",
+                        "id": None,
+                        "exact": False,
+                    },
+                    "context": {
+                        "tokens": None,
+                        "source": None,
+                    },
+                },
                 "options": {"temperature": 0.2},
             },
         )

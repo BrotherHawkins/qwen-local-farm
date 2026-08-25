@@ -20,10 +20,10 @@ The product principle is: a failed job should be easy to recover without throwin
 Add a post-run command that creates a new farm run containing only failed file jobs from a prior run:
 
 ```powershell
-python qwen.py farm retry-failed <run-ref>
-python qwen.py farm retry-failed <run-ref> --output .run/retries
-python qwen.py farm retry-failed <run-ref> --instructions "Use the same synthesis-focused summary style."
-python qwen.py farm retry-failed <run-ref> --json
+python sift.py farm retry-failed <run-ref>
+python sift.py farm retry-failed <run-ref> --output .run/retries
+python sift.py farm retry-failed <run-ref> --instructions "Use the same synthesis-focused summary style."
+python sift.py farm retry-failed <run-ref> --json
 ```
 
 `<run-ref>` follows the existing run-reference convention: a known run ID from `farm list` or a run directory path.
@@ -125,7 +125,7 @@ This change does not add:
 
 ## Acceptance Criteria
 
-- `python qwen.py farm retry-failed <run-ref>` accepts both known run IDs and run directory paths.
+- `python sift.py farm retry-failed <run-ref>` accepts both known run IDs and run directory paths.
 - If the source run has no failed jobs, the command exits nonzero with a clear message and does not create a model-calling retry run.
 - If any failed job's original input file cannot be found under the source run input folder, the command exits nonzero before model calls and lists the missing paths.
 - A retry run contains only the failed source jobs, with stable relative `input_path` values matching the original failed files.
@@ -158,10 +158,10 @@ Add model-free tests for:
 Run:
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm tests.test_sift_farm_status tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -172,9 +172,9 @@ Create a small local failed run with a fake or intentionally failing processor i
 Then run:
 
 ```powershell
-python qwen.py farm retry-failed <failed-run-id> --output .run/dogfood_0028/retry
-python qwen.py farm status <retry-run-id>
-python qwen.py farm status <retry-run-id> --json
+python sift.py farm retry-failed <failed-run-id> --output .run/dogfood_0028/retry
+python sift.py farm status <retry-run-id>
+python sift.py farm status <retry-run-id> --json
 ```
 
 Inspect:

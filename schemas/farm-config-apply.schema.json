@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-config-apply.schema.json",
-  "title": "Qwen Local Farm Config Apply Report",
-  "description": "Preview or write report from applying recommendation JSON to .qwen-farm.json.",
+  "$id": "https://sift.local/schemas/farm-config-apply.schema.json",
+  "title": "Sift Config Apply Report",
+  "description": "Preview or write report from applying recommendation JSON to .sift-farm.json.",
   "type": "object",
   "required": [
     "schema_version",

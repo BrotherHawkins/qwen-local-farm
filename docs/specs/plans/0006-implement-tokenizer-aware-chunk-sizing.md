@@ -60,7 +60,7 @@ Copy the same article text files from the existing dogfood corpus:
 Run the current character chunker with stable settings:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/baseline/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/baseline/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1
 ```
 
 Record:
@@ -77,7 +77,7 @@ If local Ollama is unavailable, record that blocker and continue with model-free
 
 ### 2. Add Tokenizer Support Module
 
-Add a small module, likely `src/qwen_farm_tokenizer.py`, that provides:
+Add a small module, likely `src/sift_farm_tokenizer.py`, that provides:
 
 - supported Ollama alias to Hugging Face tokenizer ID mapping
 - tokenizer dependency availability check
@@ -102,8 +102,8 @@ Keep tokenizer cache files under `.run/tokenizers/` or another ignored path.
 Add a command such as:
 
 ```powershell
-python qwen.py farm tokenizer setup
-python qwen.py farm tokenizer status
+python sift.py farm tokenizer setup
+python sift.py farm tokenizer status
 ```
 
 or an equivalently clear command shape chosen during implementation.
@@ -121,7 +121,7 @@ Do not require this command in GitHub CI.
 
 ### 4. Extend Runtime Config
 
-Update `src/qwen_farm_profiles.py` and CLI override plumbing to support:
+Update `src/sift_farm_profiles.py` and CLI override plumbing to support:
 
 - `summarize.chunk_strategy`: `character` or `token`
 - `summarize.chunk_tokens`
@@ -150,7 +150,7 @@ Do not silently use model marketing context length if the agent config has a sma
 
 ### 6. Implement Token-Aware Chunk Planning
 
-Extend `src/qwen_farm_chunks.py` with a tokenizer-aware planning path while leaving the character path intact.
+Extend `src/sift_farm_chunks.py` with a tokenizer-aware planning path while leaving the character path intact.
 
 The token planner should:
 
@@ -213,7 +213,7 @@ Update:
 After implementation, enable token-aware chunking in settings or CLI and run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/token-aware/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1 --chunk-strategy token
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_lite/token-aware/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 1 --chunk-strategy token
 ```
 
 Write:
@@ -255,23 +255,23 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Local tokenizer verification:
 
 ```powershell
-python qwen.py farm tokenizer setup
-python qwen.py farm tokenizer status
+python sift.py farm tokenizer setup
+python sift.py farm tokenizer status
 ```
 
 Dogfood verification:
 
 ```powershell
-python qwen.py farm list
-python qwen.py farm status <baseline-run-id>
-python qwen.py farm status <token-aware-run-id>
+python sift.py farm list
+python sift.py farm status <baseline-run-id>
+python sift.py farm status <token-aware-run-id>
 ```
 
 Inspect:

@@ -1,0 +1,856 @@
+from __future__ import annotations
+
+import argparse
+from contextlib import redirect_stdout
+import json
+import os
+import platform
+import shutil
+import signal
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parent
+RUN_DIR = ROOT / ".run"
+GATEWAY_PID_FILE = RUN_DIR / "gateway.pid"
+OLLAMA_PID_FILE = RUN_DIR / "ollama.pid"
+GATEWAY_OUT_LOG = RUN_DIR / "gateway.out.log"
+GATEWAY_ERR_LOG = RUN_DIR / "gateway.err.log"
+OLLAMA_OUT_LOG = RUN_DIR / "ollama.out.log"
+OLLAMA_ERR_LOG = RUN_DIR / "ollama.err.log"
+
+DEFAULT_MODEL = "qwen3.5:4b"
+MODEL = os.environ.get("SIFT_MODEL", DEFAULT_MODEL)
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+GATEWAY_HOST = os.environ.get("SIFT_GATEWAY_HOST", "127.0.0.1")
+GATEWAY_PORT = int(os.environ.get("SIFT_GATEWAY_PORT", "8765"))
+GATEWAY_BASE_URL = f"http://127.0.0.1:{GATEWAY_PORT}"
+
+
+def ensure_run_dir() -> None:
+    RUN_DIR.mkdir(exist_ok=True)
+
+
+def ollama_host_value() -> str:
+    parsed = urllib.parse.urlparse(OLLAMA_BASE_URL)
+    if parsed.netloc:
+        return parsed.netloc
+    return "127.0.0.1:11434"
+
+
+def find_ollama() -> str | None:
+    found = shutil.which("ollama")
+    if found:
+        return found
+
+    candidates = []
+    if platform.system() == "Windows":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        program_files = os.environ.get("ProgramFiles")
+        program_files_x86 = os.environ.get("ProgramFiles(x86)")
+        candidates.extend(
+            [
+                Path(local_app_data or "") / "Programs" / "Ollama" / "ollama.exe",
+                Path(program_files or "") / "Ollama" / "ollama.exe",
+                Path(program_files_x86 or "") / "Ollama" / "ollama.exe",
+            ]
+        )
+    elif platform.system() == "Darwin":
+        candidates.extend(
+            [
+                Path("/opt/homebrew/bin/ollama"),
+                Path("/usr/local/bin/ollama"),
+                Path("/Applications/Ollama.app/Contents/Resources/ollama"),
+            ]
+        )
+    else:
+        candidates.extend(
+            [
+                Path("/usr/local/bin/ollama"),
+                Path("/usr/bin/ollama"),
+            ]
+        )
+
+    for candidate in candidates:
+        if candidate and candidate.exists():
+            return str(candidate)
+    return None
+
+
+def print_ollama_install_help() -> None:
+    system = platform.system()
+    print("Ollama was not found.")
+    print("")
+    if system == "Windows":
+        print("Install option:")
+        print("  winget install --id Ollama.Ollama --source winget")
+        print("")
+        print("Or download Ollama for Windows:")
+        print("  https://ollama.com/download/windows")
+    elif system == "Darwin":
+        print("Install option if you use Homebrew:")
+        print("  brew install ollama")
+        print("")
+        print("Or download Ollama for macOS:")
+        print("  https://ollama.com/download/mac")
+    else:
+        print("Install option from Ollama:")
+        print("  curl -fsSL https://ollama.com/install.sh | sh")
+        print("")
+        print("Or see:")
+        print("  https://ollama.com/download/linux")
+    print("")
+    print("After installing Ollama, rerun:")
+    print("  python sift.py setup")
+    print("")
+    print("More platform notes are in docs/platforms.md.")
+
+
+def request_json(method: str, url: str, payload: dict[str, Any] | None = None, timeout: int = 5) -> dict[str, Any]:
+    body = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        raw = response.read()
+        if not raw:
+            return {}
+        return json.loads(raw.decode("utf-8"))
+
+
+def test_url(url: str) -> bool:
+    try:
+        request_json("GET", url, timeout=2)
+        return True
+    except (OSError, urllib.error.URLError, json.JSONDecodeError):
+        return False
+
+
+def wait_url(url: str, name: str, seconds: int) -> None:
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        if test_url(url):
+            return
+        time.sleep(1)
+    raise RuntimeError(f"{name} did not become ready at {url} within {seconds} seconds.")
+
+
+def test_ollama_ready() -> bool:
+    return test_url(f"{OLLAMA_BASE_URL}/api/tags")
+
+
+def popen_kwargs(stdout_path: Path, stderr_path: Path) -> dict[str, Any]:
+    ensure_run_dir()
+    flags = 0
+    if platform.system() == "Windows" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+        flags = subprocess.CREATE_NO_WINDOW
+    return {
+        "cwd": str(ROOT),
+        "stdout": stdout_path.open("ab"),
+        "stderr": stderr_path.open("ab"),
+        "creationflags": flags,
+    }
+
+
+def start_ollama() -> None:
+    ensure_run_dir()
+    if test_ollama_ready():
+        print(f"Ollama is already running at {OLLAMA_BASE_URL}")
+        return
+
+    ollama = find_ollama()
+    if not ollama:
+        print_ollama_install_help()
+        raise SystemExit(1)
+
+    env = os.environ.copy()
+    env["OLLAMA_HOST"] = ollama_host_value()
+    proc = subprocess.Popen(
+        [ollama, "serve"],
+        env=env,
+        **popen_kwargs(OLLAMA_OUT_LOG, OLLAMA_ERR_LOG),
+    )
+    OLLAMA_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+    wait_url(f"{OLLAMA_BASE_URL}/api/tags", "Ollama", 90)
+    print(f"Ollama started at {OLLAMA_BASE_URL}")
+
+
+def ensure_model(model_name: str | None = None) -> None:
+    target_model = model_name or MODEL
+    ollama = find_ollama()
+    if not ollama:
+        print_ollama_install_help()
+        raise SystemExit(1)
+
+    start_ollama()
+
+    result = subprocess.run([ollama, "list"], check=True, text=True, capture_output=True)
+    if target_model in result.stdout:
+        print(f"Model is available: {target_model}")
+        return
+
+    print(f"Pulling {target_model}. This can take a while the first time.")
+    subprocess.run([ollama, "pull", target_model], check=True)
+
+
+def start_gateway() -> None:
+    ensure_run_dir()
+    if test_url(f"{GATEWAY_BASE_URL}/health"):
+        print(f"Agent gateway is already running at {GATEWAY_BASE_URL}")
+        return
+
+    env = os.environ.copy()
+    env["SIFT_MODEL"] = MODEL
+    env["OLLAMA_BASE_URL"] = OLLAMA_BASE_URL
+    env["SIFT_GATEWAY_HOST"] = GATEWAY_HOST
+    env["SIFT_GATEWAY_PORT"] = str(GATEWAY_PORT)
+    server = ROOT / "src" / "sift_gateway.py"
+
+    proc = subprocess.Popen(
+        [sys.executable, str(server)],
+        env=env,
+        **popen_kwargs(GATEWAY_OUT_LOG, GATEWAY_ERR_LOG),
+    )
+    GATEWAY_PID_FILE.write_text(str(proc.pid), encoding="utf-8")
+    wait_url(f"{GATEWAY_BASE_URL}/health", "Agent gateway", 30)
+    print(f"Agent gateway started at {GATEWAY_BASE_URL}")
+
+
+def stop_process_from_pid_file(pid_file: Path, name: str) -> None:
+    if not pid_file.exists():
+        print(f"{name} was not started by this script.")
+        return
+
+    raw = pid_file.read_text(encoding="utf-8").strip()
+    if raw:
+        pid = int(raw)
+        try:
+            if platform.system() == "Windows":
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], check=False, capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+            print(f"Stopped {name}.")
+        except ProcessLookupError:
+            print(f"{name} process was already stopped.")
+        except PermissionError:
+            print(f"Could not stop {name}; permission denied for PID {pid}.")
+
+    pid_file.unlink(missing_ok=True)
+
+
+def show_status() -> None:
+    print(f"Model: {MODEL}")
+    print(f"Ollama: {OLLAMA_BASE_URL}")
+    print(f"Gateway: {GATEWAY_BASE_URL}")
+    print(f"Platform: {platform.system()} {platform.release()}")
+
+    nvidia_smi = shutil.which("nvidia-smi")
+    if nvidia_smi:
+        print("")
+        print("GPU:")
+        result = subprocess.run(
+            [nvidia_smi, "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        if result.stdout.strip():
+            print(result.stdout.strip())
+
+    print("")
+    if test_ollama_ready():
+        print("Ollama status: running")
+        try:
+            tags = request_json("GET", f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
+            models = tags.get("models") or []
+            if models:
+                print("Installed models:")
+                for item in models:
+                    print(f"  {item.get('name')}")
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            print(f"Could not list Ollama models: {exc}")
+    else:
+        print("Ollama status: stopped or not installed")
+
+    if test_url(f"{GATEWAY_BASE_URL}/health"):
+        print("Gateway status: running")
+    else:
+        print("Gateway status: stopped")
+
+
+def invoke_agent_prompt(message: str, agent: str) -> None:
+    if not test_url(f"{GATEWAY_BASE_URL}/health"):
+        print("Gateway is not running; starting local service first.")
+        ensure_model()
+        start_gateway()
+
+    payload = {"message": message}
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        f"{GATEWAY_BASE_URL}/agents/{agent}/chat",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=600) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    print(data.get("message", {}).get("content", ""))
+
+
+def print_logs() -> None:
+    ensure_run_dir()
+    for label, path in [
+        ("Gateway stdout", GATEWAY_OUT_LOG),
+        ("Gateway stderr", GATEWAY_ERR_LOG),
+        ("Ollama stderr", OLLAMA_ERR_LOG),
+    ]:
+        print(f"{label}: {path}")
+        if path.exists():
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            for line in lines[-40:]:
+                print(line)
+        print("")
+
+
+def stop_all() -> None:
+    stop_process_from_pid_file(GATEWAY_PID_FILE, "agent gateway")
+    ollama = find_ollama()
+    if ollama and test_ollama_ready():
+        result = subprocess.run([ollama, "stop", MODEL], check=False, text=True, capture_output=True)
+        if result.returncode == 0:
+            print(f"Unloaded model: {MODEL}")
+        else:
+            print(f"Model was not loaded: {MODEL}")
+            if result.stdout.strip():
+                print(result.stdout.strip())
+            if result.stderr.strip():
+                print(result.stderr.strip())
+    stop_process_from_pid_file(OLLAMA_PID_FILE, "Ollama server")
+
+
+def handle_farm(args: argparse.Namespace) -> None:
+    from src import sift_farm
+
+    if args.farm_command == "doctor":
+        from src import sift_farm_doctor
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "reports"
+        report = sift_farm_doctor.build_doctor_report(
+            root=ROOT,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+            agent_id=args.agent,
+            profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
+            output_dir=output_dir,
+            find_ollama_fn=find_ollama,
+            request_json_fn=request_json,
+        )
+        sift_farm_doctor.write_doctor_report(report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(sift_farm_doctor.render_doctor_markdown(report))
+        return
+
+    if args.farm_command == "recommend":
+        from src import sift_farm_recommend
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "recommendations"
+        if args.recommend_command == "apply":
+            report = sift_farm_recommend.build_config_apply_report(
+                root=ROOT,
+                recommendation_path=Path(args.recommendation_path) if args.recommendation_path else None,
+                config_path=Path(args.config) if args.config else None,
+                output_dir=output_dir,
+                write=args.write,
+            )
+            json_path, markdown_path = sift_farm_recommend.write_config_apply_report(report)
+            if args.json:
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+            else:
+                print(sift_farm_recommend.render_config_apply_markdown(report))
+                print(f"Apply JSON: {json_path}")
+                print(f"Apply Markdown: {markdown_path}")
+            return
+
+        report = sift_farm_recommend.build_recommendation_report(
+            root=ROOT,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+            agent_id=args.agent,
+            profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
+            output_dir=output_dir,
+            find_ollama_fn=find_ollama,
+            request_json_fn=request_json,
+        )
+        json_path, markdown_path = sift_farm_recommend.write_recommendation_report(report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(sift_farm_recommend.render_recommendation_markdown(report))
+            print(f"Recommendation JSON: {json_path}")
+            print(f"Recommendation Markdown: {markdown_path}")
+        return
+
+    if args.farm_command == "schema":
+        from src import sift_farm_schema
+
+        if args.schema_command == "validate":
+            result = sift_farm_schema.validate_artifact(
+                root=ROOT,
+                artifact_path=Path(args.json_path),
+                schema_reference=args.schema,
+            )
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(sift_farm_schema.render_validation_result(result))
+            if int(result["exit_code"]) != 0:
+                raise SystemExit(int(result["exit_code"]))
+            return
+
+        raise RuntimeError(f"Unknown farm schema command: {args.schema_command}")
+
+    if args.farm_command == "collect":
+        from src import sift_farm_collect
+
+        output_dir = Path(args.output) if args.output else RUN_DIR / "farm_collections"
+        collection = sift_farm_collect.build_collection(
+            run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
+            output_dir=output_dir,
+            label=args.label,
+        )
+        json_path, markdown_path = sift_farm_collect.write_collection(collection, output_dir)
+        print(f"Farm collection written: {json_path}")
+        print(f"Markdown: {markdown_path}")
+        print(f"Items collected: {collection['counts']['items_collected']}")
+        return
+
+    if args.farm_command == "dogfood":
+        from src import sift_farm_dogfood
+
+        if args.dogfood_command == "timing":
+            from src import sift_farm_dogfood_timing
+
+            if args.timing_command == "record":
+                output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "runs"
+                record = sift_farm_dogfood_timing.build_timing_record(
+                    root=ROOT,
+                    run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
+                    label=args.label,
+                )
+                path = sift_farm_dogfood_timing.write_timing_record(record, output_dir)
+                print(f"Dogfood timing record written: {path}")
+                print(f"Label: {record['label']}")
+                print(f"Run: {record['run_id']}")
+                print(f"Duration ms: {(record.get('totals') or {}).get('duration_ms')}")
+                return
+
+            if args.timing_command == "compare":
+                baseline = sift_farm_dogfood_timing.read_json_object(Path(args.baseline_record))
+                candidate = sift_farm_dogfood_timing.read_json_object(Path(args.candidate_record))
+                output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "comparisons"
+                comparison = sift_farm_dogfood_timing.compare_timing_records(baseline, candidate)
+                json_path, md_path = sift_farm_dogfood_timing.write_timing_comparison(comparison, output_dir)
+                print(f"Dogfood timing comparison written: {json_path}")
+                print(f"Markdown: {md_path}")
+                return
+
+            raise RuntimeError(f"Unknown farm dogfood timing command: {args.timing_command}")
+
+        if args.dogfood_command == "record":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "runs"
+            record = sift_farm_dogfood.build_quality_record(
+                root=ROOT,
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
+                label=args.label,
+                notes_path=Path(args.notes) if args.notes else None,
+            )
+            path = sift_farm_dogfood.write_quality_record(record, output_dir)
+            print(f"Dogfood record written: {path}")
+            print(f"Label: {record['label']}")
+            print(f"Run: {record['run_id']}")
+            return
+
+        if args.dogfood_command == "compare":
+            baseline = sift_farm_dogfood.read_json_object(Path(args.baseline_record))
+            candidate = sift_farm_dogfood.read_json_object(Path(args.candidate_record))
+            output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "comparisons"
+            comparison = sift_farm_dogfood.compare_records(baseline, candidate)
+            json_path, md_path = sift_farm_dogfood.write_comparison(comparison, output_dir)
+            print(f"Dogfood comparison written: {json_path}")
+            print(f"Markdown: {md_path}")
+            return
+
+        raise RuntimeError(f"Unknown farm dogfood command: {args.dogfood_command}")
+
+    if args.farm_command == "snippets":
+        from src import sift_farm_snippet_packs
+
+        if args.snippets_command == "pack":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "snippet_packs"
+            pack = sift_farm_snippet_packs.build_snippet_pack(
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
+                label=args.label,
+                max_snippets=args.max_snippets,
+                per_file=args.per_file,
+            )
+            json_path, markdown_path = sift_farm_snippet_packs.write_snippet_pack(pack, output_dir)
+            print(f"Snippet pack written: {json_path}")
+            print(f"Markdown: {markdown_path}")
+            print(f"Selected snippets: {pack['counts']['selected']}")
+            return
+
+        raise RuntimeError(f"Unknown farm snippets command: {args.snippets_command}")
+
+    if args.farm_command == "synthesis":
+        from src import sift_farm_synthesis_bundles
+
+        if args.synthesis_command == "bundle":
+            output_dir = Path(args.output) if args.output else RUN_DIR / "synthesis_bundles"
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
+                label=args.label,
+                max_snippets=args.max_snippets,
+                per_file=args.per_file,
+                max_chars=args.max_chars,
+                max_estimated_tokens=args.max_estimated_tokens,
+                chars_per_token=args.chars_per_token,
+            )
+            json_path, markdown_path = sift_farm_synthesis_bundles.write_synthesis_bundle(bundle, output_dir)
+            print(f"Synthesis bundle written: {json_path}")
+            print(f"Markdown: {markdown_path}")
+            print(f"Items: {bundle['counts']['items']}")
+            print(f"Selected snippets: {bundle['counts']['snippets_selected']}")
+            return
+
+        raise RuntimeError(f"Unknown farm synthesis command: {args.synthesis_command}")
+
+    if args.farm_command == "retry-failed":
+        try:
+            source_run_dir = sift_farm.resolve_run_reference(ROOT, args.run_dir)
+            plan = sift_farm.build_retry_failed_plan(
+                root=ROOT,
+                source_run_dir=source_run_dir,
+                default_model=MODEL,
+                instructions=args.instructions,
+                agent_id=args.agent,
+            )
+            if args.json:
+                with redirect_stdout(sys.stderr):
+                    ensure_model(str(plan["model"]))
+            else:
+                ensure_model(str(plan["model"]))
+            status, result = sift_farm.run_retry_failed_plan(
+                root=ROOT,
+                plan=plan,
+                output_dir=Path(args.output) if args.output else None,
+                default_model=MODEL,
+                ollama_base_url=OLLAMA_BASE_URL,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            if args.json:
+                print(json.dumps(sift_farm.retry_failed_error_result(run_ref=args.run_dir, error=str(exc)), ensure_ascii=False, indent=2))
+            else:
+                print(f"Retry failed: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
+
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"Retry run complete: {status['run_id']}")
+            print(f"Source run: {result['source_run']['run_id']}")
+            print(f"Retried files: {result['retry_run']['retried_jobs']}")
+            failure_counts = result.get("failure_counts") if isinstance(result.get("failure_counts"), dict) else {}
+            if failure_counts:
+                print(
+                    "Selected failures: "
+                    f"{failure_counts.get('retryable', 0)} retryable, "
+                    f"{failure_counts.get('non_retryable', 0)} non-retryable, "
+                    f"{failure_counts.get('unknown', 0)} unknown"
+                )
+            print(f"Status: {status['status']}")
+            print(f"Output: {status['output']['path']}")
+            for warning in result.get("warnings") or []:
+                print(f"Warning: {warning}")
+        return
+
+    if args.farm_command == "run":
+        agent, runtime_config = sift_farm.resolve_run_agent_and_config(
+            root=ROOT,
+            agent_id=args.agent,
+            default_model=MODEL,
+            config_path=Path(args.config) if args.config else None,
+            profile=args.profile,
+            resource_mode=getattr(args, "resource_mode", None),
+            model=args.model,
+            chunk_strategy=args.chunk_strategy,
+            chunk_chars=args.chunk_chars,
+            reduce_chars=args.reduce_chars,
+            chunk_tokens=args.chunk_tokens,
+            reduce_tokens=args.reduce_tokens,
+            token_safety_margin=args.token_safety_margin,
+            preserve_heading_ancestry=args.preserve_heading_ancestry,
+            chunk_overlap_chars=args.chunk_overlap_chars,
+            chunk_overlap_tokens=args.chunk_overlap_tokens,
+            snippets=args.snippets,
+            snippet_max_chars=args.snippet_max_chars,
+            parallel_jobs=args.parallel_jobs,
+            parallel_chunks=args.parallel_chunks,
+            max_attempts=args.max_attempts,
+            per_file_timeout_seconds=args.per_file_timeout_seconds,
+            chunk_max_attempts=args.chunk_max_attempts,
+            reduce_max_attempts=args.reduce_max_attempts,
+            include=args.include,
+            exclude=args.exclude,
+        )
+        ensure_model(str(agent["model"]))
+        status = sift_farm.run_farm(
+            root=ROOT,
+            input_folder=Path(args.input_folder),
+            output_dir=Path(args.output) if args.output else None,
+            mode=args.mode,
+            instructions=args.instructions,
+            agent_id=args.agent,
+            default_model=MODEL,
+            ollama_base_url=OLLAMA_BASE_URL,
+            runtime_config=runtime_config,
+        )
+        print(f"Farm run complete: {status['run_id']}")
+        print(f"Status: {status['status']}")
+        print(f"Output: {status['output']['path']}")
+        return
+
+    if args.farm_command == "tokenizer":
+        from src.sift_farm_tokenizer import (
+            SUPPORTED_QWEN_TOKENIZERS,
+            render_tokenizer_status_markdown,
+            tokenizer_status,
+            write_tokenizer_status,
+        )
+
+        models = args.model or list(SUPPORTED_QWEN_TOKENIZERS)
+        status = tokenizer_status(root=ROOT, models=models, download=args.tokenizer_command == "setup")
+        write_tokenizer_status(ROOT, status)
+        print(render_tokenizer_status_markdown(status))
+        if not status["ready"]:
+            raise SystemExit(1)
+        return
+
+    if args.farm_command == "list":
+        print(sift_farm.list_runs_text(ROOT))
+        return
+
+    if args.farm_command == "status":
+        if args.json:
+            print(json.dumps(sift_farm.status_json(ROOT, args.run_id), ensure_ascii=False, indent=2))
+            return
+        print(sift_farm.status_text(ROOT, args.run_id))
+        return
+
+    raise RuntimeError(f"Unknown farm command: {args.farm_command}")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Manage Sift local worker services.")
+    subparsers = parser.add_subparsers(dest="command", required=False)
+
+    for name in ["setup", "start", "stop", "status", "pull", "logs"]:
+        subparsers.add_parser(name)
+
+    ask = subparsers.add_parser("ask")
+    ask.add_argument("message")
+    ask.add_argument("agent", nargs="?", default="default")
+
+    farm = subparsers.add_parser("farm")
+    farm_subparsers = farm.add_subparsers(dest="farm_command", required=True)
+
+    farm_doctor = farm_subparsers.add_parser("doctor")
+    farm_doctor.add_argument("--json", action="store_true")
+    farm_doctor.add_argument("--output")
+    farm_doctor.add_argument("--agent", default="default")
+    farm_doctor.add_argument("--profile")
+    farm_doctor.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
+
+    farm_recommend = farm_subparsers.add_parser("recommend")
+    farm_recommend.add_argument("--json", action="store_true")
+    farm_recommend.add_argument("--output")
+    farm_recommend.add_argument("--agent", default="default")
+    farm_recommend.add_argument("--profile")
+    farm_recommend.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
+    farm_recommend_subparsers = farm_recommend.add_subparsers(dest="recommend_command", required=False)
+
+    farm_recommend_apply = farm_recommend_subparsers.add_parser("apply")
+    farm_recommend_apply.add_argument("recommendation_path", nargs="?")
+    farm_recommend_apply.add_argument("--config")
+    farm_recommend_apply.add_argument("--output")
+    farm_recommend_apply.add_argument("--write", action="store_true")
+    farm_recommend_apply.add_argument("--json", action="store_true")
+
+    farm_schema = farm_subparsers.add_parser("schema")
+    farm_schema_subparsers = farm_schema.add_subparsers(dest="schema_command", required=True)
+
+    schema_validate = farm_schema_subparsers.add_parser("validate")
+    schema_validate.add_argument("json_path")
+    schema_validate.add_argument("--schema")
+    schema_validate.add_argument("--json", action="store_true")
+
+    farm_collect = farm_subparsers.add_parser("collect")
+    farm_collect.add_argument("run_dir", metavar="run-ref")
+    farm_collect.add_argument("--output")
+    farm_collect.add_argument("--label")
+
+    farm_retry_failed = farm_subparsers.add_parser("retry-failed")
+    farm_retry_failed.add_argument("run_dir", metavar="run-ref")
+    farm_retry_failed.add_argument("--output")
+    farm_retry_failed.add_argument("--instructions")
+    farm_retry_failed.add_argument("--agent")
+    farm_retry_failed.add_argument("--json", action="store_true")
+
+    farm_run = farm_subparsers.add_parser("run")
+    farm_run.add_argument("input_folder")
+    farm_run.add_argument("--output")
+    farm_run.add_argument("--mode", choices=["summarize", "prompt"], default="summarize")
+    farm_run.add_argument("--instructions")
+    farm_run.add_argument("--agent", default="default")
+    farm_run.add_argument("--config")
+    farm_run.add_argument("--profile")
+    farm_run.add_argument("--resource-mode", choices=["auto", "gpu", "hybrid", "cpu"])
+    farm_run.add_argument("--model")
+    farm_run.add_argument("--chunk-strategy", choices=["character", "token"])
+    farm_run.add_argument("--chunk-chars", type=int)
+    farm_run.add_argument("--reduce-chars", type=int)
+    farm_run.add_argument("--chunk-tokens", type=int)
+    farm_run.add_argument("--reduce-tokens", type=int)
+    farm_run.add_argument("--token-safety-margin", type=float)
+    farm_run.add_argument("--preserve-heading-ancestry", action=argparse.BooleanOptionalAction, default=None)
+    farm_run.add_argument("--chunk-overlap-chars", type=int)
+    farm_run.add_argument("--chunk-overlap-tokens", type=int)
+    farm_run.add_argument("--snippets")
+    farm_run.add_argument("--snippet-max-chars", type=int)
+    farm_run.add_argument("--parallel-jobs", type=int)
+    farm_run.add_argument("--parallel-chunks", type=int)
+    farm_run.add_argument("--max-attempts", type=int)
+    farm_run.add_argument("--per-file-timeout-seconds", type=int)
+    farm_run.add_argument("--chunk-max-attempts", type=int)
+    farm_run.add_argument("--reduce-max-attempts", type=int)
+    farm_run.add_argument("--include", action="append", default=[])
+    farm_run.add_argument("--exclude", action="append", default=[])
+
+    farm_tokenizer = farm_subparsers.add_parser("tokenizer")
+    farm_tokenizer_subparsers = farm_tokenizer.add_subparsers(dest="tokenizer_command", required=True)
+    for name in ["setup", "status"]:
+        command = farm_tokenizer_subparsers.add_parser(name)
+        command.add_argument("--model", action="append")
+
+    farm_subparsers.add_parser("list")
+
+    farm_status = farm_subparsers.add_parser("status")
+    farm_status.add_argument("run_id", nargs="?")
+    farm_status.add_argument("--json", action="store_true")
+
+    farm_dogfood = farm_subparsers.add_parser("dogfood")
+    farm_dogfood_subparsers = farm_dogfood.add_subparsers(dest="dogfood_command", required=True)
+
+    dogfood_record = farm_dogfood_subparsers.add_parser("record")
+    dogfood_record.add_argument("run_dir", metavar="run-ref")
+    dogfood_record.add_argument("--label")
+    dogfood_record.add_argument("--notes")
+    dogfood_record.add_argument("--output")
+
+    dogfood_compare = farm_dogfood_subparsers.add_parser("compare")
+    dogfood_compare.add_argument("baseline_record")
+    dogfood_compare.add_argument("candidate_record")
+    dogfood_compare.add_argument("--output")
+
+    dogfood_timing = farm_dogfood_subparsers.add_parser("timing")
+    dogfood_timing_subparsers = dogfood_timing.add_subparsers(dest="timing_command", required=True)
+
+    dogfood_timing_record = dogfood_timing_subparsers.add_parser("record")
+    dogfood_timing_record.add_argument("run_dir", metavar="run-ref")
+    dogfood_timing_record.add_argument("--label")
+    dogfood_timing_record.add_argument("--output")
+
+    dogfood_timing_compare = dogfood_timing_subparsers.add_parser("compare")
+    dogfood_timing_compare.add_argument("baseline_record")
+    dogfood_timing_compare.add_argument("candidate_record")
+    dogfood_timing_compare.add_argument("--output")
+
+    farm_snippets = farm_subparsers.add_parser("snippets")
+    farm_snippets_subparsers = farm_snippets.add_subparsers(dest="snippets_command", required=True)
+
+    snippets_pack = farm_snippets_subparsers.add_parser("pack")
+    snippets_pack.add_argument("run_dir", metavar="run-ref")
+    snippets_pack.add_argument("--output")
+    snippets_pack.add_argument("--label")
+    snippets_pack.add_argument("--max-snippets", type=int, default=24)
+    snippets_pack.add_argument("--per-file", type=int, default=4)
+
+    farm_synthesis = farm_subparsers.add_parser("synthesis")
+    farm_synthesis_subparsers = farm_synthesis.add_subparsers(dest="synthesis_command", required=True)
+
+    synthesis_bundle = farm_synthesis_subparsers.add_parser("bundle")
+    synthesis_bundle.add_argument("run_dir", metavar="run-ref")
+    synthesis_bundle.add_argument("--output")
+    synthesis_bundle.add_argument("--label")
+    synthesis_bundle.add_argument("--max-snippets", type=int, default=24)
+    synthesis_bundle.add_argument("--per-file", type=int, default=4)
+    synthesis_bundle.add_argument("--max-chars", type=int)
+    synthesis_bundle.add_argument("--max-estimated-tokens", type=int)
+    synthesis_bundle.add_argument("--chars-per-token", type=float, default=4.0)
+
+    args = parser.parse_args()
+    if not args.command:
+        args.command = "status"
+    return args
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.command == "setup":
+        if sys.version_info < (3, 10):
+            raise RuntimeError("Python 3.10+ is required.")
+        ensure_model()
+        print("")
+        print("Setup complete. Run `python sift.py start` when you want the local service.")
+    elif args.command == "start":
+        ensure_model()
+        start_gateway()
+        print("")
+        print("Ready.")
+        print(f"OpenAI-compatible base URL: {OLLAMA_BASE_URL}/v1")
+        print(f"Agent gateway: {GATEWAY_BASE_URL}")
+    elif args.command == "stop":
+        stop_all()
+    elif args.command == "status":
+        show_status()
+    elif args.command == "ask":
+        invoke_agent_prompt(args.message, args.agent)
+    elif args.command == "pull":
+        ensure_model()
+    elif args.command == "logs":
+        print_logs()
+    elif args.command == "farm":
+        handle_farm(args)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("")
+        print("Interrupted.")
+        raise SystemExit(130)

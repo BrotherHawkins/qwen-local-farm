@@ -38,7 +38,7 @@ Deferred:
 
 ### 1. Add Timing Helpers
 
-Add small helpers, likely in `src/qwen_farm.py` unless the code starts to feel crowded:
+Add small helpers, likely in `src/sift_farm.py` unless the code starts to feel crowded:
 
 - `utc_now()` or equivalent for timezone-aware UTC `datetime`
 - `format_timestamp(...)` for persisted UTC ISO-8601 strings ending in `Z`
@@ -134,7 +134,7 @@ For chunk result envelopes, include the individual chunk map call timing if avai
 
 ### 7. Write Run Timing Summary Artifacts
 
-Add summary builders, likely in a new `src/qwen_farm_timing.py` if this keeps `qwen_farm.py` cleaner:
+Add summary builders, likely in a new `src/sift_farm_timing.py` if this keeps `sift_farm.py` cleaner:
 
 - `build_timing_summary(status)`
 - `render_timing_summary_markdown(summary)`
@@ -188,7 +188,7 @@ Use a new ignored folder:
 Copy the same article text files from the previous dogfood set if available, then run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0005/articles-text --output .run/dogfood_0005/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 2
+python sift.py farm run .run/dogfood_0005/articles-text --output .run/dogfood_0005/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --parallel-jobs 2
 ```
 
 Inspect:
@@ -219,7 +219,7 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

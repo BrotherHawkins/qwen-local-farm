@@ -34,7 +34,7 @@ Deferred:
 
 ### 1. Add Dogfood History Module
 
-Create `src/qwen_farm_dogfood.py` with pure helpers:
+Create `src/sift_farm_dogfood.py` with pure helpers:
 
 - load compact farm status from a run directory
 - normalize optional quality notes
@@ -46,11 +46,11 @@ Create `src/qwen_farm_dogfood.py` with pure helpers:
 
 ### 2. Add CLI Commands
 
-Extend `qwen.py farm` with:
+Extend `sift.py farm` with:
 
 ```powershell
-python qwen.py farm dogfood record <run-dir> --label <label> --notes <notes.json>
-python qwen.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output <output-folder>
+python sift.py farm dogfood record <run-dir> --label <label> --notes <notes.json>
+python sift.py farm dogfood compare <baseline-record.json> <candidate-record.json> --output <output-folder>
 ```
 
 Defaults:
@@ -165,7 +165,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

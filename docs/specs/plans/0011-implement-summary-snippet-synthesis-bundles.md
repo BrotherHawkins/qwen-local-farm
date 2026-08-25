@@ -35,7 +35,7 @@ Deferred:
 
 ### 1. Reuse 0010 Snippet Pack Primitives
 
-Use `src/qwen_farm_snippet_packs.py` for:
+Use `src/sift_farm_snippet_packs.py` for:
 
 - reading JSON objects where sensible
 - resolving per-job `result_json` paths
@@ -50,7 +50,7 @@ Avoid copying 0010 logic unless the bundle schema genuinely needs a different re
 
 ### 2. Add Synthesis Bundle Module
 
-Create `src/qwen_farm_synthesis_bundles.py` with pure helpers:
+Create `src/sift_farm_synthesis_bundles.py` with pure helpers:
 
 - read `farm-status.json`
 - iterate successful and warning-complete jobs in farm-status order
@@ -97,10 +97,10 @@ The bundle intentionally includes compact file-level summaries because that is t
 
 ### 4. Add CLI Command
 
-Extend `qwen.py farm` with:
+Extend `sift.py farm` with:
 
 ```powershell
-python qwen.py farm synthesis bundle <run-dir> --output <output-folder> --label <label> --max-snippets <n> --per-file <n>
+python sift.py farm synthesis bundle <run-dir> --output <output-folder> --label <label> --max-snippets <n> --per-file <n>
 ```
 
 Defaults:
@@ -144,7 +144,7 @@ Use:
 Create a bundle from the latest dogfood lite run:
 
 ```powershell
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0011/synthesis-bundles --label dogfood-lite-0011
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0011/synthesis-bundles --label dogfood-lite-0011
 ```
 
 Inspect:
@@ -183,7 +183,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

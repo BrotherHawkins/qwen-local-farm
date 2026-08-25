@@ -29,7 +29,7 @@ This change adds additive in-progress progress metadata to existing farm run sta
 
 - update `farm-status.json` while a chunked summarize job progresses through planning, chunk map calls, and reduce calls
 - update `FARM_STATUS.md` with concise active phase, chunk counts, reduce counts, and current call information
-- expose the same data naturally through existing `python qwen.py farm status <run-id>` and `python qwen.py farm status <run-id> --json`
+- expose the same data naturally through existing `python sift.py farm status <run-id>` and `python sift.py farm status <run-id> --json`
 - persist active and completed model-call records in job timing while the job is still running
 - make planned chunk counts visible shortly after chunk planning completes
 - make completed, running, failed, and queued chunk counts visible during chunk map work
@@ -235,8 +235,8 @@ No new CLI flag is required.
 Existing commands should benefit automatically because they already read status artifacts:
 
 ```powershell
-python qwen.py farm status farm-run-...
-python qwen.py farm status farm-run-... --json
+python sift.py farm status farm-run-...
+python sift.py farm status farm-run-... --json
 ```
 
 The JSON output should include the same additive `progress` and in-progress `timing.calls` data found in `farm-status.json`.
@@ -288,7 +288,7 @@ Timing/progress collection must not mask or replace the original failure.
 - Completed and failed call records in `farm-status.json` include completed timestamps and durations while the job is still running.
 - Recovered retry attempts remain visible in `timing.calls`.
 - `FARM_STATUS.md` gives a concise active-job progress summary without dumping every completed call.
-- `python qwen.py farm status <run-id> --json` exposes the same progress fields for a running run.
+- `python sift.py farm status <run-id> --json` exposes the same progress fields for a running run.
 - Existing completed run status remains compatible when `progress` is absent or terminal.
 - Tracked schemas are updated so existing status artifacts without `progress` remain valid and new artifacts with `progress` validate.
 - Model-free tests cover running chunk map progress, running reduce progress, failed/retried call visibility, Markdown rendering, JSON status rendering, and schema validation.

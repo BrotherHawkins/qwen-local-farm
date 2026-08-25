@@ -14,7 +14,7 @@ This plan implements the accepted runtime profile contract before adding hardwar
 Planned:
 
 - built-in runtime profiles for common local tiers
-- `.qwen-farm.json` discovery and explicit `--config` loading
+- `.sift-farm.json` discovery and explicit `--config` loading
 - CLI overrides for profile, model, chunk sizing, and concurrency
 - deterministic resolved config model
 - validation failures before run folder creation
@@ -41,7 +41,7 @@ Deferred:
 
 ### 1. Add Runtime Profile Helpers
 
-Add a small module for profile behavior, likely `src/qwen_farm_profiles.py`.
+Add a small module for profile behavior, likely `src/sift_farm_profiles.py`.
 
 The module should define:
 
@@ -72,13 +72,13 @@ Map the current behavior to the default `local-8gb` profile. Avoid tuning perfec
 Support default discovery of:
 
 ```text
-.qwen-farm.json
+.sift-farm.json
 ```
 
 Support explicit config path:
 
 ```bash
-python qwen.py farm run input-folder --config path/to/qwen-farm.json
+python sift.py farm run input-folder --config path/to/qwen-farm.json
 ```
 
 Validation should reject:
@@ -161,7 +161,7 @@ Update README and AI usage docs with:
 
 - default behavior
 - named profile examples
-- `.qwen-farm.json` example
+- `.sift-farm.json` example
 - CLI override examples
 - AI-assistant setup guidance
 - note that hardware probing is deferred to a future doctor workflow
@@ -187,9 +187,9 @@ Manual verification:
 
 ```bash
 python -m unittest discover -s tests
-python qwen.py farm run <small-folder> --output .run/manual-profiles-default --mode summarize
-python qwen.py farm status <run-id>
-python qwen.py farm run <small-folder> --output .run/manual-profiles-override --mode summarize --profile local-12gb --chunk-chars 18000
+python sift.py farm run <small-folder> --output .run/manual-profiles-default --mode summarize
+python sift.py farm status <run-id>
+python sift.py farm run <small-folder> --output .run/manual-profiles-override --mode summarize --profile local-12gb --chunk-chars 18000
 ```
 
 ## Verification Plan
@@ -198,13 +198,13 @@ Before PR:
 
 ```bash
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 ```
 
 Optional manual smoke test:
 
 ```bash
-python qwen.py farm run .run/dogfood3/articles-text --output .run/manual-profiles-dogfood --mode summarize --agent default --profile local-8gb
+python sift.py farm run .run/dogfood3/articles-text --output .run/manual-profiles-dogfood --mode summarize --agent default --profile local-8gb
 ```
 
 The optional dogfood run is useful but not required for the implementation PR if model-free tests cover config resolution and artifact output.

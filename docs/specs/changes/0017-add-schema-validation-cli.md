@@ -22,9 +22,9 @@ This change favors:
 
 This change adds a public farm schema validation command:
 
-- add `python qwen.py farm schema validate <json-path>`
-- add `python qwen.py farm schema validate <json-path> --schema <schema-path-or-id>`
-- add `python qwen.py farm schema validate <json-path> --json`
+- add `python sift.py farm schema validate <json-path>`
+- add `python sift.py farm schema validate <json-path> --schema <schema-path-or-id>`
+- add `python sift.py farm schema validate <json-path> --json`
 - use tracked schemas from `schemas/index.json`
 - auto-detect a schema for known current artifact shapes when `--schema` is omitted
 - validate with the dependency-free helper from 0016
@@ -57,27 +57,27 @@ This change does not add:
 Validate with auto-detection:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json
-python qwen.py farm schema validate .run/farm/<run-id>/farm-status.json
-python qwen.py farm schema validate .run/farm/<run-id>/jobs/job-0001/result.json
+python sift.py farm schema validate .run/reports/setup-doctor.json
+python sift.py farm schema validate .run/farm/<run-id>/farm-status.json
+python sift.py farm schema validate .run/farm/<run-id>/jobs/job-0001/result.json
 ```
 
 Validate with an explicit schema path:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+python sift.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
 ```
 
 Validate with an explicit schema ID from `schemas/index.json`:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json --schema https://qwen-local-farm.local/schemas/farm-doctor.schema.json
+python sift.py farm schema validate .run/reports/setup-doctor.json --schema https://sift.local/schemas/farm-doctor.schema.json
 ```
 
 Machine-readable output:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json --json
+python sift.py farm schema validate .run/reports/setup-doctor.json --json
 ```
 
 ### Auto-Detection
@@ -126,7 +126,7 @@ With `--json`, stdout should contain only valid JSON:
   "valid": false,
   "artifact_path": "path/to/artifact.json",
   "schema": {
-    "id": "https://qwen-local-farm.local/schemas/farm-status.schema.json",
+    "id": "https://sift.local/schemas/farm-status.schema.json",
     "path": "schemas/farm-status.schema.json",
     "detected": true
   },
@@ -150,7 +150,7 @@ Exact numeric values can be refined during planning if repo conventions suggest 
 
 ## Acceptance Criteria
 
-- `python qwen.py farm schema validate <json-path>` validates a known current artifact through auto-detection.
+- `python sift.py farm schema validate <json-path>` validates a known current artifact through auto-detection.
 - `--schema <schema-path>` validates with an explicit local schema file.
 - `--schema <schema-id>` resolves schema IDs listed in `schemas/index.json`.
 - `--json` prints valid JSON with no Markdown or explanatory prose.
@@ -189,25 +189,25 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual smoke:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json
-python qwen.py farm schema validate .run/reports/setup-doctor.json --json
-python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+python sift.py farm schema validate .run/reports/setup-doctor.json
+python sift.py farm schema validate .run/reports/setup-doctor.json --json
+python sift.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
 ```
 
 Optionally validate a recent dogfood run:
 
 ```powershell
-python qwen.py farm schema validate <run-dir>/farm-status.json
-python qwen.py farm schema validate <run-dir>/jobs/job-0001/result.json
+python sift.py farm schema validate <run-dir>/farm-status.json
+python sift.py farm schema validate <run-dir>/jobs/job-0001/result.json
 ```
 
 ## Deferred To Roadmap

@@ -24,7 +24,7 @@ Spec: [0022 Add Resource-Aware Runtime Modes](../changes/0022-add-resource-aware
    - let recommendations consider the requested/effective runtime resource mode
    - update next actions/docs for applying resource mode to config
 5. [x] Update recommendation apply.
-   - write valid `resource_mode` to `.qwen-farm.json`
+   - write valid `resource_mode` to `.sift-farm.json`
    - stop listing valid resource mode as guidance-only
    - keep `OLLAMA_NUM_PARALLEL` guidance-only
 6. [x] Update schemas and docs.

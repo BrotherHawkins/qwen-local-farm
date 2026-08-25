@@ -5,7 +5,7 @@ Type: Add
 
 ## WHY
 
-Qwen Local Farm is meant to become a tool that both humans and primary AIs can change over time. That only works if future changes have a small, reliable safety rail before merge.
+Sift is meant to become a tool that both humans and primary AIs can change over time. That only works if future changes have a small, reliable safety rail before merge.
 
 This change adds the first gated PR check without tying public CI to local hardware, Ollama installation, downloaded model state, or long-running benchmarks.
 
@@ -61,7 +61,7 @@ The workflow checks supported Python versions without installing project-specifi
 The gate runs:
 
 ```bash
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
@@ -81,7 +81,7 @@ Recommended protection behavior:
 - A GitHub Actions workflow exists at `.github/workflows/ci.yml`.
 - The workflow runs on pull requests.
 - The workflow runs on pushes to `main`.
-- The workflow compiles `qwen.py`, `examples`, `src`, and `tests`.
+- The workflow compiles `sift.py`, `examples`, `src`, and `tests`.
 - The workflow runs stdlib `unittest` discovery under `tests`.
 - The workflow does not start Ollama.
 - The workflow does not download models.

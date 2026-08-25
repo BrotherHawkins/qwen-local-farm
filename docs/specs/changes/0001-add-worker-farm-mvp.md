@@ -22,10 +22,10 @@ This change adds the first worker-farm MVP behavior described in [implemented/fa
 
 It covers:
 
-- `python qwen.py farm run`
-- `python qwen.py farm list`
-- `python qwen.py farm status`
-- `python qwen.py farm status <run-id>`
+- `python sift.py farm run`
+- `python sift.py farm list`
+- `python sift.py farm status`
+- `python sift.py farm status <run-id>`
 - folder input
 - filesystem-backed run folders
 - file-level sub-jobs
@@ -56,11 +56,11 @@ This change does not add:
 Add:
 
 ```bash
-python qwen.py farm run input-folder --output results --mode summarize
-python qwen.py farm run input-folder --mode prompt --instructions "Apply this instruction to each file."
-python qwen.py farm list
-python qwen.py farm status
-python qwen.py farm status <run-id>
+python sift.py farm run input-folder --output results --mode summarize
+python sift.py farm run input-folder --mode prompt --instructions "Apply this instruction to each file."
+python sift.py farm list
+python sift.py farm status
+python sift.py farm status <run-id>
 ```
 
 `--output` is optional.
@@ -154,12 +154,12 @@ Default failure behavior:
 
 ## Acceptance Criteria
 
-- The CLI accepts `python qwen.py farm run <input-folder> --mode summarize`.
-- The CLI accepts `python qwen.py farm run <input-folder> --mode prompt --instructions <text>`.
+- The CLI accepts `python sift.py farm run <input-folder> --mode summarize`.
+- The CLI accepts `python sift.py farm run <input-folder> --mode prompt --instructions <text>`.
 - The CLI accepts optional `--output <dir>`.
-- The CLI supports `python qwen.py farm list`.
-- The CLI supports `python qwen.py farm status`.
-- The CLI supports `python qwen.py farm status <run-id>`.
+- The CLI supports `python sift.py farm list`.
+- The CLI supports `python sift.py farm status`.
+- The CLI supports `python sift.py farm status <run-id>`.
 - The farm creates a run folder with a timestamp-plus-suffix run ID.
 - The default farm home is `.run/farm/`.
 - The farm creates job folders using `job-0001`, `job-0002`, and so on.

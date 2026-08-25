@@ -43,7 +43,7 @@ Deferred:
 
 ### 1. Extend Runtime Config
 
-Update `src/qwen_farm_profiles.py` to accept snippet settings under `summarize`:
+Update `src/sift_farm_profiles.py` to accept snippet settings under `summarize`:
 
 - `snippet_policy`: `off`, `fixed`, or `auto`
 - `snippet_count`: integer or null
@@ -74,7 +74,7 @@ Persist the resolved run-level settings in `farm-config.resolved.json` as normal
 
 ### 2. Add CLI Override Plumbing
 
-Update `qwen.py farm run` argument parsing:
+Update `sift.py farm run` argument parsing:
 
 ```powershell
 --snippets off
@@ -93,7 +93,7 @@ Reject invalid values before run folder creation when possible.
 
 ### 3. Add Snippet Data Helpers
 
-Add small helpers, likely in a new `src/qwen_farm_snippets.py` unless `qwen_farm_model.py` remains cleaner:
+Add small helpers, likely in a new `src/sift_farm_snippets.py` unless `sift_farm_model.py` remains cleaner:
 
 - `resolve_snippet_request(...)`
 - `parse_snippet_candidates(...)`
@@ -260,13 +260,13 @@ Copy dogfood_lite articles 005 and 009:
 Run a fixed-count pass:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0007/articles-text --output .run/dogfood_0007/fixed/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, open questions, and useful source evidence." --agent default --parallel-jobs 1 --chunk-strategy token --snippets 3
+python sift.py farm run .run/dogfood_0007/articles-text --output .run/dogfood_0007/fixed/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, open questions, and useful source evidence." --agent default --parallel-jobs 1 --chunk-strategy token --snippets 3
 ```
 
 Run an auto pass:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0007/articles-text --output .run/dogfood_0007/auto/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, open questions, and useful source evidence." --agent default --parallel-jobs 1 --chunk-strategy token --snippets auto
+python sift.py farm run .run/dogfood_0007/articles-text --output .run/dogfood_0007/auto/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, open questions, and useful source evidence." --agent default --parallel-jobs 1 --chunk-strategy token --snippets auto
 ```
 
 Compare against the non-snippet fastpath runs:
@@ -311,15 +311,15 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Dogfood verification:
 
 ```powershell
-python qwen.py farm status <fixed-run-id>
-python qwen.py farm status <auto-run-id>
+python sift.py farm status <fixed-run-id>
+python sift.py farm status <auto-run-id>
 ```
 
 Inspect:

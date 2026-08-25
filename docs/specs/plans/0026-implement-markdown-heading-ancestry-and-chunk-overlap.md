@@ -18,18 +18,18 @@ Spec: [0026 Add Markdown Heading Ancestry And Chunk Overlap](../changes/0026-add
 ## Verification
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_chunks tests.test_qwen_farm_profiles tests.test_qwen_cli tests.test_qwen_farm
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_chunks tests.test_sift_farm_profiles tests.test_sift_cli tests.test_sift_farm
 python -m unittest discover -s tests -p "test_*.py"
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 git diff --check
 ```
 
 Runtime smoke target:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0026/input --output .run/dogfood_0026/farm-results --mode summarize --chunk-chars 700 --chunk-overlap-chars 120
-python qwen.py farm status <run-id> --json
+python sift.py farm run .run/dogfood_0026/input --output .run/dogfood_0026/farm-results --mode summarize --chunk-chars 700 --chunk-overlap-chars 120
+python sift.py farm status <run-id> --json
 ```
 
 ## Notes

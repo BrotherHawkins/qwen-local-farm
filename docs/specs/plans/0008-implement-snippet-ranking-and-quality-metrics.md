@@ -39,7 +39,7 @@ Deferred:
 
 ### 1. Refactor Snippet Verification Into Selection-Friendly Helpers
 
-Update `src/qwen_farm_snippets.py` so candidate handling can distinguish:
+Update `src/sift_farm_snippets.py` so candidate handling can distinguish:
 
 - parsed candidate count
 - exact verification success/failure
@@ -138,7 +138,7 @@ The reducer summary content should remain unchanged unless a tiny prompt tweak i
 
 ### 7. Update Status Rendering
 
-Update `src/qwen_farm_status.py` to preserve compact readability:
+Update `src/sift_farm_status.py` to preserve compact readability:
 
 - keep the existing snippets column
 - show selected/requested when selected differs from verified or when diagnostics are present
@@ -166,7 +166,7 @@ Use:
 Run:
 
 ```powershell
-python qwen.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0008/lite-ranked/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --chunk-strategy token --snippets auto
+python sift.py farm run .run/dogfood_lite/articles-text --output .run/dogfood_0008/lite-ranked/farm-results --mode summarize --instructions "Summarize the article for later synthesis. Capture thesis, key claims, useful examples, and open questions." --agent default --chunk-strategy token --snippets auto
 ```
 
 Compare against:
@@ -217,14 +217,14 @@ Verification before PR:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Dogfood verification:
 
 ```powershell
-python qwen.py farm status <run-id>
+python sift.py farm status <run-id>
 ```
 
 Inspect:

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-doctor.schema.json",
-  "title": "Qwen Local Farm Doctor Report",
-  "description": "Doctor report printed by python qwen.py farm doctor --json and written as setup-doctor.json.",
+  "$id": "https://sift.local/schemas/farm-doctor.schema.json",
+  "title": "Sift Doctor Report",
+  "description": "Doctor report printed by python sift.py farm doctor --json and written as setup-doctor.json.",
   "type": "object",
   "required": [
     "schema_version",

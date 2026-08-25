@@ -82,8 +82,8 @@ Manual verification:
 
 ```bash
 python -m unittest discover -s tests
-python qwen.py farm run <long-text-folder> --output .run/manual-chunking --mode summarize --agent default
-python qwen.py farm status <run-id>
+python sift.py farm run <long-text-folder> --output .run/manual-chunking --mode summarize --agent default
+python sift.py farm status <run-id>
 ```
 
 ## Verification Plan

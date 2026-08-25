@@ -28,10 +28,10 @@ Add reproducible include/exclude controls for farm file discovery while preservi
 Run:
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_files tests.test_qwen_farm_profiles tests.test_qwen_farm tests.test_qwen_cli tests.test_qwen_farm_status tests.test_qwen_farm_schema
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_files tests.test_sift_farm_profiles tests.test_sift_farm tests.test_sift_cli tests.test_sift_farm_status tests.test_sift_farm_schema
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

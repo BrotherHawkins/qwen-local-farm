@@ -13,7 +13,7 @@ This change adds the foundation for model-family adapters while keeping the user
 
 - `farm run`
 - agent IDs
-- `.qwen-farm.json`
+- `.sift-farm.json`
 - run status artifacts
 - tokenizer-aware chunking behavior
 - doctor/recommend/apply reports
@@ -146,10 +146,10 @@ The main CLI should not grow a new required argument for this first pass.
 User-facing commands should keep their current shape:
 
 ```powershell
-python qwen.py farm run input --mode summarize --agent default
-python qwen.py farm tokenizer status
-python qwen.py farm doctor --json
-python qwen.py farm recommend --json
+python sift.py farm run input --mode summarize --agent default
+python sift.py farm tokenizer status
+python sift.py farm doctor --json
+python sift.py farm recommend --json
 ```
 
 Explicit model metadata should be accepted through agent JSON files. Config-level overrides may be added only if they can be validated simply and documented clearly.
@@ -157,8 +157,8 @@ Explicit model metadata should be accepted through agent JSON files. Config-leve
 This spec does not require renaming:
 
 - the repository
-- `qwen.py`
-- `QWEN_MODEL`
+- `sift.py`
+- `SIFT_MODEL`
 - existing Qwen agent IDs
 - existing Qwen docs sections
 
@@ -237,10 +237,10 @@ Add model-free tests for:
 Run:
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_tokenizer tests.test_qwen_farm_profiles tests.test_qwen_farm_doctor tests.test_qwen_farm_recommend tests.test_qwen_farm tests.test_qwen_farm_schema
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_tokenizer tests.test_sift_farm_profiles tests.test_sift_farm_doctor tests.test_sift_farm_recommend tests.test_sift_farm tests.test_sift_farm_schema
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

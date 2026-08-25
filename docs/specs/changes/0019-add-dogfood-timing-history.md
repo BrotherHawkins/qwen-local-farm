@@ -58,7 +58,7 @@ The workflow should summarize an existing farm run into a compact timing record.
 Suggested command shape:
 
 ```powershell
-python qwen.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
+python sift.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
 ```
 
 Suggested default output:
@@ -145,7 +145,7 @@ The record may include input paths because current dogfood records already inclu
 The workflow should compare two timing records:
 
 ```powershell
-python qwen.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>
+python sift.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>
 ```
 
 Suggested default output:
@@ -217,9 +217,9 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_timing tests.test_qwen_farm_dogfood
+python -m unittest tests.test_sift_farm_timing tests.test_sift_farm_dogfood
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

@@ -61,7 +61,7 @@ Default farm state lives under:
 A future override may use:
 
 ```text
-QWEN_FARM_HOME
+SIFT_FARM_HOME
 ```
 
 ### Run IDs
@@ -79,10 +79,10 @@ Run IDs must sort chronologically and avoid collisions without a shared counter.
 The first worker-farm commands use the farm namespace:
 
 ```bash
-python qwen.py farm run input-folder --output results --mode summarize
-python qwen.py farm list
-python qwen.py farm status
-python qwen.py farm status <run-id>
+python sift.py farm run input-folder --output results --mode summarize
+python sift.py farm list
+python sift.py farm status
+python sift.py farm status <run-id>
 ```
 
 `farm status` with no run ID shows a farm overview.
@@ -295,13 +295,13 @@ MVP modes:
 `summarize` supports optional caller instructions:
 
 ```bash
-python qwen.py farm run notes/ --mode summarize --instructions "Focus on risks and next actions."
+python sift.py farm run notes/ --mode summarize --instructions "Focus on risks and next actions."
 ```
 
 `prompt` is the generic custom mode:
 
 ```bash
-python qwen.py farm run notes/ --mode prompt --instructions "For each file, identify what changed and what looks risky."
+python sift.py farm run notes/ --mode prompt --instructions "For each file, identify what changed and what looks risky."
 ```
 
 Future mode rollout:
@@ -312,11 +312,11 @@ Future mode rollout:
 
 ## Acceptance Criteria
 
-- `python qwen.py farm run <input-folder> --mode summarize` creates a farm run.
-- `python qwen.py farm run <input-folder> --mode prompt --instructions <text>` creates a farm run.
-- `python qwen.py farm list` lists known farm runs.
-- `python qwen.py farm status` shows farm overview.
-- `python qwen.py farm status <run-id>` shows one run.
+- `python sift.py farm run <input-folder> --mode summarize` creates a farm run.
+- `python sift.py farm run <input-folder> --mode prompt --instructions <text>` creates a farm run.
+- `python sift.py farm list` lists known farm runs.
+- `python sift.py farm status` shows farm overview.
+- `python sift.py farm status <run-id>` shows one run.
 - The run ID uses timestamp plus short random suffix.
 - The run uses `.run/farm/` when no output destination is provided.
 - When `--output <dir>` is provided, the run folder is created inside `<dir>`.

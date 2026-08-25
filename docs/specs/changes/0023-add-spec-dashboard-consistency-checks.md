@@ -58,7 +58,7 @@ This change does not add:
 Add a local command:
 
 ```powershell
-python -m src.qwen_spec_guard
+python -m src.sift_spec_guard
 ```
 
 The command exits:
@@ -98,7 +98,7 @@ Legacy exemption:
 
 ## Acceptance Criteria
 
-- `python -m src.qwen_spec_guard` exists and runs without third-party dependencies.
+- `python -m src.sift_spec_guard` exists and runs without third-party dependencies.
 - The checker exits `0` on the current valid repo state.
 - The checker reports dashboard count mismatches.
 - The checker reports missing dashboard rows for change specs.

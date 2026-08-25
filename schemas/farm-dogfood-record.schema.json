@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
-  "title": "Qwen Local Farm Dogfood Quality Record",
+  "$id": "https://sift.local/schemas/farm-dogfood-record.schema.json",
+  "title": "Sift Dogfood Quality Record",
   "description": "Post-run quality and timing history record written by farm dogfood record.",
   "type": "object",
   "required": [

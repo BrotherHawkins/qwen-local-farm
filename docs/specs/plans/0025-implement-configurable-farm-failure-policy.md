@@ -18,18 +18,18 @@ Spec: [0025 Add Configurable Farm Failure Policy](../changes/0025-add-configurab
 ## Verification
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_profiles tests.test_qwen_cli tests.test_qwen_farm
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_profiles tests.test_sift_cli tests.test_sift_farm
 python -m unittest discover -s tests -p "test_*.py"
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 git diff --check
 ```
 
 Runtime smoke:
 
 ```powershell
-python qwen.py farm run .run/dogfood_0025/input --output .run/dogfood_0025/farm-results --mode summarize --max-attempts 1 --chunk-max-attempts 1 --reduce-max-attempts 1
-python qwen.py farm status <run-id> --json
+python sift.py farm run .run/dogfood_0025/input --output .run/dogfood_0025/farm-results --mode summarize --max-attempts 1 --chunk-max-attempts 1 --reduce-max-attempts 1
+python sift.py farm status <run-id> --json
 ```
 
 ## Notes

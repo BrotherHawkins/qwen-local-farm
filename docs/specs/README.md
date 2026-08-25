@@ -1,6 +1,6 @@
 # Specs
 
-This folder contains living behavioral specs for Qwen Local Farm.
+This folder contains living behavioral specs for Sift.
 
 Roadmaps describe where the project may go. Specs describe behavior that is being proposed, accepted, implemented, or deprecated.
 
@@ -182,7 +182,7 @@ Keep [SPEC_DASHBOARD.md](SPEC_DASHBOARD.md) updated when adding or changing spec
 The dashboard is intentionally human-maintained and CI-guarded. Future tooling can regenerate it. The current guard audits it:
 
 ```powershell
-python -m src.qwen_spec_guard
+python -m src.sift_spec_guard
 ```
 
 The guard checks dashboard counts, change-spec rows, allowed status/type values, plan links, and missing implementation plans for accepted/implemented change specs after documented legacy exemptions.

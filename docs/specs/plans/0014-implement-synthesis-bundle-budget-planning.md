@@ -7,7 +7,7 @@ Spec: [0014 Add Synthesis Bundle Budget Planning](../changes/0014-add-synthesis-
 
 Implement budget planning as deterministic post-run synthesis bundle packaging:
 
-1. Add budget helpers in `qwen_farm_synthesis_bundles`.
+1. Add budget helpers in `sift_farm_synthesis_bundles`.
    - estimate tokens from rendered Markdown character count
    - resolve effective character cap from `--max-chars`, `--max-estimated-tokens`, and `--chars-per-token`
    - validate positive budget inputs before output is written
@@ -65,7 +65,7 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_synthesis_bundles tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_synthesis_bundles tests.test_sift_cli
 python -m unittest discover -s tests
 git diff --check
 ```
@@ -73,8 +73,8 @@ git diff --check
 Planned lite dogfood smoke:
 
 ```powershell
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-full
-python qwen.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-capped --max-chars 60000
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-full
+python sift.py farm synthesis bundle .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0014/synthesis-bundles --label dogfood-lite-0014-capped --max-chars 60000
 ```
 
 After the dogfood smoke, inspect the capped JSON output and report the `budget` object plus whether the resulting Markdown stayed useful.

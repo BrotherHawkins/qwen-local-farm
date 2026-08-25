@@ -53,7 +53,7 @@ This change does not add:
 The first implementation should prefer a reproducible post-run command:
 
 ```powershell
-python qwen.py farm snippets pack <run-dir> --output .run/snippet_packs --label dogfood-lite --max-snippets 24 --per-file 4
+python sift.py farm snippets pack <run-dir> --output .run/snippet_packs --label dogfood-lite --max-snippets 24 --per-file 4
 ```
 
 Exact command names can be refined during planning. If nesting under `farm snippets` makes the parser awkward, `farm collect snippets` or `farm dogfood snippets` is acceptable, but the command should clearly read an existing run rather than starting a new farm run.
@@ -218,7 +218,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -233,7 +233,7 @@ Use a new ignored folder:
 Create a snippet pack from the latest dogfood lite run with snippets:
 
 ```powershell
-python qwen.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0010/snippet-packs --label dogfood-lite-0010
+python sift.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0010/snippet-packs --label dogfood-lite-0010
 ```
 
 Inspect:

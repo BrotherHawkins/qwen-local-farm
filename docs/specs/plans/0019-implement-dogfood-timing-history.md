@@ -8,7 +8,7 @@ Spec: [0019 Add Dogfood Timing History](../changes/0019-add-dogfood-timing-histo
 Implement a timing-focused dogfood history workflow that records compact, comparable performance data from existing farm runs and compares baseline/candidate timing records without model calls.
 
 1. Add a timing history module.
-   - create a focused helper module, likely `src/qwen_farm_dogfood_timing.py`
+   - create a focused helper module, likely `src/sift_farm_dogfood_timing.py`
    - read an existing run's `farm-status.json`
    - use `timing-summary.json` when present for slowest jobs, slowest calls, and aggregate call-kind data
    - gracefully fall back to `farm-status.json` job timing when `timing-summary.json` is missing
@@ -22,8 +22,8 @@ Implement a timing-focused dogfood history workflow that records compact, compar
    - emit comparability notes when model, profile, commit, concurrency, chunk strategy, chunk size, reduce size, or snippet policy differ
    - render both JSON and Markdown comparison artifacts
 3. Wire CLI commands.
-   - add `python qwen.py farm dogfood timing record <run-ref>`
-   - add `python qwen.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>`
+   - add `python sift.py farm dogfood timing record <run-ref>`
+   - add `python sift.py farm dogfood timing compare <baseline-timing.json> <candidate-timing.json>`
    - support `--label` and `--output`
    - default record output to `.run/dogfood_timing/runs/`
    - default comparison output to `.run/dogfood_timing/comparisons/`
@@ -59,8 +59,8 @@ Implement a timing-focused dogfood history workflow that records compact, compar
 Preferred command shape:
 
 ```powershell
-python qwen.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
-python qwen.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json
+python sift.py farm dogfood timing record <run-ref> --label 0019-lite-baseline
+python sift.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json
 ```
 
 Expected defaults:
@@ -160,18 +160,18 @@ This implementation will not add automatic tuning, benchmark scheduling, tracked
 Completed checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_dogfood_timing tests.test_qwen_farm_dogfood tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_dogfood_timing tests.test_sift_farm_dogfood tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Completed manual smoke:
 
 ```powershell
-python qwen.py farm dogfood timing record .run/dogfood_0008/lite-ranked-final/farm-results/farm-run-2026-08-24-123139-37f1 --label 0019-lite-baseline --output .run/dogfood_timing/runs
-python qwen.py farm dogfood timing record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --label 0019-lite-candidate --output .run/dogfood_timing/runs
-python qwen.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json --output .run/dogfood_timing/comparisons
+python sift.py farm dogfood timing record .run/dogfood_0008/lite-ranked-final/farm-results/farm-run-2026-08-24-123139-37f1 --label 0019-lite-baseline --output .run/dogfood_timing/runs
+python sift.py farm dogfood timing record .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --label 0019-lite-candidate --output .run/dogfood_timing/runs
+python sift.py farm dogfood timing compare .run/dogfood_timing/runs/0019-lite-baseline.json .run/dogfood_timing/runs/0019-lite-candidate.json --output .run/dogfood_timing/comparisons
 ```
 
 Dogfood report:

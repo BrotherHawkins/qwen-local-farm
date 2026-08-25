@@ -5,7 +5,7 @@ Type: Add
 
 ## WHY
 
-Spec 0020 made local farm recommendations measurable and inspectable, but it deliberately stopped short of changing `.qwen-farm.json`.
+Spec 0020 made local farm recommendations measurable and inspectable, but it deliberately stopped short of changing `.sift-farm.json`.
 
 That was the right boundary for first contact. The next useful step is a safe, explicit way for a power user or primary AI to turn a validated recommendation report into project config.
 
@@ -16,7 +16,7 @@ The goal is not "let the tool silently tune my machine." The goal is:
 - read a recommendation JSON artifact
 - validate it
 - produce a clear apply preview
-- show exactly what would change in `.qwen-farm.json`
+- show exactly what would change in `.sift-farm.json`
 - write config only when the caller explicitly asks
 - leave enough Markdown/JSON evidence for a primary AI to explain what happened
 
@@ -24,14 +24,14 @@ The goal is not "let the tool silently tune my machine." The goal is:
 
 This change adds a safe recommendation-to-config workflow:
 
-- add a command for applying recommendation output to `.qwen-farm.json`
+- add a command for applying recommendation output to `.sift-farm.json`
 - make preview/dry-run the default behavior
 - require explicit write intent before changing files
 - validate the recommendation JSON before using it
-- generate the proposed `.qwen-farm.json` through existing farm config validation helpers
+- generate the proposed `.sift-farm.json` through existing farm config validation helpers
 - preserve existing unrelated config fields where safe
 - write only farm config fields supported by the current config contract
-- create a timestamped backup before overwriting an existing `.qwen-farm.json`
+- create a timestamped backup before overwriting an existing `.sift-farm.json`
 - write a machine-readable apply report JSON and human-readable Markdown report
 - add a tracked schema for the apply report JSON
 - document the workflow for power users and primary-AI assisted setup
@@ -40,11 +40,11 @@ This change adds a safe recommendation-to-config workflow:
 Suggested command shape:
 
 ```powershell
-python qwen.py farm recommend apply
-python qwen.py farm recommend apply .run/recommendations/farm-recommendation.json
-python qwen.py farm recommend apply --write
-python qwen.py farm recommend apply --config .qwen-farm.json --output .run/recommendations
-python qwen.py farm recommend apply --json
+python sift.py farm recommend apply
+python sift.py farm recommend apply .run/recommendations/farm-recommendation.json
+python sift.py farm recommend apply --write
+python sift.py farm recommend apply --config .sift-farm.json --output .run/recommendations
+python sift.py farm recommend apply --json
 ```
 
 If nested `farm recommend apply` becomes awkward in the parser, `farm config apply-recommendation` is acceptable as long as docs and doctor/recommendation next actions point to the final command.
@@ -70,7 +70,7 @@ This change does not add:
 
 ### Apply Command
 
-The apply command reads a recommendation report, validates it against `schemas/farm-recommendation.schema.json`, converts accepted recommendations into `.qwen-farm.json` shape, validates the proposed config using existing config normalization/resolution helpers, and produces an apply report.
+The apply command reads a recommendation report, validates it against `schemas/farm-recommendation.schema.json`, converts accepted recommendations into `.sift-farm.json` shape, validates the proposed config using existing config normalization/resolution helpers, and produces an apply report.
 
 Default recommendation path:
 
@@ -81,7 +81,7 @@ Default recommendation path:
 Default config path:
 
 ```text
-.qwen-farm.json
+.sift-farm.json
 ```
 
 Default report paths:
@@ -91,11 +91,11 @@ Default report paths:
 .run/recommendations/FARM_CONFIG_APPLY.md
 ```
 
-Preview is the default. The command must not write `.qwen-farm.json` unless the caller passes an explicit write flag such as `--write`.
+Preview is the default. The command must not write `.sift-farm.json` unless the caller passes an explicit write flag such as `--write`.
 
 ### Proposed Config Mapping
 
-The first implementation should map only settings already supported by `.qwen-farm.json`:
+The first implementation should map only settings already supported by `.sift-farm.json`:
 
 ```json
 {
@@ -114,7 +114,7 @@ The first implementation should map only settings already supported by `.qwen-fa
 }
 ```
 
-Recommended `OLLAMA_NUM_PARALLEL` and resource mode should be reported as next-step guidance, not written to `.qwen-farm.json`, because those are service/runtime placement concerns rather than current farm config fields.
+Recommended `OLLAMA_NUM_PARALLEL` and resource mode should be reported as next-step guidance, not written to `.sift-farm.json`, because those are service/runtime placement concerns rather than current farm config fields.
 
 If an existing config contains supported fields not mentioned by the recommendation, the command should preserve them when possible. Unsupported fields should already be rejected by existing config validation, so the command should block and explain rather than rewrite unknown data.
 
@@ -134,14 +134,14 @@ The command may allow writes with warnings when recommendation status is `ready_
 When `--write` is supplied:
 
 - create parent folders when needed
-- if `.qwen-farm.json` already exists, write a timestamped backup next to it before changing it
+- if `.sift-farm.json` already exists, write a timestamped backup next to it before changing it
 - write config atomically enough for local CLI use
 - report the backup path
 - report `status: applied`
 
 Without `--write`:
 
-- do not modify `.qwen-farm.json`
+- do not modify `.sift-farm.json`
 - report `status: preview`
 - show proposed changes and next command to apply
 
@@ -167,7 +167,7 @@ Apply report JSON should be close to:
   "status": "preview",
   "dry_run": true,
   "recommendation_path": ".run/recommendations/farm-recommendation.json",
-  "config_path": ".qwen-farm.json",
+  "config_path": ".sift-farm.json",
   "backup_path": null,
   "recommendation": {
     "status": "ready",
@@ -188,7 +188,7 @@ Apply report JSON should be close to:
   "not_applied": [
     {
       "path": "resource_mode",
-      "reason": "Resource mode is recommendation guidance, not a current .qwen-farm.json field."
+      "reason": "Resource mode is recommendation guidance, not a current .sift-farm.json field."
     }
   ],
   "warnings": [],
@@ -233,7 +233,7 @@ After write, a follow-up `farm doctor` or small `farm run` should be able to res
 
 ## Acceptance Criteria
 
-- A documented command exists to preview applying a recommendation to `.qwen-farm.json`.
+- A documented command exists to preview applying a recommendation to `.sift-farm.json`.
 - Preview is the default and does not modify config.
 - A write requires an explicit flag such as `--write`.
 - The command reads the default recommendation path when no path is supplied.
@@ -261,8 +261,8 @@ After write, a follow-up `farm doctor` or small `farm run` should be able to res
 Automated:
 
 - build proposed config from representative recommendation JSON
-- preview mode does not write `.qwen-farm.json`
-- write mode writes `.qwen-farm.json`
+- preview mode does not write `.sift-farm.json`
+- write mode writes `.sift-farm.json`
 - write mode backs up existing config
 - missing recommendation path returns clear input error
 - malformed recommendation JSON returns clear input error
@@ -282,26 +282,26 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_profiles tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_recommend tests.test_sift_farm_profiles tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual/local smoke:
 
 ```powershell
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
-python qwen.py farm recommend apply
-python qwen.py farm schema validate .run/recommendations/farm-config-apply.json
-python qwen.py farm recommend apply --write
-python qwen.py farm doctor --json
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm recommend apply
+python sift.py farm schema validate .run/recommendations/farm-config-apply.json
+python sift.py farm recommend apply --write
+python sift.py farm doctor --json
 ```
 
 If write smoke would disturb a developer's real config, run it against a temporary config path:
 
 ```powershell
-python qwen.py farm recommend apply --config .run/dogfood_0021/.qwen-farm.json --write
+python sift.py farm recommend apply --config .run/dogfood_0021/.sift-farm.json --write
 ```
 
 Save a local smoke report if implemented:

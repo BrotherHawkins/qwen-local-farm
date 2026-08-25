@@ -14,11 +14,11 @@ The plan keeps implementation, tests, verification, and spec lifecycle updates t
 
 Implemented the first filesystem-backed worker-farm slice:
 
-- `python qwen.py farm run <input-folder> --mode summarize`
-- `python qwen.py farm run <input-folder> --mode prompt --instructions <text>`
-- `python qwen.py farm list`
-- `python qwen.py farm status`
-- `python qwen.py farm status <run-id>`
+- `python sift.py farm run <input-folder> --mode summarize`
+- `python sift.py farm run <input-folder> --mode prompt --instructions <text>`
+- `python sift.py farm list`
+- `python sift.py farm status`
+- `python sift.py farm status <run-id>`
 - filesystem run folders
 - file-level sub-jobs
 - status artifacts
@@ -43,27 +43,27 @@ This implementation does not include:
 
 ### 1. Add Farm Modules
 
-Created focused Python modules under `src/` rather than growing `qwen.py` into a large implementation file.
+Created focused Python modules under `src/` rather than growing `sift.py` into a large implementation file.
 
 Likely split:
 
-- `src/qwen_farm.py`: run orchestration and CLI-facing operations.
-- `src/qwen_farm_files.py`: input discovery, skip rules, path helpers, run folder creation.
-- `src/qwen_farm_status.py`: status JSON and Markdown rendering.
-- `src/qwen_farm_model.py`: model prompt construction and gateway/Ollama invocation helpers.
+- `src/sift_farm.py`: run orchestration and CLI-facing operations.
+- `src/sift_farm_files.py`: input discovery, skip rules, path helpers, run folder creation.
+- `src/sift_farm_status.py`: status JSON and Markdown rendering.
+- `src/sift_farm_model.py`: model prompt construction and gateway/Ollama invocation helpers.
 
 Keep pure filesystem/status helpers unit-testable without Ollama.
 
 ### 2. Extend CLI
 
-Extended `qwen.py` with a `farm` namespace:
+Extended `sift.py` with a `farm` namespace:
 
 ```bash
-python qwen.py farm run <input-folder> --mode summarize
-python qwen.py farm run <input-folder> --mode prompt --instructions <text>
-python qwen.py farm list
-python qwen.py farm status
-python qwen.py farm status <run-id>
+python sift.py farm run <input-folder> --mode summarize
+python sift.py farm run <input-folder> --mode prompt --instructions <text>
+python sift.py farm list
+python sift.py farm status
+python sift.py farm status <run-id>
 ```
 
 The CLI should stay friendly for non-power-users:
@@ -214,9 +214,9 @@ Used temporary folders and monkeypatched model invocation to verify:
 Ran one real local model smoke test after unit tests passed:
 
 ```bash
-python qwen.py farm run .run/manual-farm-input-2 --output .run/manual-farm-results-2 --mode summarize --instructions "Keep this smoke test concise." --agent default
-python qwen.py farm list
-python qwen.py farm status farm-run-2026-08-23-191804-92de
+python sift.py farm run .run/manual-farm-input-2 --output .run/manual-farm-results-2 --mode summarize --instructions "Keep this smoke test concise." --agent default
+python sift.py farm list
+python sift.py farm status farm-run-2026-08-23-191804-92de
 ```
 
 The smoke test used `qwen3.5:4b` and completed successfully.
@@ -226,7 +226,7 @@ The smoke test used `qwen3.5:4b` and completed successfully.
 Before opening or merging the implementation PR, run:
 
 ```bash
-python -m compileall qwen.py examples src tests
+python -m compileall sift.py examples src tests
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
@@ -248,5 +248,5 @@ Also verify the GitHub `ci` checks pass on the PR.
 
 - Model JSON may be inconsistent; keep the outer farm envelope deterministic and preserve raw output.
 - File discovery can accidentally include too much; keep skip rules conservative and test them.
-- `qwen.py` can become too large; keep farm logic in `src/` modules.
+- `sift.py` can become too large; keep farm logic in `src/` modules.
 - Real model tests may be slow; keep CI model-free and record manual verification separately.

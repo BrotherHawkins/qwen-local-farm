@@ -24,10 +24,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Compile Python files
-        run: python -m compileall qwen.py examples src tests
+        run: python -m compileall sift.py examples src tests
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -p "test_*.py"
 
       - name: Check spec dashboard consistency
-        run: python -m src.qwen_spec_guard
+        run: python -m src.sift_spec_guard

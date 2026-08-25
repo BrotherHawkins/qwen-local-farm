@@ -35,7 +35,7 @@ Deferred:
 
 ### 1. Add Snippet Pack Module
 
-Create `src/qwen_farm_snippet_packs.py` with pure helpers:
+Create `src/sift_farm_snippet_packs.py` with pure helpers:
 
 - read `farm-status.json`
 - resolve job `result_json` paths relative to the run directory
@@ -70,10 +70,10 @@ Do not persist:
 
 ### 3. Add CLI Command
 
-Extend `qwen.py farm` with:
+Extend `sift.py farm` with:
 
 ```powershell
-python qwen.py farm snippets pack <run-dir> --output <output-folder> --label <label> --max-snippets <n> --per-file <n>
+python sift.py farm snippets pack <run-dir> --output <output-folder> --label <label> --max-snippets <n> --per-file <n>
 ```
 
 Defaults:
@@ -116,7 +116,7 @@ Use:
 Create a pack from the latest dogfood lite run:
 
 ```powershell
-python qwen.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0010/snippet-packs --label dogfood-lite-0010
+python sift.py farm snippets pack .run/dogfood_0009/lite-history-candidate/farm-results/farm-run-2026-08-24-124948-92cf --output .run/dogfood_0010/snippet-packs --label dogfood-lite-0010
 ```
 
 Inspect:
@@ -153,7 +153,7 @@ Verification:
 
 ```powershell
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 

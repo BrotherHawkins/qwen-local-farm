@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-status.schema.json",
-  "title": "Qwen Local Farm Persisted Run Status",
+  "$id": "https://sift.local/schemas/farm-status.schema.json",
+  "title": "Sift Persisted Run Status",
   "description": "Current persisted run status artifact written as farm-status.json.",
   "type": "object",
   "required": [

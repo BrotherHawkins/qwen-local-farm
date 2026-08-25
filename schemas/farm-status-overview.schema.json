@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://qwen-local-farm.local/schemas/farm-status-overview.schema.json",
-  "title": "Qwen Local Farm Status Overview JSON",
-  "description": "CLI envelope printed by python qwen.py farm status --json.",
+  "$id": "https://sift.local/schemas/farm-status-overview.schema.json",
+  "title": "Sift Status Overview JSON",
+  "description": "CLI envelope printed by python sift.py farm status --json.",
   "type": "object",
   "required": ["schema_version", "scope", "counts", "runs"],
   "properties": {

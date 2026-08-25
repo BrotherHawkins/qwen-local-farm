@@ -26,10 +26,10 @@ Add durable failure classification and retry guidance to failed farm job artifac
 Run:
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm tests.test_sift_farm_status tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
@@ -38,8 +38,8 @@ git diff --check
 Use ignored artifacts only:
 
 ```powershell
-python qwen.py farm status <failed-run-id> --json
-python qwen.py farm retry-failed <failed-run-id> --json
+python sift.py farm status <failed-run-id> --json
+python sift.py farm retry-failed <failed-run-id> --json
 ```
 
 Inspect failed job `result.json`, `farm-status.json`, `FARM_STATUS.md`, and retry JSON output to verify a primary AI can see which failures are retryable and which need a fix first.

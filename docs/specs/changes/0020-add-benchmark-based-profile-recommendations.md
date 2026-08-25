@@ -57,7 +57,7 @@ The benchmark can use existing farm/timing primitives or a small synthetic promp
 
 This change does not add:
 
-- automatic config writing to `.qwen-farm.json`
+- automatic config writing to `.sift-farm.json`
 - automatic Ollama service environment changes
 - starting/stopping Ollama with recommended environment variables
 - dynamic runtime backoff during active farm runs
@@ -81,9 +81,9 @@ Add a reproducible command for measured local recommendations.
 Suggested shape:
 
 ```powershell
-python qwen.py farm recommend
-python qwen.py farm recommend --agent default --profile local-8gb
-python qwen.py farm recommend --output .run/recommendations
+python sift.py farm recommend
+python sift.py farm recommend --agent default --profile local-8gb
+python sift.py farm recommend --output .run/recommendations
 ```
 
 If `farm recommend` is too broad during planning, `farm doctor recommend` or `farm benchmark recommend` is acceptable as long as:
@@ -254,7 +254,7 @@ Markdown should summarize:
 
 ### Doctor Integration
 
-`python qwen.py farm doctor` should remain read-only and fast by default.
+`python sift.py farm doctor` should remain read-only and fast by default.
 
 Doctor should not run a benchmark automatically in this first slice. Instead it should:
 
@@ -331,20 +331,20 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_doctor tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_recommend tests.test_sift_farm_doctor tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual/local smoke:
 
 ```powershell
-python qwen.py farm doctor --json
-python qwen.py farm recommend --agent default --profile local-8gb --output .run/recommendations
-python qwen.py farm schema validate .run/recommendations/farm-recommendation.json
-python qwen.py farm doctor
-python qwen.py farm doctor --json
+python sift.py farm doctor --json
+python sift.py farm recommend --agent default --profile local-8gb --output .run/recommendations
+python sift.py farm schema validate .run/recommendations/farm-recommendation.json
+python sift.py farm doctor
+python sift.py farm doctor --json
 ```
 
 If the implementation uses an actual tiny model probe, save a local report:

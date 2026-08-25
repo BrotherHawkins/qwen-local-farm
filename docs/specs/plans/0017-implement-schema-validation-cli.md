@@ -7,15 +7,15 @@ Spec: [0017 Add Schema Validation CLI](../changes/0017-add-schema-validation-cli
 
 Implement a public CLI around the tracked schema contracts and dependency-free validator:
 
-1. Extend `src/qwen_farm_schema.py`.
+1. Extend `src/sift_farm_schema.py`.
    - load `schemas/index.json`
    - resolve explicit schema references by local path or schema ID
    - auto-detect known artifact surfaces from stable top-level fields
    - validate artifacts and return a structured result object
    - render concise human-readable output
    - preserve JSON-friendly error results for missing files, invalid JSON, missing schemas, and unsupported/ambiguous detection
-2. Add CLI support in `qwen.py`.
-   - `python qwen.py farm schema validate <json-path>`
+2. Add CLI support in `sift.py`.
+   - `python sift.py farm schema validate <json-path>`
    - `--schema <schema-path-or-id>`
    - `--json`
    - print human output by default
@@ -60,7 +60,7 @@ Implemented with:
 - auto-detection for the five 0016 schema surfaces
 - structured validation result objects
 - human and JSON render paths
-- `python qwen.py farm schema validate <json-path>`
+- `python sift.py farm schema validate <json-path>`
 - `--schema <schema-path-or-id>`
 - `--json`
 - exit codes `0`, `1`, and `2`
@@ -70,25 +70,25 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
-python -m compileall qwen.py src tests
+python -m compileall sift.py src tests
 git diff --check
 ```
 
 Manual smoke:
 
 ```powershell
-python qwen.py farm schema validate .run/reports/setup-doctor.json
-python qwen.py farm schema validate .run/reports/setup-doctor.json --json
-python qwen.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
+python sift.py farm schema validate .run/reports/setup-doctor.json
+python sift.py farm schema validate .run/reports/setup-doctor.json --json
+python sift.py farm schema validate .run/reports/setup-doctor.json --schema schemas/farm-doctor.schema.json
 ```
 
 Optional local run smoke:
 
 ```powershell
-python qwen.py farm schema validate <run-dir>/farm-status.json
-python qwen.py farm schema validate <run-dir>/jobs/job-0001/result.json
+python sift.py farm schema validate <run-dir>/farm-status.json
+python sift.py farm schema validate <run-dir>/jobs/job-0001/result.json
 ```
 
 ## Implementation Checklist

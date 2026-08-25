@@ -285,17 +285,20 @@ After a snippet-enabled run, collect selected source evidence across files into 
 
 ```bash
 python sift.py farm snippets pack <run-ref> --label research-pack
+python sift.py farm snippets pack <run-ref> --label research-pack --max-estimated-tokens 5000
 ```
 
-`<run-ref>` can be either a run directory path or a known run ID from `python sift.py farm list`. Snippet packs are post-run artifacts under `.run/snippet_packs/` by default. They read existing `result.json` files, make no model calls, deduplicate and cap snippets deterministically, and write both Markdown and JSON.
+`<run-ref>` can be either a run directory path or a known run ID from `python sift.py farm list`. Snippet packs are post-run artifacts under `.run/snippet_packs/` by default. They read existing `result.json` files, make no model calls, deduplicate and cap snippets deterministically, and write both Markdown and JSON. Use `--max-chars <n>` for an exact Markdown cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate.
 
 When the downstream model needs summary context plus evidence, create a synthesis bundle instead:
 
 ```bash
 python sift.py farm synthesis bundle <run-ref> --label research-bundle
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --summary-template compact
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --fit-policy evidence-first --max-estimated-tokens 10000
 ```
 
-Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls. Bundle JSON includes character and estimated-token budget metadata. Use `--max-chars <n>` for an exact Markdown size cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate based on `--chars-per-token` (default `4.0`).
+Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls. Bundle JSON includes character and estimated-token budget metadata. Use `--summary-template compact|claims|questions|standard` or `--summary-fields title,abstract,bullets` to shape the summary layer. Use `--fit-policy summary-first|evidence-first|balanced` to choose what survives first under tight caps. Use `--max-chars <n>` for an exact Markdown size cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate based on `--chars-per-token` (default `4.0`).
 
 To compare dogfood runs over time, record compact local quality history with `python sift.py farm dogfood record <run-ref>` and compare records with `python sift.py farm dogfood compare <baseline.json> <candidate.json>`. For timing regressions, use `python sift.py farm dogfood timing record <run-ref>` and `python sift.py farm dogfood timing compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and `docs/dogfood-timing.md` for timing interpretation.
 

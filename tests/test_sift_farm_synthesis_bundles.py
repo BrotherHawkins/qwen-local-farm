@@ -135,10 +135,16 @@ class SynthesisBundleTests(unittest.TestCase):
             self.assertEqual(bundle["counts"]["snippets_selected"], 2)
             self.assertEqual(bundle["counts"]["duplicates_dropped"], 1)
             self.assertEqual(bundle["budget"]["schema_version"], 1)
+            self.assertEqual(bundle["budget"]["fit_policy"], "summary-first")
             self.assertIsNone(bundle["budget"]["effective_max_chars"])
             self.assertFalse(bundle["budget"]["was_capped"])
             self.assertGreater(bundle["budget"]["output"]["chars"], 0)
             self.assertGreater(bundle["budget"]["output"]["estimated_tokens"], 0)
+            self.assertEqual(bundle["limits"]["summary_template"], "standard")
+            self.assertEqual(
+                bundle["limits"]["summary_fields"],
+                ["title", "abstract", "bullets", "open_questions", "confidence"],
+            )
             self.assertEqual(bundle["items"][0]["summary"]["title"], "Evidence Packs")
             self.assertEqual(bundle["items"][1]["summary"]["bullets"], ["String bullets are normalized."])
             self.assertEqual(bundle["items"][2]["snippets"], [])
@@ -266,6 +272,48 @@ class SynthesisBundleTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "--chars-per-token"):
                 sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, chars_per_token=0)
 
+    def test_summary_template_shapes_markdown_and_json(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                summary_template="compact",
+            )
+            markdown = sift_farm_synthesis_bundles.render_synthesis_bundle_markdown(bundle)
+
+            self.assertEqual(bundle["limits"]["summary_fields"], ["title", "abstract"])
+            self.assertEqual(set(bundle["items"][0]["summary"]), {"title", "abstract"})
+            self.assertIn("Title: Evidence Packs", markdown)
+            self.assertIn("Summary: Summary one should be included", markdown)
+            self.assertNotIn("Key points:", markdown)
+            self.assertNotIn("Open questions:", markdown)
+            self.assertNotIn("Confidence:", markdown)
+
+    def test_summary_fields_override_template_and_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                summary_template="compact",
+                summary_fields="bullets,title,bullets",
+            )
+            markdown = sift_farm_synthesis_bundles.render_synthesis_bundle_markdown(bundle)
+
+            self.assertEqual(bundle["limits"]["summary_fields"], ["title", "bullets"])
+            self.assertEqual(set(bundle["items"][0]["summary"]), {"title", "bullets"})
+            self.assertIn("Title: Evidence Packs", markdown)
+            self.assertIn("Key points:", markdown)
+            self.assertNotIn("Summary:", markdown)
+
+            with self.assertRaisesRegex(ValueError, "--summary-template"):
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, summary_template="tiny")
+            with self.assertRaisesRegex(ValueError, "--summary-fields"):
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, summary_fields="title,nope")
+            with self.assertRaisesRegex(ValueError, "--summary-fields"):
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, summary_fields=",")
+
     def test_character_budget_drops_optional_content_and_fits_when_feasible(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
@@ -280,6 +328,46 @@ class SynthesisBundleTests(unittest.TestCase):
             self.assertEqual(capped["budget"]["effective_max_chars"], max_chars)
             self.assertGreater(sum(capped["budget"]["dropped"].values()), 0)
             self.assertEqual(capped["counts"]["snippets_selected"], sift_farm_synthesis_bundles.count_bundle_snippets(capped["items"]))
+
+    def test_fit_policy_controls_what_is_preserved_under_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = self.make_run(Path(temp_dir))
+            full = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
+            max_chars = full["budget"]["output"]["chars"] - 60
+
+            summary_first = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                max_chars=max_chars,
+                fit_policy="summary-first",
+            )
+            evidence_first = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                max_chars=max_chars,
+                fit_policy="evidence-first",
+            )
+            balanced_a = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                max_chars=max_chars,
+                fit_policy="balanced",
+            )
+            balanced_b = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=run_dir,
+                max_chars=max_chars,
+                fit_policy="balanced",
+            )
+
+            self.assertEqual(summary_first["budget"]["fit_policy"], "summary-first")
+            self.assertEqual(evidence_first["budget"]["fit_policy"], "evidence-first")
+            self.assertGreater(summary_first["budget"]["dropped"]["snippets"], 0)
+            self.assertEqual(evidence_first["budget"]["dropped"]["snippets"], 0)
+            self.assertGreater(
+                evidence_first["budget"]["dropped"]["open_questions"] + evidence_first["budget"]["dropped"]["bullets"],
+                0,
+            )
+            self.assertEqual(balanced_a["items"], balanced_b["items"])
+
+            with self.assertRaisesRegex(ValueError, "--fit-policy"):
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, fit_policy="random")
 
     def test_estimated_token_budget_resolves_to_character_cap(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

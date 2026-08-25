@@ -496,6 +496,12 @@ class ParseArgsTests(unittest.TestCase):
                 "12",
                 "--per-file",
                 "3",
+                "--max-chars",
+                "40000",
+                "--max-estimated-tokens",
+                "10000",
+                "--chars-per-token",
+                "4.25",
             ],
         ):
             args = sift.parse_args()
@@ -508,6 +514,9 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.output, ".run/snippet_packs")
         self.assertEqual(args.max_snippets, 12)
         self.assertEqual(args.per_file, 3)
+        self.assertEqual(args.max_chars, 40000)
+        self.assertEqual(args.max_estimated_tokens, 10000)
+        self.assertEqual(args.chars_per_token, 4.25)
 
     def test_parse_args_accepts_farm_synthesis_bundle(self) -> None:
         with patch.object(
@@ -533,6 +542,12 @@ class ParseArgsTests(unittest.TestCase):
                 "15000",
                 "--chars-per-token",
                 "4.5",
+                "--summary-template",
+                "compact",
+                "--summary-fields",
+                "title,abstract",
+                "--fit-policy",
+                "evidence-first",
             ],
         ):
             args = sift.parse_args()
@@ -548,6 +563,9 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.max_chars, 60000)
         self.assertEqual(args.max_estimated_tokens, 15000)
         self.assertEqual(args.chars_per_token, 4.5)
+        self.assertEqual(args.summary_template, "compact")
+        self.assertEqual(args.summary_fields, "title,abstract")
+        self.assertEqual(args.fit_policy, "evidence-first")
 
 
 class FarmHandlerTests(unittest.TestCase):
@@ -973,6 +991,9 @@ class FarmHandlerTests(unittest.TestCase):
             label="label",
             max_snippets=5,
             per_file=2,
+            max_chars=40000,
+            max_estimated_tokens=10000,
+            chars_per_token=4.25,
         )
 
         with (
@@ -985,6 +1006,9 @@ class FarmHandlerTests(unittest.TestCase):
 
         resolve.assert_called_once_with(sift.ROOT, "farm-run-1")
         self.assertEqual(build.call_args.kwargs["run_dir"], resolved)
+        self.assertEqual(build.call_args.kwargs["max_chars"], 40000)
+        self.assertEqual(build.call_args.kwargs["max_estimated_tokens"], 10000)
+        self.assertEqual(build.call_args.kwargs["chars_per_token"], 4.25)
 
     def test_synthesis_bundle_resolves_run_reference_before_building_bundle(self) -> None:
         resolved = Path("resolved-run")
@@ -999,6 +1023,9 @@ class FarmHandlerTests(unittest.TestCase):
             max_chars=60000,
             max_estimated_tokens=15000,
             chars_per_token=4.5,
+            summary_template="claims",
+            summary_fields="title,bullets",
+            fit_policy="balanced",
         )
 
         with (
@@ -1020,6 +1047,9 @@ class FarmHandlerTests(unittest.TestCase):
         self.assertEqual(build.call_args.kwargs["max_chars"], 60000)
         self.assertEqual(build.call_args.kwargs["max_estimated_tokens"], 15000)
         self.assertEqual(build.call_args.kwargs["chars_per_token"], 4.5)
+        self.assertEqual(build.call_args.kwargs["summary_template"], "claims")
+        self.assertEqual(build.call_args.kwargs["summary_fields"], "title,bullets")
+        self.assertEqual(build.call_args.kwargs["fit_policy"], "balanced")
 
     def test_dogfood_record_resolves_run_reference_before_building_record(self) -> None:
         resolved = Path("resolved-run")

@@ -15,7 +15,8 @@
     "limits",
     "counts",
     "snippets",
-    "diagnostics"
+    "diagnostics",
+    "budget"
   ],
   "properties": {
     "schema_version": {
@@ -134,6 +135,84 @@
           "type": "array",
           "items": {
             "type": "object"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "max_chars",
+        "max_estimated_tokens",
+        "chars_per_token",
+        "effective_max_chars",
+        "input",
+        "output",
+        "fit",
+        "was_capped",
+        "dropped",
+        "warnings"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "max_chars": {
+          "type": ["integer", "null"]
+        },
+        "max_estimated_tokens": {
+          "type": ["integer", "null"]
+        },
+        "chars_per_token": {
+          "type": "number"
+        },
+        "effective_max_chars": {
+          "type": ["integer", "null"]
+        },
+        "input": {
+          "type": "object",
+          "required": ["chars", "estimated_tokens"],
+          "properties": {
+            "chars": {
+              "type": "integer"
+            },
+            "estimated_tokens": {
+              "type": "integer"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": ["chars", "estimated_tokens"],
+          "properties": {
+            "chars": {
+              "type": "integer"
+            },
+            "estimated_tokens": {
+              "type": "integer"
+            }
+          }
+        },
+        "fit": {
+          "type": "boolean"
+        },
+        "was_capped": {
+          "type": "boolean"
+        },
+        "dropped": {
+          "type": "object",
+          "required": ["snippets"],
+          "properties": {
+            "snippets": {
+              "type": "integer"
+            }
           }
         },
         "warnings": {

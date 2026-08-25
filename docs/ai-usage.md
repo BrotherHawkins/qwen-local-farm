@@ -314,9 +314,11 @@ When a downstream synthesis model needs source-backed evidence across a whole ru
 
 ```bash
 python sift.py farm snippets pack <run-ref> --label research-pack --max-snippets 24 --per-file 4
+python sift.py farm snippets pack <run-ref> --label research-pack --max-chars 40000
+python sift.py farm snippets pack <run-ref> --label research-pack --max-estimated-tokens 10000
 ```
 
-`<run-ref>` can be either a run directory path or a known run ID from `python sift.py farm list`. Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, and skipped-job diagnostics.
+`<run-ref>` can be either a run directory path or a known run ID from `python sift.py farm list`. Snippet packs read selected snippets from existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/snippet_packs/` by default. Use the Markdown pack directly in a frontier-model synthesis prompt when the model needs quotes, examples, caveats, or definitions without full article text. Use the JSON pack when a primary AI needs counts, provenance, scores, skipped-job diagnostics, and budget metadata. Snippet-pack budget caps drop whole lower-priority snippets rather than truncating source text.
 
 When the downstream synthesis model needs both orientation and evidence, prefer a synthesis bundle:
 
@@ -324,11 +326,14 @@ When the downstream synthesis model needs both orientation and evidence, prefer 
 python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-snippets 24 --per-file 4
 python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-chars 60000
 python sift.py farm synthesis bundle <run-ref> --label research-bundle --max-estimated-tokens 15000
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --summary-template compact
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --summary-fields title,abstract,bullets
+python sift.py farm synthesis bundle <run-ref> --label research-bundle --fit-policy evidence-first --max-estimated-tokens 10000
 ```
 
 Synthesis bundles read the same existing job `result.json` files, make no model calls, and write Markdown plus JSON under `.run/synthesis_bundles/` by default. Use them when summaries alone are too thin and snippet-only packs lack enough article context. They include summary-only jobs when no snippets were selected, so the downstream model can still see every successful summarize result.
 
-Every synthesis bundle records character count and estimated tokens in its JSON `budget` object and Markdown header. Use `--max-chars` when a downstream prompt has a hard character budget. Use `--max-estimated-tokens` for rough frontier-model planning; it uses a deterministic character/token estimate, not an exact downstream tokenizer. When capped, the bundle drops optional whole snippets, open questions, bullets, and summary-only items in a stable order rather than truncating text mid-snippet.
+Every synthesis bundle records character count and estimated tokens in its JSON `budget` object and Markdown header. Use `--max-chars` when a downstream prompt has a hard character budget. Use `--max-estimated-tokens` for rough frontier-model planning; it uses a deterministic character/token estimate, not an exact downstream tokenizer. Use `--summary-template compact|claims|questions|standard` for common package shapes, or `--summary-fields` for explicit field control. Use `--fit-policy summary-first` to preserve summaries longest, `--fit-policy evidence-first` to preserve snippets longest, or `--fit-policy balanced` when both orientation and evidence matter. When capped, the bundle drops whole optional fields, snippets, or summary-only items rather than truncating text mid-snippet.
 
 For dogfood quality comparisons, use `python sift.py farm dogfood record <run-dir> --label <label> --notes <notes.json>` after a run, then `python sift.py farm dogfood compare <baseline-record.json> <candidate-record.json>`. Records live under `.run/dogfood_history/` by default and intentionally omit article text, raw responses, and full snippet text. Use `docs/dogfood-quality.md` for the 1-5 scoring rubric.
 

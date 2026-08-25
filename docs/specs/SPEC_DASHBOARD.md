@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 34 |
+| Implemented | 35 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -46,9 +46,9 @@ This is advisory, not a lifecycle state. See [../backlog.md](../backlog.md) for 
 
 | Rank | Candidate | Backlog |
 | ---: | --- | --- |
-| 1 | Post-run package shaping and budget controls | BL-0060, BL-0064, BL-0066 |
-| 2 | Platform-specific skill installation helpers | BL-0107 |
-| 3 | Skip non-retryable jobs by default in `retry-failed` | BL-0099 |
+| 1 | Platform-specific skill installation helpers | BL-0107 |
+| 2 | Skip non-retryable jobs by default in `retry-failed` | BL-0099 |
+| 3 | Reserved prompt-wrapper budget | BL-0065 |
 
 ## Implemented Specs
 
@@ -98,6 +98,7 @@ None.
 | 0031 | Implemented | Add | [0031-add-model-family-adapter-foundation.md](changes/0031-add-model-family-adapter-foundation.md) | Adds a model-family adapter foundation so Qwen stays the default while other local model families can be added later without changing farm interfaces. |
 | 0032 | Implemented | Add | [0032-add-ai-skills-library.md](changes/0032-add-ai-skills-library.md) | Adds a portable AI skills library so AI assistants can guide users through Sift setup and operation. |
 | 0033 | Implemented | Add | [0033-add-hardware-specific-model-install-guidance.md](changes/0033-add-hardware-specific-model-install-guidance.md) | Adds hardware-specific model installation guidance for humans, AI assistants, doctor reports, and recommendation reports. |
+| 0034 | Implemented | Add | [0034-add-package-shaping-budget-controls.md](changes/0034-add-package-shaping-budget-controls.md) | Adds package shaping and budget controls for synthesis bundles and snippet packs. |
 
 ## Stale Drafts To Revisit
 

@@ -680,6 +680,22 @@ def parse_args() -> argparse.Namespace:
     ask.add_argument("message")
     ask.add_argument("agent", nargs="?", default="default")
 
+    skills = subparsers.add_parser("skills")
+    skills_subparsers = skills.add_subparsers(dest="skills_command", required=True)
+
+    skills_install = skills_subparsers.add_parser("install")
+    skills_install.add_argument(
+        "--target",
+        choices=["codex-user", "codex-project", "claude-user", "claude-project"],
+        required=True,
+    )
+    skills_install.add_argument("--repo-root")
+    skills_install.add_argument("--home")
+    skills_install.add_argument("--output")
+    skills_install.add_argument("--json", action="store_true")
+    skills_install.add_argument("--write", action="store_true")
+    skills_install.add_argument("--replace", action="store_true")
+
     farm = subparsers.add_parser("farm")
     farm_subparsers = farm.add_subparsers(dest="farm_command", required=True)
 
@@ -859,6 +875,25 @@ def main() -> None:
         show_status()
     elif args.command == "ask":
         invoke_agent_prompt(args.message, args.agent)
+    elif args.command == "skills":
+        from src import sift_skills_install
+
+        if args.skills_command == "install":
+            report = sift_skills_install.build_skill_install_report(
+                repo_root=Path(args.repo_root) if args.repo_root else ROOT,
+                target=args.target,
+                home=Path(args.home) if args.home else None,
+                write=args.write,
+                replace=args.replace,
+            )
+            if args.output:
+                sift_skills_install.write_json(Path(args.output), report)
+            if args.json:
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+            else:
+                print(sift_skills_install.render_skill_install_report(report))
+            return
+        raise RuntimeError(f"Unknown skills command: {args.skills_command}")
     elif args.command == "pull":
         ensure_model()
     elif args.command == "logs":

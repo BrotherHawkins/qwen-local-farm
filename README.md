@@ -68,6 +68,17 @@ python sift.py start
 python sift.py ask "Say hello in one sentence."
 ```
 
+For AI-assisted setup, preview installing the repo-shipped skills first:
+
+```bash
+python sift.py skills install --target codex-user
+python sift.py skills install --target codex-project
+python sift.py skills install --target claude-user
+python sift.py skills install --target claude-project
+```
+
+Codex targets install to `.agents/skills`; Claude Code targets install to `.claude/skills`. Re-run with `--write` only after approving the destination. User targets apply across projects, while project targets may dirty the working tree.
+
 On some systems the Python command is `python3` instead of `python`. On Windows, `py -3 sift.py ...` also works.
 
 Stop it when you are done:

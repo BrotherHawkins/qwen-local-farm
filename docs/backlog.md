@@ -15,9 +15,9 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0107 | Platform-specific skill installation helpers | Builds naturally on the repo-shipped skills and new model installation guidance. |
-| 2 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
-| 3 | BL-0065 | Reserved prompt-wrapper budget | Builds naturally on the new package budget controls by budgeting for surrounding downstream prompt text. |
+| 1 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
+| 2 | BL-0065 | Reserved prompt-wrapper budget | Builds naturally on the new package budget controls by budgeting for surrounding downstream prompt text. |
+| 3 | BL-0108 | Published AI skill packages | Builds on repo-local skill install helpers once they are reviewed. |
 
 ## Spec-Deferred Items
 
@@ -129,13 +129,13 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0104 | Implemented | 0031 | Model family adapter foundation | 0031 added normalized backend/family/support/tokenizer/context metadata so Qwen remains the tested default while other Ollama model families can be added later. |
 | BL-0105 | Open | 0031 | Non-Qwen dogfood benchmark matrix | Add quality/performance dogfood runs for selected non-Qwen local families only after adapter metadata exists. |
 | BL-0106 | Open | 0031 | Product naming and CLI alias review | Revisit Qwen-centered naming only if broader model-family support becomes a real product promise. |
-| BL-0107 | Open | 0032, 0033 | Platform-specific skill installation helpers | Add helper commands or docs for installing Sift skills into specific AI apps only after the portable skill folder shape proves useful. |
-| BL-0108 | Open | 0032 | Published AI skill packages | Package or publish Sift skills for Codex, Claude Code, or other app ecosystems after local repo-shipped skills are stable. |
-| BL-0109 | Open | 0032, 0033 | First-run interactive setup wizard | Add a guided setup wizard only if skill-driven doctor/recommend/apply/model-install guidance still feels too manual for less technical users. |
-| BL-0110 | Open | 0032 | Generated skill metadata documentation | Generate docs from skill frontmatter if the skill library grows beyond a few hand-maintained skills. |
-| BL-0111 | Open | 0032 | Specialized Sift skills | Add focused skills for dogfood benchmarking, model extension, article ingestion, or advanced troubleshooting after the initial setup/operator skills are dogfooded. |
-| BL-0112 | Open | 0032 | Skill manifest JSON Schema | Add a tracked schema for `skills/index.json` if the manifest starts being consumed by automation beyond the first model-free sync tests. |
-| BL-0113 | Open | 0033 | Automatic Ollama/model installation helpers | Add explicit user-approved helper commands only after hardware-specific guidance proves accurate. |
+| BL-0107 | Implemented | 0032, 0033, 0035 | Platform-specific skill installation helpers | 0035 implemented safe preview-first Codex and Claude Code helpers for installing repo-shipped Sift skills. |
+| BL-0108 | Open | 0032, 0035 | Published AI skill packages | Package or publish Sift skills for Codex, Claude Code, or other app ecosystems after local repo-shipped skills are stable; 0035 keeps publishing deferred. |
+| BL-0109 | Open | 0032, 0033, 0035 | First-run interactive setup wizard | Add a guided setup wizard only if skill-driven doctor/recommend/apply/model-install guidance still feels too manual for less technical users. |
+| BL-0110 | Open | 0032, 0035 | Generated skill metadata documentation | Generate docs from skill frontmatter if the skill library grows beyond a few hand-maintained skills; 0035 keeps docs hand-authored. |
+| BL-0111 | Open | 0032, 0035 | Specialized Sift skills | Add focused skills for dogfood benchmarking, model extension, article ingestion, or advanced troubleshooting after the initial setup/operator skills are dogfooded. |
+| BL-0112 | Open | 0032, 0035 | Skill manifest JSON Schema | Add a tracked schema for `skills/index.json` if the manifest starts being consumed by automation beyond the first model-free sync tests. |
+| BL-0113 | Open | 0033, 0035 | Automatic Ollama/model installation helpers | Add explicit user-approved helper commands only after hardware-specific guidance proves accurate; 0035 installs AI skill folders only, not models. |
 
 ## Notes
 

@@ -17,7 +17,24 @@ Clone the Sift repo and install the skills found there, then walk me through get
 
 ## Installation
 
-Install or register the folders under `skills/` according to the target AI app's skill mechanism.
+Preview the install plan before writing files:
+
+```bash
+python sift.py skills install --target codex-user
+python sift.py skills install --target codex-project
+python sift.py skills install --target claude-user
+python sift.py skills install --target claude-project
+```
+
+Then re-run with `--write` only after approving the destination:
+
+```bash
+python sift.py skills install --target codex-user --write
+```
+
+Codex targets install under `.agents/skills`. Claude Code targets install under `.claude/skills`. User targets install under the user's home folder for future sessions across projects; project targets install under the current Sift repo and may dirty the working tree.
+
+If you are using another AI app, install or register the folders under `skills/` according to the target AI app's skill mechanism.
 
 If an AI app does not support skills directly, paste the relevant `SKILL.md` into the AI session as instructions:
 

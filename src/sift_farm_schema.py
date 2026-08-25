@@ -122,6 +122,8 @@ def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
         matches.append("schemas/farm-dogfood-comparison.schema.json")
     if schema_version == 1 and {"default_band", "hardware_bands", "approval_boundaries"}.issubset(artifact):
         matches.append("schemas/model-installation.schema.json")
+    if schema_version == 1 and artifact.get("command") == "skills install" and {"target", "skills", "summary"}.issubset(artifact):
+        matches.append("schemas/skill-install-report.schema.json")
 
     if not matches:
         raise ValueError("Could not infer a schema for this artifact. Pass --schema to choose one explicitly.")

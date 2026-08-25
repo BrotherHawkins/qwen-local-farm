@@ -24,6 +24,17 @@ Start with:
 
 If the current AI app cannot install skills directly, read or paste the relevant `SKILL.md` as session instructions. The skill files are intentionally platform-agnostic Markdown and should guide the assistant through doctor, recommend, safe config apply, schema validation, tiny smoke tests, `.run/` artifact hygiene, and output inspection.
 
+When the user wants skills installed for Codex or Claude Code, preview first:
+
+```bash
+python sift.py skills install --target codex-user --json
+python sift.py skills install --target codex-project --json
+python sift.py skills install --target claude-user --json
+python sift.py skills install --target claude-project --json
+```
+
+Ask before re-running with `--write`. Codex skill targets use `.agents/skills`; Claude Code skill targets use `.claude/skills`. User installs affect future sessions across projects, while project installs may create or update repo-local platform folders. After installing, continue with `python sift.py farm doctor --json`.
+
 ## Model Installation Guidance
 
 Before recommending model pulls for a user, read [model-installation.md](model-installation.md) and, when automation needs stable fields, [model-installation.json](model-installation.json). The JSON catalog is validated by [../schemas/model-installation.schema.json](../schemas/model-installation.schema.json).

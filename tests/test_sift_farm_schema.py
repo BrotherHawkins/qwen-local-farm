@@ -17,6 +17,7 @@ from src import (
     sift_farm_status,
     sift_farm_synthesis_bundles,
     sift_farm_timing,
+    sift_skills_install,
 )
 from src.sift_farm_model import FarmModelResult
 
@@ -687,6 +688,12 @@ class FarmSchemaTests(unittest.TestCase):
             candidate_record["label"] = "schema-candidate"
             candidate_record["duration_ms"] = 2200
             dogfood_comparison = sift_farm_dogfood.compare_records(dogfood_record, candidate_record)
+            skill_install_report = sift_skills_install.build_skill_install_report(
+                repo_root=ROOT,
+                target="codex-user",
+                home=root / "home",
+                generated_at="2026-08-24T00:00:07Z",
+            )
 
             self.assertValid(timing_summary, "farm-timing-summary.schema.json")
             self.assertValid(snippet_pack, "farm-snippet-pack.schema.json")
@@ -694,6 +701,7 @@ class FarmSchemaTests(unittest.TestCase):
             self.assertValid(collection, "farm-collection.schema.json")
             self.assertValid(dogfood_record, "farm-dogfood-record.schema.json")
             self.assertValid(dogfood_comparison, "farm-dogfood-comparison.schema.json")
+            self.assertValid(skill_install_report, "skill-install-report.schema.json")
 
     def test_validation_reports_path_aware_errors(self) -> None:
         schema = load_schema("farm-status-overview.schema.json")

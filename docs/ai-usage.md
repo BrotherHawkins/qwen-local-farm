@@ -138,6 +138,29 @@ Primary AIs should inspect `model_metadata` in doctor, recommendation, resolved 
 
 If `support` is `experimental` or `unknown`, prefer character chunking and a small smoke run before large batches. If `tokenizer.exact` is not true, do not request token-aware chunking unless the user has deliberately added and verified an exact tokenizer adapter.
 
+### Adding A Local Model
+
+Use this path when a user wants to try a new Ollama model without changing the farm's command interface:
+
+1. Pull or create the model in Ollama outside the farm.
+2. Add an agent JSON file under `agents/`.
+3. Set `model`, `model_family`, `backend`, `support`, `tokenizer`, and `options.num_ctx`.
+4. Start new non-Qwen models as `support: experimental` with `tokenizer.strategy: none`.
+5. Run `python qwen.py farm doctor --agent <agent-id>`.
+6. Run a tiny character-chunking smoke before any large batch.
+7. Promote to `support: tested` only after local dogfood quality and timing evidence exists.
+
+Use these first-pass metadata values:
+
+| Field | Values |
+| --- | --- |
+| `backend` | `ollama` |
+| `model_family` | `qwen`, `llama`, `mistral`, `gemma`, `phi`, `deepseek`, `unknown` |
+| `support` | `tested`, `experimental`, `unknown` |
+| `tokenizer.strategy` | `huggingface`, `none`, `unknown` |
+
+Exact token-aware chunking for a new model requires a Hugging Face tokenizer ID declared in the agent with `tokenizer.strategy: huggingface` and `tokenizer.exact: true`, plus local tokenizer readiness verified by `python qwen.py farm tokenizer status --model <model>`. If the model is added as a bundled default or recognized alias, also update `src/qwen_farm_model_metadata.py` and add model-free tests. Otherwise keep character chunking as the recommended route.
+
 ## Immediate Ask Interface
 
 Use immediate ask when the caller wants a simple local answer now.

@@ -1,0 +1,22 @@
+Source URL: synthetic://sift/dogfood/summary-lite/002-meeting-decisions
+
+# Dogfood Fixture Planning Meeting
+
+Attendees: Chris, Mira, Theo, and Jon.
+
+Decision: commit synthetic dogfood source files so anyone who clones the repository can run the same local checks. The group agreed not to commit downloaded article text, generated summaries, raw model outputs, timing records, private notes, or scraped web pages.
+
+Decision: keep `.run/` as the home for generated dogfood artifacts. Local reports, benchmark JSON, snippet packs, synthesis bundles, and trial outputs can live there without creating repository churn.
+
+Mira argued that synthetic fixtures should be treated like first-class software. They need names, expected signals, documentation, and tests that catch accidental breakage. Theo added that fixture tests should stay model-free so GitHub CI remains fast and does not require Ollama.
+
+Chris asked for summarize fixtures that mimic the shape of the earlier article dogfood set without copying article wording. The group settled on four anonymous files: a product note, a meeting note, an incident analysis, and a long strategy memo. At least one file should chunk during local runtime checks.
+
+Snippet policy came up because short summaries can feel too terse when a frontier model receives them later. The group agreed that summarize dogfood should run with `--snippets auto` so the output includes a few verified passages for later synthesis.
+
+Timing policy: every comparable local run should record total duration, job duration, chunk count, model, profile, resource mode, and warnings. A timing regression is not automatically a bug, but it should trigger inspection.
+
+Follow-up: create anonymous summarize fixtures that match the rough size spread of earlier article dogfood inputs. Follow-up: run the fixture set locally and save a report under `.run/dogfood_summary_lite/`. Follow-up: later add an extract-aware dogfood quality recorder instead of relying only on manual notes.
+
+Open question: should selected benchmark records ever be committed? The tentative answer was no for raw records, maybe yes for curated aggregate history after the workflow proves stable.
+

@@ -2,6 +2,14 @@
   "id": "qwen14-hybrid",
   "name": "Qwen 14B Hybrid Worker",
   "model": "qwen3:14b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3-14B",
+    "exact": true
+  },
   "system_prompt": "You are a local Qwen 14B worker for slow, careful offline analysis. Be faithful, structured, and practical. Prefer concise work product over conversational chatter.",
   "options": {
     "temperature": 0.2,

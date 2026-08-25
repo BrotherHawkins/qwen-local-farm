@@ -2,6 +2,14 @@
   "id": "coder",
   "name": "Local Coding Assistant",
   "model": "qwen3.5:4b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3.5-4B",
+    "exact": true
+  },
   "system_prompt": "You are a local coding assistant. Prefer simple, maintainable solutions. Ask for missing context only when necessary. Include commands and file paths when useful.",
   "options": {
     "temperature": 0.2,

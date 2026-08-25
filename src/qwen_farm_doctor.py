@@ -10,8 +10,9 @@ from typing import Any, Callable
 
 from src import qwen_farm
 from src.qwen_farm_files import utc_timestamp
+from src.qwen_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
 from src.qwen_farm_profiles import compact_runtime_config
-from src.qwen_farm_tokenizer import SUPPORTED_QWEN_TOKENIZERS, tokenizer_status
+from src.qwen_farm_tokenizer import tokenizer_status
 
 
 DOCTOR_SCHEMA_VERSION = 1
@@ -142,10 +143,11 @@ def build_doctor_report(
 
     agent: dict[str, Any] = {
         "id": agent_id,
-        "model": None,
+        "model": default_model,
         "model_installed": "unknown",
         "error": None,
     }
+    apply_model_metadata(agent)
     runtime: dict[str, Any] = {"error": None}
     try:
         loaded_agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
@@ -160,6 +162,7 @@ def build_doctor_report(
                 "id": loaded_agent.get("id"),
                 "name": loaded_agent.get("name"),
                 "model": loaded_agent.get("model"),
+                "model_metadata": loaded_agent.get("model_metadata"),
             }
         )
         runtime = compact_runtime_config(runtime_config)
@@ -193,7 +196,7 @@ def build_doctor_report(
     try:
         tokenizer_probe_stderr = io.StringIO()
         with contextlib.redirect_stderr(tokenizer_probe_stderr):
-            tokenizer = tokenizer_status_fn(root=root, models=list(SUPPORTED_QWEN_TOKENIZERS), download=False)
+            tokenizer = tokenizer_status_fn(root=root, models=exact_tokenizer_models(), download=False)
         diagnostic_stderr = tokenizer_probe_stderr.getvalue().strip()
         if diagnostic_stderr:
             tokenizer["probe_stderr"] = diagnostic_stderr
@@ -305,6 +308,7 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
         lines.append(f"- Error: `{ollama.get('error')}`")
 
     agent = report.get("agent", {}) if isinstance(report.get("agent"), dict) else {}
+    model_metadata = agent.get("model_metadata") if isinstance(agent.get("model_metadata"), dict) else {}
     runtime = report.get("runtime", {}) if isinstance(report.get("runtime"), dict) else {}
     resource_mode = runtime.get("resource_mode") if isinstance(runtime.get("resource_mode"), dict) else {}
     lines.extend(
@@ -315,6 +319,9 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
             f"- Agent: `{agent.get('id') or ''}`",
             f"- Model: `{agent.get('model') or ''}`",
             f"- Model installed: `{agent.get('model_installed')}`",
+            f"- Model family: `{model_metadata.get('family') or ''}`",
+            f"- Model backend: `{model_metadata.get('backend') or ''}`",
+            f"- Model support: `{model_metadata.get('support') or ''}`",
             f"- Profile: `{runtime.get('profile') or ''}`",
             f"- Resource mode requested: `{resource_mode.get('requested') or ''}`",
             f"- Resource mode effective: `{resource_mode.get('effective') or ''}`",

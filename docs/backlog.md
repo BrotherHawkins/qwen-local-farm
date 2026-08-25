@@ -126,6 +126,9 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0101 | Open | 0030 | Force-include normally skipped text files from generated/vendor folders | Consider an explicit escape hatch for vendor/generated text files after first-pass safety semantics are dogfooded. |
 | BL-0102 | Open | 0030 | Include/exclude controls for post-run helpers | Extend filtering to collection/package helpers only after farm-run discovery controls are stable. |
 | BL-0103 | Open | 0030 | Richer structured discovery diagnostics and reason codes | Expand skipped-file diagnostics beyond the first-pass metadata if flat `skipped_files` remains too opaque. |
+| BL-0104 | Implemented | 0031 | Model family adapter foundation | 0031 added normalized backend/family/support/tokenizer/context metadata so Qwen remains the tested default while other Ollama model families can be added later. |
+| BL-0105 | Open | 0031 | Non-Qwen dogfood benchmark matrix | Add quality/performance dogfood runs for selected non-Qwen local families only after adapter metadata exists. |
+| BL-0106 | Open | 0031 | Product naming and CLI alias review | Revisit Qwen-centered naming only if broader model-family support becomes a real product promise. |
 
 ## Notes
 

@@ -2,6 +2,14 @@
   "id": "default",
   "name": "General Qwen Assistant",
   "model": "qwen3.5:4b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3.5-4B",
+    "exact": true
+  },
   "system_prompt": "You are a local Qwen assistant. Be helpful, direct, and practical. When the user is learning, explain the next step plainly before giving details.",
   "options": {
     "temperature": 0.4,

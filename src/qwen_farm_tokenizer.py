@@ -6,13 +6,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from src.qwen_farm_model_metadata import (
+    QWEN_TOKENIZERS,
+    exact_tokenizer_id,
+    exact_tokenizer_models,
+    resolve_model_metadata,
+    tokenizer_id_for_model,
+)
 
-SUPPORTED_QWEN_TOKENIZERS = {
-    "qwen3.5:4b": "Qwen/Qwen3.5-4B",
-    "qwen3:4b": "Qwen/Qwen3-4B",
-    "qwen3:8b": "Qwen/Qwen3-8B",
-    "qwen3:14b": "Qwen/Qwen3-14B",
-}
+SUPPORTED_QWEN_TOKENIZERS = QWEN_TOKENIZERS
 
 TOKENIZER_REPORT_JSON = "tokenizer-status.json"
 TOKENIZER_REPORT_MD = "TOKENIZER_STATUS.md"
@@ -79,12 +81,13 @@ def load_exact_token_counter(
     *,
     root: Path,
     model: str,
+    model_metadata: dict[str, Any] | None = None,
     local_files_only: bool = True,
     tokenizer_loader: TokenizerLoader | None = None,
 ) -> ExactTokenCounter:
-    tokenizer_id = tokenizer_id_for_model(model)
+    tokenizer_id = exact_tokenizer_id(model, model_metadata)
     if tokenizer_id is None:
-        supported = ", ".join(sorted(SUPPORTED_QWEN_TOKENIZERS))
+        supported = ", ".join(exact_tokenizer_models())
         raise TokenizerUnavailableError(
             f"No exact tokenizer mapping is configured for model `{model}`. "
             f"Supported models: {supported}. Use `summarize.chunk_strategy: character` "
@@ -116,14 +119,16 @@ def tokenizer_status(
     download: bool = False,
     tokenizer_loader: TokenizerLoader | None = None,
 ) -> dict[str, Any]:
-    selected_models = models or list(SUPPORTED_QWEN_TOKENIZERS)
+    selected_models = models or exact_tokenizer_models()
     records = []
     dependency_available = tokenizer_dependencies_available() if tokenizer_loader is None else True
 
     for model in selected_models:
-        tokenizer_id = tokenizer_id_for_model(model)
+        model_metadata = resolve_model_metadata({"model": model, "options": {}})
+        tokenizer_id = exact_tokenizer_id(model, model_metadata)
         record: dict[str, Any] = {
             "model": model,
+            "model_metadata": model_metadata,
             "tokenizer_id": tokenizer_id,
             "supported": tokenizer_id is not None,
             "dependency_available": dependency_available,
@@ -148,12 +153,14 @@ def tokenizer_status(
                 load_exact_token_counter(
                     root=root,
                     model=model,
+                    model_metadata=model_metadata,
                     local_files_only=False,
                     tokenizer_loader=tokenizer_loader,
                 )
             counter = load_exact_token_counter(
                 root=root,
                 model=model,
+                model_metadata=model_metadata,
                 local_files_only=True,
                 tokenizer_loader=tokenizer_loader,
             )

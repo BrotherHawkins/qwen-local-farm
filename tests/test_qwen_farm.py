@@ -505,6 +505,85 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(details["notes.md"]["reason"], "not_included_by_pattern")
             self.assertEqual(details["image.png"]["reason"], "built_in_skipped_suffix")
 
+    def test_run_farm_persists_model_family_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agents = root / "agents"
+            agents.mkdir()
+            (agents / "llama-local.json").write_text(
+                json.dumps(
+                    {
+                        "id": "llama-local",
+                        "model": "llama3.1:8b",
+                        "model_family": "llama",
+                        "backend": "ollama",
+                        "support": "experimental",
+                        "tokenizer": {"strategy": "none"},
+                        "options": {"num_ctx": 4096},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "input").mkdir()
+            (root / "input" / "note.txt").write_text("hello", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="llama-local",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
+            result = qwen_farm.read_json(run_dir / "jobs" / "job-0001" / "result.json")
+            markdown = (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8")
+
+            self.assertEqual(status["runtime"]["model_metadata"]["family"], "llama")
+            self.assertEqual(status["runtime"]["model_metadata"]["support"], "experimental")
+            self.assertEqual(resolved["model_metadata"]["tokenizer"]["strategy"], "none")
+            self.assertEqual(result["model"]["metadata"]["family"], "llama")
+            self.assertIn("Model family: `llama`", markdown)
+
+    def test_invalid_agent_model_metadata_fails_before_run_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            agents = root / "agents"
+            agents.mkdir()
+            (agents / "bad.json").write_text(
+                json.dumps(
+                    {
+                        "id": "bad",
+                        "model": "qwen3.5:4b",
+                        "model_family": "surprise",
+                        "options": {"num_ctx": 8192},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "input").mkdir()
+            (root / "input" / "note.txt").write_text("hello", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "model_family must be one of"):
+                qwen_farm.run_farm(
+                    root=root,
+                    input_folder=root / "input",
+                    output_dir=None,
+                    mode="summarize",
+                    instructions=None,
+                    agent_id="bad",
+                    default_model="qwen-test:1b",
+                    ollama_base_url="http://127.0.0.1:11434",
+                    model_processor=fake_processor,
+                )
+
+            self.assertFalse((root / ".run" / "farm").exists())
+
     def test_run_farm_continues_after_one_failed_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

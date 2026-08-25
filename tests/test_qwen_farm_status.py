@@ -231,6 +231,37 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("- `raw/page.txt` - excluded_by_pattern `**/raw/**`", markdown)
         self.assertIn("- `notes.md` - not_included_by_pattern", markdown)
 
+    def test_status_markdown_shows_model_metadata(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-model",
+                "status": "complete",
+                "mode": "summarize",
+                "agent": "llama-local",
+                "model": "llama3.1:8b",
+                "runtime": {
+                    "model": "llama3.1:8b",
+                    "model_metadata": {
+                        "backend": "ollama",
+                        "family": "llama",
+                        "support": "experimental",
+                        "tokenizer": {"strategy": "none", "id": None, "exact": False},
+                        "context": {"tokens": 4096, "source": "agent.options.num_ctx"},
+                    },
+                    "summarize": {},
+                    "concurrency": {},
+                },
+                "counts": {"total": 0},
+                "jobs": [],
+            }
+        )
+
+        self.assertIn("Model family: `llama`", markdown)
+        self.assertIn("Model backend: `ollama`", markdown)
+        self.assertIn("Model support: `experimental`", markdown)
+        self.assertIn("Tokenizer strategy: `none`", markdown)
+        self.assertIn("Context tokens: `4096`", markdown)
+
     def test_farm_overview_json_wraps_runs(self) -> None:
         runs = [
             {

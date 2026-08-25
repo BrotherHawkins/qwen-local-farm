@@ -9,9 +9,10 @@ from typing import Any, Callable
 
 from src import qwen_farm
 from src.qwen_farm_files import utc_timestamp
+from src.qwen_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
 from src.qwen_farm_profiles import compact_runtime_config, derive_token_budget, normalize_config_data, read_config_file
 from src.qwen_farm_schema import EXIT_VALID, validate_artifact
-from src.qwen_farm_tokenizer import SUPPORTED_QWEN_TOKENIZERS, tokenizer_status
+from src.qwen_farm_tokenizer import tokenizer_status
 
 
 RECOMMENDATION_SCHEMA_VERSION = 1
@@ -123,6 +124,7 @@ def build_recommendation_report(
         resource_mode=resource_mode,
     )
     model = str(agent.get("model") or runtime.get("model") or default_model)
+    model_metadata = agent.get("model_metadata") if isinstance(agent.get("model_metadata"), dict) else {}
 
     ollama = _probe_ollama(
         ollama_base_url=ollama_base_url,
@@ -176,6 +178,7 @@ def build_recommendation_report(
         "status": status,
         "agent": str(agent.get("id") or agent_id),
         "model": model,
+        "model_metadata": model_metadata,
         "resource_mode": resource_mode,
         "profile": profile_rec,
         "concurrency": concurrency,
@@ -362,7 +365,10 @@ def recommend_concurrency(*, runtime: dict[str, Any], benchmark: dict[str, Any])
 
 def recommend_summarize(*, runtime: dict[str, Any], tokenizer: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
     summarize = runtime.get("summarize") if isinstance(runtime.get("summarize"), dict) else {}
-    if tokenizer.get("ready"):
+    model_metadata = agent.get("model_metadata") if isinstance(agent.get("model_metadata"), dict) else {}
+    exact_tokenizer = (model_metadata.get("tokenizer") or {}) if isinstance(model_metadata.get("tokenizer"), dict) else {}
+    selected_exact_ready = bool(tokenizer.get("ready")) and bool(exact_tokenizer.get("exact"))
+    if selected_exact_ready:
         chunk_tokens = summarize.get("chunk_tokens")
         reduce_tokens = summarize.get("reduce_tokens")
         if chunk_tokens is None or reduce_tokens is None:
@@ -379,8 +385,14 @@ def recommend_summarize(*, runtime: dict[str, Any], tokenizer: dict[str, Any], a
             "reduce_chars": summarize.get("reduce_chars"),
             "token_safety_margin": summarize.get("token_safety_margin", 0.10),
             "confidence": "high",
-            "reason": "Exact local tokenizer readiness was reported, so token-aware chunking should reduce avoidable extra calls.",
+            "reason": "Exact local tokenizer readiness was reported for the selected model metadata, so token-aware chunking should reduce avoidable extra calls.",
         }
+    if model_metadata.get("support") not in {"tested"}:
+        reason = "The selected model family is not dogfood-tested yet; character chunking is the conservative default."
+    elif not exact_tokenizer.get("exact"):
+        reason = "The selected model metadata does not advertise exact tokenizer support; character chunking is the safest default."
+    else:
+        reason = "Exact local tokenizer readiness was missing; character chunking is the safest default."
     return {
         "chunk_strategy": "character",
         "chunk_tokens": None,
@@ -389,7 +401,7 @@ def recommend_summarize(*, runtime: dict[str, Any], tokenizer: dict[str, Any], a
         "reduce_chars": summarize.get("reduce_chars"),
         "token_safety_margin": summarize.get("token_safety_margin", 0.10),
         "confidence": "medium",
-        "reason": "Exact local tokenizer readiness was missing; character chunking is the safest default.",
+        "reason": reason,
     }
 
 
@@ -404,6 +416,7 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
         else {}
     )
     summarize = report.get("summarize") if isinstance(report.get("summarize"), dict) else {}
+    model_metadata = report.get("model_metadata") if isinstance(report.get("model_metadata"), dict) else {}
     evidence = report.get("evidence") if isinstance(report.get("evidence"), dict) else {}
     benchmark = evidence.get("benchmark") if isinstance(evidence.get("benchmark"), dict) else {}
 
@@ -414,6 +427,8 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
         f"Generated: `{report.get('generated_at', '')}`",
         f"Agent: `{report.get('agent', '')}`",
         f"Model: `{report.get('model', '')}`",
+        f"Model family: `{model_metadata.get('family') or ''}`",
+        f"Model support: `{model_metadata.get('support') or ''}`",
         "",
         "## Recommended Settings",
         "",
@@ -866,7 +881,7 @@ def _resolve_agent_runtime(
         )
         return agent, compact_runtime_config(runtime), None
     except Exception as exc:
-        fallback = {"id": agent_id, "model": default_model, "options": {}}
+        fallback = apply_model_metadata({"id": agent_id, "model": default_model, "options": {}})
         runtime = {
             "profile": profile or "local-8gb",
             "resource_mode": {
@@ -930,7 +945,7 @@ def installed_model_names(tags: dict[str, Any]) -> list[str]:
 
 def _safe_tokenizer_status(*, root: Path, tokenizer_status_fn: TokenizerStatus) -> dict[str, Any]:
     try:
-        status = tokenizer_status_fn(root=root, models=list(SUPPORTED_QWEN_TOKENIZERS), download=False)
+        status = tokenizer_status_fn(root=root, models=exact_tokenizer_models(), download=False)
         return status if isinstance(status, dict) else {"ready": False, "models": [], "cache_dir": ""}
     except Exception as exc:
         return {

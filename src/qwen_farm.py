@@ -37,6 +37,7 @@ from src.qwen_farm_model import (
     process_file_with_model,
     render_summary_markdown,
 )
+from src.qwen_farm_model_metadata import apply_model_metadata
 from src.qwen_farm_profiles import (
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_PER_FILE_TIMEOUT_SECONDS,
@@ -129,7 +130,7 @@ def load_agent(root: Path, agent_id: str, default_model: str) -> dict[str, Any]:
     agent.setdefault("model", default_model)
     agent.setdefault("system_prompt", "")
     agent.setdefault("options", {})
-    return agent
+    return apply_model_metadata(agent)
 
 
 def make_initial_status(
@@ -218,6 +219,7 @@ def result_envelope(
         "model": {
             "agent": agent["id"],
             "model": agent["model"],
+            "metadata": agent.get("model_metadata", {}),
         },
         "warnings": result.warnings,
     }
@@ -1682,6 +1684,7 @@ def resolve_run_agent_and_config(
     agent = load_agent(root, agent_id, str(runtime_config["model"]))
     if model_is_explicit(runtime_config):
         agent["model"] = runtime_config["model"]
+        apply_model_metadata(agent)
     runtime_config = set_effective_model(runtime_config, str(agent["model"]))
     runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
     return agent, runtime_config
@@ -2024,6 +2027,7 @@ def run_farm(
         agent = load_agent(root, agent_id, str(runtime_config["model"]))
         if model_is_explicit(runtime_config):
             agent["model"] = runtime_config["model"]
+            apply_model_metadata(agent)
         runtime_config = set_effective_model(runtime_config, str(agent["model"]))
         runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
 
@@ -2046,7 +2050,12 @@ def run_farm(
     validate_resolved_config(runtime_config)
 
     if runtime_config["summarize"].get("chunk_strategy") == "token" and token_counter is None:
-        token_counter = token_counter_loader(root=root, model=str(agent["model"]), local_files_only=True)
+        token_counter = token_counter_loader(
+            root=root,
+            model=str(agent["model"]),
+            model_metadata=agent.get("model_metadata"),
+            local_files_only=True,
+        )
 
     farm_root = farm_home(root)
     discovery_config = runtime_config.get("discovery") if isinstance(runtime_config.get("discovery"), dict) else {}

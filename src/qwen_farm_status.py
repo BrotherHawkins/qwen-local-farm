@@ -131,6 +131,9 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     concurrency = runtime.get("concurrency") or {}
     failure_policy = runtime.get("failure_policy") or {}
     discovery_runtime = runtime.get("discovery") if isinstance(runtime.get("discovery"), dict) else {}
+    model_metadata = runtime.get("model_metadata") if isinstance(runtime.get("model_metadata"), dict) else {}
+    tokenizer = model_metadata.get("tokenizer") if isinstance(model_metadata.get("tokenizer"), dict) else {}
+    context = model_metadata.get("context") if isinstance(model_metadata.get("context"), dict) else {}
     lines = [
         f"# Farm Run {status.get('run_id', '')}",
         "",
@@ -153,6 +156,12 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Resource mode effective: `{resource_mode.get('effective') or ''}`",
         f"Resource mode source: `{resource_mode.get('source') or ''}`",
         f"Model: `{runtime.get('model', status.get('model', ''))}`",
+        f"Model family: `{model_metadata.get('family') or ''}`",
+        f"Model backend: `{model_metadata.get('backend') or ''}`",
+        f"Model support: `{model_metadata.get('support') or ''}`",
+        f"Tokenizer strategy: `{tokenizer.get('strategy') or ''}`",
+        f"Tokenizer exact: `{tokenizer.get('exact') if tokenizer.get('exact') is not None else ''}`",
+        f"Context tokens: `{context.get('tokens') if context.get('tokens') is not None else ''}`",
         f"Chunk strategy: `{summarize.get('chunk_strategy', '')}`",
         f"Chunk chars: `{summarize.get('chunk_chars', '')}`",
         f"Reduce chars: `{summarize.get('reduce_chars', '')}`",

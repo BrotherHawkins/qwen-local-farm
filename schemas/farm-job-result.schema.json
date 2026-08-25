@@ -107,6 +107,30 @@
         },
         "model": {
           "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "model": {"type": "string"},
+            "backend": {"type": "string"},
+            "family": {"type": "string"},
+            "support": {"type": "string"},
+            "tokenizer": {
+              "type": "object",
+              "properties": {
+                "strategy": {"type": "string"},
+                "id": {"type": ["string", "null"]},
+                "exact": {"type": "boolean"}
+              }
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "tokens": {"type": ["integer", "null"]},
+                "source": {"type": ["string", "null"]}
+              }
+            }
+          }
         }
       }
     },

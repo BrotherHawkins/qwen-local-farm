@@ -8,6 +8,8 @@ Default model: `qwen3.5:4b`
 
 That is the comfortable default for an 8GB VRAM card. The larger installed models are available for slower offline work when you want more depth.
 
+Qwen is the tested default model family for this repo. The farm now normalizes model metadata through an adapter-style shape with backend, family, support level, tokenizer strategy, and context assumptions, so other Ollama model families can be added deliberately later. Non-Qwen or unknown families should be treated as experimental until they have dogfood quality and timing evidence.
+
 Installed local models:
 
 | Model | Size | Quantization | Best use |
@@ -256,6 +258,94 @@ Token-aware chunking can also be configured in `.qwen-farm.json`:
 If token budgets are omitted, the farm derives a conservative budget from the selected agent's `num_ctx` and caps summarize chunks at 4096 tokens for local-worker summary quality. Power users can raise `chunk_tokens` and `reduce_tokens` explicitly after dogfooding their hardware/model combination.
 
 If token-aware chunking is requested and the exact local tokenizer is missing, the farm fails before starting jobs and tells you to run `python qwen.py farm tokenizer setup` or switch back to `--chunk-strategy character`.
+
+Bundled agents declare model-family metadata such as:
+
+```json
+{
+  "model": "qwen3.5:4b",
+  "model_family": "qwen",
+  "backend": "ollama",
+  "support": "tested",
+  "tokenizer": {
+    "strategy": "huggingface",
+    "id": "Qwen/Qwen3.5-4B",
+    "exact": true
+  },
+  "options": {
+    "num_ctx": 8192
+  }
+}
+```
+
+For an experimental non-Qwen Ollama model, declare the family and keep tokenizer strategy `none` until an exact adapter is available:
+
+```json
+{
+  "model": "llama3.1:8b",
+  "model_family": "llama",
+  "backend": "ollama",
+  "support": "experimental",
+  "tokenizer": {
+    "strategy": "none"
+  },
+  "options": {
+    "num_ctx": 4096
+  }
+}
+```
+
+Character chunking can still run with experimental or unknown model families. Token-aware chunking requires exact tokenizer metadata and local tokenizer readiness.
+
+### Adding An Experimental Ollama Model
+
+To try another local Ollama model family without changing farm commands:
+
+1. Pull or create the model in Ollama yourself, outside the farm.
+2. Add an agent file under `agents/`, such as `agents/llama-local.json`.
+3. Set `model`, `model_family`, `backend`, `support`, `tokenizer`, and `options.num_ctx`.
+4. Start with `"support": "experimental"` and `"tokenizer": {"strategy": "none"}`.
+5. Run `python qwen.py farm doctor --agent <agent-id>`.
+6. Run a tiny character-chunking smoke before a large batch:
+
+```bash
+python qwen.py farm run notes --mode summarize --agent llama-local --chunk-strategy character
+```
+
+Supported first-pass metadata values:
+
+| Field | Values |
+| --- | --- |
+| `backend` | `ollama` |
+| `model_family` | `qwen`, `llama`, `mistral`, `gemma`, `phi`, `deepseek`, `unknown` |
+| `support` | `tested`, `experimental`, `unknown` |
+| `tokenizer.strategy` | `huggingface`, `none`, `unknown` |
+
+Use `support: tested` only after the model family has local dogfood quality and timing evidence. Use `tokenizer.strategy: huggingface` only when an exact tokenizer ID is known and `python qwen.py farm tokenizer status --model <model>` can verify it locally. Otherwise use character chunking.
+
+Minimal experimental agent example:
+
+```json
+{
+  "id": "llama-local",
+  "name": "Experimental Llama Worker",
+  "model": "llama3.1:8b",
+  "model_family": "llama",
+  "backend": "ollama",
+  "support": "experimental",
+  "tokenizer": {
+    "strategy": "none"
+  },
+  "system_prompt": "You are a local experimental worker. Be concise, faithful, and practical.",
+  "options": {
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "num_ctx": 4096
+  }
+}
+```
+
+For exact token-aware chunking on a new model, add exact Hugging Face tokenizer metadata to the agent and verify it with `python qwen.py farm tokenizer status --model <model>`. If the model should become a bundled default or recognized alias, extend the tokenizer adapter registry in `src/qwen_farm_model_metadata.py` and add model-free tests for the mapping. Until exact tokenizer metadata is present and verified, token-aware chunking should fail early with guidance rather than guessing.
 
 Markdown heading ancestry is enabled by default for chunked summarize inputs. Chunk input artifacts include a compact `Heading context` block so a worker processing chunk 4 still knows it is inside headings such as `# Title` and `## Section`. Overlap is opt-in:
 

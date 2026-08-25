@@ -775,6 +775,7 @@ def derive_token_budget(num_ctx: int, safety_margin: float) -> int:
 def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
     updated = deepcopy(runtime_config)
     updated.setdefault("discovery", default_discovery())
+    updated["model_metadata"] = deepcopy(agent.get("model_metadata") or {})
     updated = resolve_resource_mode_for_agent(updated, agent)
     summarize = updated["summarize"]
     summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
@@ -879,6 +880,7 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
         "profile": runtime_config["profile"],
         "resource_mode": runtime_config.get("resource_mode"),
         "model": runtime_config["model"],
+        "model_metadata": deepcopy(runtime_config.get("model_metadata") or {}),
         "summarize": {
             "chunk_strategy": runtime_config["summarize"].get("chunk_strategy", DEFAULT_CHUNK_STRATEGY),
             "chunk_chars": runtime_config["summarize"]["chunk_chars"],

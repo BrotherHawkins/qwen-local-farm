@@ -15,9 +15,9 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
-| 2 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
-| 3 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 1 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
+| 2 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 3 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
 
 ## Spec-Deferred Items
 
@@ -30,7 +30,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0005 | Open | 0000 | Scheduled benchmark checks on known hardware | Requires stable machine profile and benchmark corpus. |
 | BL-0006 | Open | 0001 | CLI spelling for future non-MVP modes | Revisit before adding `extract`, `classify`, or `review`. |
 | BL-0007 | Implemented | 0001, 0016 | Full schema files for status/result validation | 0016 implemented tracked schemas and model-free validation coverage for key farm JSON artifacts. |
-| BL-0008 | Open | 0001 | Skip-list overrides | Include/exclude controls for farm file discovery. |
+| BL-0008 | Implemented | 0001, 0030 | Skip-list overrides | 0030 added include/exclude controls for farm file discovery while keeping built-in safety skips intact. |
 | BL-0009 | Implemented | 0001, 0025 | Caller-provided retry/timeout behavior | 0025 implemented configurable failure-policy fields for attempts and model-call timeout behavior. |
 | BL-0010 | Implemented | 0001, 0024 | `farm collect` | 0024 implemented a general post-run helper for flattening and indexing existing job result artifacts. |
 | BL-0011 | Open | 0001 | Queue-only execution | Submit work without processing immediately. |
@@ -122,6 +122,10 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0097 | Open | 0027, 0028 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
 | BL-0098 | Implemented | 0029 | Failure classification and retry guidance | 0029 added durable failure codes, categories, retryability flags, retry-after-fix guidance, and recommended actions to failed job artifacts and status/retry surfaces. |
 | BL-0099 | Open | 0029 | Skip non-retryable jobs by default in `retry-failed` | After failure classification is dogfooded, consider making `retry-failed` skip non-retryable jobs unless an explicit override is supplied. |
+| BL-0100 | Open | 0030 | `.qwenignore` or repo-local ignore files | Add repo-local ignore files only after CLI/config include/exclude patterns prove useful. |
+| BL-0101 | Open | 0030 | Force-include normally skipped text files from generated/vendor folders | Consider an explicit escape hatch for vendor/generated text files after first-pass safety semantics are dogfooded. |
+| BL-0102 | Open | 0030 | Include/exclude controls for post-run helpers | Extend filtering to collection/package helpers only after farm-run discovery controls are stable. |
+| BL-0103 | Open | 0030 | Richer structured discovery diagnostics and reason codes | Expand skipped-file diagnostics beyond the first-pass metadata if flat `skipped_files` remains too opaque. |
 
 ## Notes
 

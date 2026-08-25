@@ -92,6 +92,19 @@
               "minimum": 1
             }
           }
+        },
+        "discovery": {
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "exclude": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
         }
       }
     },
@@ -339,6 +352,37 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "exclude": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "selected": {"type": "integer"},
+            "skipped": {"type": "integer"}
+          }
+        },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "reason": {"type": "string"},
+              "pattern": {"type": "string"}
+            }
+          }
+        }
       }
     },
     "created_at": {

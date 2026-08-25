@@ -31,6 +31,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["summarize"]["snippet_policy"], "off")
             self.assertIsNone(config["summarize"]["snippet_count"])
             self.assertEqual(config["concurrency"]["jobs"], 1)
+            self.assertEqual(config["discovery"], {"include": [], "exclude": []})
             self.assertEqual(
                 config["failure_policy"],
                 {
@@ -72,6 +73,7 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                         },
                         "concurrency": {"jobs": 2},
                         "failure_policy": {"max_attempts": 3, "per_file_timeout_seconds": 900},
+                        "discovery": {"include": ["articles/*.txt"], "exclude": ["**/raw/**"]},
                     }
                 ),
                 encoding="utf-8",
@@ -92,10 +94,14 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["failure_policy"]["max_attempts"], 3)
             self.assertEqual(config["failure_policy"]["per_file_timeout_seconds"], 900)
             self.assertEqual(config["failure_policy"]["chunk_max_attempts"], 2)
+            self.assertEqual(config["discovery"]["include"], ["articles/*.txt"])
+            self.assertEqual(config["discovery"]["exclude"], ["**/raw/**"])
             self.assertEqual(
                 config["provenance"]["config_fields"],
                 [
                     "concurrency.jobs",
+                    "discovery.exclude",
+                    "discovery.include",
                     "failure_policy.max_attempts",
                     "failure_policy.per_file_timeout_seconds",
                     "model",
@@ -139,6 +145,8 @@ class FarmRuntimeProfileTests(unittest.TestCase):
                     per_file_timeout_seconds=1200,
                     chunk_max_attempts=5,
                     reduce_max_attempts=1,
+                    include=("notes/*.md",),
+                    exclude=("**/drafts/**",),
                 ),
             )
 
@@ -155,10 +163,62 @@ class FarmRuntimeProfileTests(unittest.TestCase):
             self.assertEqual(config["failure_policy"]["per_file_timeout_seconds"], 1200)
             self.assertEqual(config["failure_policy"]["chunk_max_attempts"], 5)
             self.assertEqual(config["failure_policy"]["reduce_max_attempts"], 1)
+            self.assertEqual(config["discovery"]["include"], ["notes/*.md"])
+            self.assertEqual(config["discovery"]["exclude"], ["**/drafts/**"])
             self.assertIn("model", config["provenance"]["cli_override_fields"])
             self.assertIn("resource_mode", config["provenance"]["cli_override_fields"])
             self.assertIn("summarize.chunk_overlap_chars", config["provenance"]["cli_override_fields"])
             self.assertIn("failure_policy.max_attempts", config["provenance"]["cli_override_fields"])
+            self.assertIn("discovery.include", config["provenance"]["cli_override_fields"])
+
+    def test_discovery_config_and_cli_patterns_merge(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps(
+                    {
+                        "discovery": {
+                            "include": ["articles/*.txt"],
+                            "exclude": ["**/raw/**"],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = resolve_runtime_config(
+                root=root,
+                default_model="qwen-test:1b",
+                overrides=RuntimeOverrides(
+                    include=("notes/*.md",),
+                    exclude=("**/*.tmp",),
+                ),
+            )
+
+        self.assertEqual(config["discovery"]["include"], ["articles/*.txt", "notes/*.md"])
+        self.assertEqual(config["discovery"]["exclude"], ["**/raw/**", "**/*.tmp"])
+
+    def test_invalid_discovery_config_fields_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"discovery": {"surprise": ["*.md"]}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "Unknown discovery field"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
+
+    def test_invalid_discovery_pattern_values_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / ".qwen-farm.json").write_text(
+                json.dumps({"discovery": {"include": ["*.md", 3]}}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "discovery.include\\[1\\] must be a string"):
+                resolve_runtime_config(root=root, default_model="qwen-test:1b")
 
     def test_invalid_json_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

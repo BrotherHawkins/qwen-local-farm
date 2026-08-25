@@ -462,6 +462,49 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("node_modules/dep.txt", status["skipped_files"])
             self.assertIn("binary.dat", status["skipped_files"])
 
+    def test_run_farm_applies_discovery_include_exclude_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input" / "articles").mkdir(parents=True)
+            (root / "input" / "raw").mkdir()
+            (root / "input" / "articles" / "keep.txt").write_text("keep", encoding="utf-8")
+            (root / "input" / "articles" / "draft.txt").write_text("draft", encoding="utf-8")
+            (root / "input" / "raw" / "page.txt").write_text("raw", encoding="utf-8")
+            (root / "input" / "notes.md").write_text("notes", encoding="utf-8")
+            (root / "input" / "image.png").write_bytes(b"\x89PNG\r\n")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=None,
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                include=["articles/*.txt", "raw/*.txt"],
+                exclude=["**/draft.txt", "**/raw/**"],
+                model_processor=fake_processor,
+            )
+
+            run_dir = Path(status["output"]["path"])
+            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
+            self.assertEqual(status["counts"]["total"], 1)
+            self.assertEqual(status["jobs"][0]["input_path"], "articles/keep.txt")
+            self.assertEqual(status["runtime"]["discovery"]["include"], ["articles/*.txt", "raw/*.txt"])
+            self.assertEqual(status["runtime"]["discovery"]["exclude"], ["**/draft.txt", "**/raw/**"])
+            self.assertEqual(resolved["discovery"], status["runtime"]["discovery"])
+            self.assertIn("articles/draft.txt", status["skipped_files"])
+            self.assertIn("raw/page.txt", status["skipped_files"])
+            self.assertIn("notes.md", status["skipped_files"])
+            self.assertIn("image.png", status["skipped_files"])
+            details = {item["path"]: item for item in status["discovery"]["skipped"]}
+            self.assertEqual(details["articles/draft.txt"]["reason"], "excluded_by_pattern")
+            self.assertEqual(details["raw/page.txt"]["reason"], "excluded_by_pattern")
+            self.assertEqual(details["notes.md"]["reason"], "not_included_by_pattern")
+            self.assertEqual(details["image.png"]["reason"], "built_in_skipped_suffix")
+
     def test_run_farm_continues_after_one_failed_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

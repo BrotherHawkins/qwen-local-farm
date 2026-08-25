@@ -317,6 +317,15 @@ Custom prompt invocation:
 python qwen.py farm run input-folder --mode prompt --instructions "For each file, identify risks and next actions."
 ```
 
+Discovery filters:
+
+```bash
+python qwen.py farm run input-folder --mode summarize --include "articles/*.txt"
+python qwen.py farm run input-folder --mode summarize --include "**/*.txt" --exclude "**/raw/**"
+```
+
+Use `--include` to narrow the eligible text files under the input folder. Use `--exclude` to remove noisy paths; exclude wins over include. Patterns match input-folder-relative paths with `/` separators. These filters do not force unsafe files into processing: built-in skips for binary files, unsupported suffixes, minified assets, generated folders, and vendor folders still apply. Inspect `farm-config.resolved.json`, `farm-status.json`, or `farm status <run-id> --json` to see effective `runtime.discovery` settings and discovery skip diagnostics.
+
 Status inspection:
 
 ```bash

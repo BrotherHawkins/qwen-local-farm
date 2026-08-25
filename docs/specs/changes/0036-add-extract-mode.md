@@ -142,6 +142,198 @@ Final extract items should be compact and source-grounded:
 
 `attributes` is optional, bounded, and shallow. It may contain scalar strings or short arrays of strings, but not nested objects.
 
+## Sample JSON
+
+Entities preset job result excerpt:
+
+```json
+{
+  "schema_version": 1,
+  "job_id": "job-0001",
+  "mode": "extract",
+  "status": "complete",
+  "structured_valid": true,
+  "input": { "path": "notes/market-map.txt" },
+  "result": {
+    "preset": "entities",
+    "focus": null,
+    "counts": { "items": 3, "by_type": { "entity": 3 } },
+    "items": [
+      {
+        "id": "entity-001",
+        "type": "entity",
+        "text": "Mira Chen",
+        "entity_type": "person",
+        "attributes": { "role": "research lead" },
+        "rank_score": 0.92,
+        "source_support": "snippet_verified",
+        "sources": [
+          {
+            "file": "notes/market-map.txt",
+            "snippet": "Research lead Mira Chen argued",
+            "char_start": 114,
+            "char_end": 145,
+            "source_support": "snippet_verified"
+          }
+        ]
+      },
+      {
+        "id": "entity-002",
+        "type": "entity",
+        "text": "Jon Patel",
+        "entity_type": "person",
+        "attributes": { "role": "buyer" },
+        "rank_score": 0.76,
+        "source_support": "snippet_verified",
+        "sources": [
+          {
+            "file": "notes/market-map.txt",
+            "snippet": "Jon Patel said procurement",
+            "char_start": 392,
+            "char_end": 419,
+            "source_support": "snippet_verified"
+          }
+        ]
+      },
+      {
+        "id": "entity-003",
+        "type": "entity",
+        "text": "Asha Morgan",
+        "entity_type": "person",
+        "attributes": { "role": "operator" },
+        "rank_score": 0.68,
+        "source_support": "snippet_verified",
+        "sources": [
+          {
+            "file": "notes/market-map.txt",
+            "snippet": "operator Asha Morgan tracks",
+            "char_start": 812,
+            "char_end": 840,
+            "source_support": "snippet_verified"
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": []
+}
+```
+
+Work preset job result excerpt:
+
+```json
+{
+  "schema_version": 1,
+  "job_id": "job-0002",
+  "mode": "extract",
+  "status": "complete",
+  "structured_valid": true,
+  "input": { "path": "meetings/planning.txt" },
+  "result": {
+    "preset": "work",
+    "focus": "Capture implementation follow-ups.",
+    "counts": { "items": 2, "by_type": { "decision": 1, "task": 1 } },
+    "items": [
+      {
+        "id": "decision-001",
+        "type": "decision",
+        "text": "Use tokenizer-aware chunking by default for large Markdown inputs.",
+        "attributes": { "owner": "team" },
+        "rank_score": 0.88,
+        "source_support": "snippet_verified",
+        "sources": [
+          {
+            "file": "meetings/planning.txt",
+            "snippet": "Decision: tokenizer-aware chunking becomes the default",
+            "char_start": 44,
+            "char_end": 99,
+            "source_support": "snippet_verified"
+          }
+        ]
+      },
+      {
+        "id": "task-001",
+        "type": "task",
+        "text": "Add runtime timing fields to dogfood comparison records.",
+        "attributes": { "owner": "Chris" },
+        "rank_score": 0.74,
+        "source_support": "snippet_verified",
+        "sources": [
+          {
+            "file": "meetings/planning.txt",
+            "snippet": "Chris will add timing fields",
+            "char_start": 151,
+            "char_end": 180,
+            "source_support": "snippet_verified"
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": []
+}
+```
+
+Run-level aggregate example:
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "20260825-141233-9f3a2b",
+  "mode": "extract",
+  "preset": "research",
+  "focus": null,
+  "status": "partial",
+  "coverage": {
+    "status": "partial",
+    "total_jobs": 3,
+    "completed_jobs": 2,
+    "failed_jobs": 1,
+    "skipped_files": 0
+  },
+  "counts": {
+    "items": 17,
+    "by_type": { "claim": 8, "entity": 6, "link": 3 }
+  },
+  "items": [
+    {
+      "id": "claim-001",
+      "type": "claim",
+      "text": "Local workers can reduce frontier-model context load before synthesis.",
+      "attributes": {},
+      "rank_score": 0.84,
+      "source_support": "snippet_verified",
+      "sources": [
+        {
+          "file": "articles/005-karpathy-llm-wiki-starter-vault.txt",
+          "snippet": "smaller local models can preprocess",
+          "char_start": 203,
+          "char_end": 240,
+          "source_support": "snippet_verified"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "job_id": "job-0003",
+      "file": "articles/009-long-article.txt",
+      "failure_category": "worker_error",
+      "retry_recommended": true,
+      "message": "Worker command exited before producing tagged output."
+    }
+  ],
+  "artifacts": {
+    "markdown": "EXTRACT_RESULTS.md",
+    "json": "extract-results.json"
+  },
+  "diagnostics": {
+    "warnings": [],
+    "dedupe": { "candidate_items": 23, "selected_items": 17 }
+  }
+}
+```
+
 ## Snippet And Offset Policy
 
 Source snippets are type-aware:

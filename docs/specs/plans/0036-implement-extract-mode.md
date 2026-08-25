@@ -1,5 +1,7 @@
 # 0036 Implement Extract Mode
 
+Spec: [0036-add-extract-mode.md](../changes/0036-add-extract-mode.md)
+
 Status: Implemented
 
 ## Goal

@@ -104,6 +104,25 @@ def progress_summary(job: dict[str, Any]) -> str:
     return "; ".join(parts)
 
 
+def table_text(value: Any) -> str:
+    return str(value or "").replace("\n", " ").replace("|", "\\|")
+
+
+def failure_summary(failure: Any) -> str:
+    if not isinstance(failure, dict):
+        return ""
+    retryable = "yes" if failure.get("retryable") else "no"
+    retry_after_fix = "yes" if failure.get("retry_after_fix") else "no"
+    text = (
+        f"{failure.get('code', '')} ({failure.get('category', '')}; "
+        f"retryable: {retryable}; retry after fix: {retry_after_fix})"
+    )
+    action = failure.get("recommended_action")
+    if action:
+        text = f"{text} Next: {action}"
+    return table_text(text)
+
+
 def render_status_markdown(status: dict[str, Any]) -> str:
     counts = status.get("counts", {})
     runtime = status.get("runtime") or {}
@@ -186,14 +205,15 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             "",
             "## Jobs",
             "",
-            "| Job | Status | Input | Chunking | Snippets | Queue Wait | Duration | Result | Error |",
-            "| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- |",
+            "| Job | Status | Input | Chunking | Snippets | Queue Wait | Duration | Result | Failure | Error |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- |",
         ]
     )
 
     for job in status.get("jobs", []):
         result = job.get("result_md") or ""
-        error = (job.get("error") or "").replace("\n", " ")
+        error = table_text(job.get("error"))
+        failure = failure_summary(job.get("failure"))
         timing = job.get("timing") or {}
         chunking = job.get("chunking") or {}
         snippets = job.get("snippets") or {}
@@ -219,7 +239,7 @@ def render_status_markdown(status: dict[str, Any]) -> str:
             f"`{job.get('input_path', '')}` | `{chunking_text}` | "
             f"`{snippet_text}` | "
             f"`{duration_label(timing.get('queue_wait_ms'))}` | `{duration_label(timing.get('duration_ms'))}` | "
-            f"`{result}` | {error} |"
+            f"`{result}` | {failure} | {error} |"
         )
 
     active_jobs = [job for job in status.get("jobs", []) if job.get("status") == "running" and job.get("progress")]

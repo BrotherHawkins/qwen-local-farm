@@ -300,6 +300,27 @@ class FarmSchemaTests(unittest.TestCase):
                 "path": ".run/farm/farm-run-retry",
                 "retried_jobs": 1,
             },
+            "failure_counts": {
+                "retryable": 0,
+                "non_retryable": 1,
+                "unknown": 0,
+            },
+            "selected_jobs": [
+                {
+                    "source_job_id": "job-0001",
+                    "retry_job_id": "job-0001",
+                    "input_path": "too-big.txt",
+                    "source_error": "too large",
+                    "source_failure": {
+                        "code": "context_overflow",
+                        "category": "resource",
+                        "retryable": False,
+                        "retry_after_fix": True,
+                        "message": "too large",
+                        "recommended_action": "Enable chunking.",
+                    },
+                }
+            ],
             "counts": {
                 "queued": 0,
                 "running": 0,
@@ -314,6 +335,96 @@ class FarmSchemaTests(unittest.TestCase):
         }
 
         self.assertValid(result, "farm-retry-failed.schema.json")
+
+    def test_failed_job_result_with_failure_validates(self) -> None:
+        result = {
+            "schema_version": "0.1",
+            "job_id": "job-0001",
+            "mode": "summarize",
+            "status": "failed",
+            "structured_valid": False,
+            "input": {"path": "too-big.txt"},
+            "result": {},
+            "artifacts": {
+                "markdown": "jobs/job-0001/result.md",
+                "raw_response": "jobs/job-0001/raw-response.txt",
+            },
+            "model": {
+                "agent": "default",
+                "model": "qwen-test:1b",
+            },
+            "warnings": [],
+            "error": "too large",
+            "failure": {
+                "code": "context_overflow",
+                "category": "resource",
+                "retryable": False,
+                "retry_after_fix": True,
+                "message": "too large",
+                "recommended_action": "Enable chunking.",
+            },
+            "chunking": {"enabled": False},
+            "snippets": {},
+            "timing": {"calls": []},
+        }
+
+        self.assertValid(result, "farm-job-result.schema.json")
+
+    def test_status_with_failed_job_failure_validates(self) -> None:
+        status = {
+            "schema_version": "0.1",
+            "run_id": "farm-run-failed",
+            "status": "failed",
+            "mode": "summarize",
+            "agent": "default",
+            "model": "qwen-test:1b",
+            "runtime": {},
+            "request": {"mode": "summarize", "instructions": None, "agent": "default"},
+            "input": {"path": "input", "kind": "folder"},
+            "output": {"path": "output"},
+            "counts": {
+                "queued": 0,
+                "running": 0,
+                "complete": 0,
+                "complete_with_warnings": 0,
+                "failed": 1,
+                "skipped": 0,
+                "total": 1,
+            },
+            "jobs": [
+                {
+                    "job_id": "job-0001",
+                    "status": "failed",
+                    "input_path": "too-big.txt",
+                    "result_json": "jobs/job-0001/result.json",
+                    "result_md": "jobs/job-0001/result.md",
+                    "raw_response": "jobs/job-0001/raw-response.txt",
+                    "error": "too large",
+                    "failure": {
+                        "code": "context_overflow",
+                        "category": "resource",
+                        "retryable": False,
+                        "retry_after_fix": True,
+                        "message": "too large",
+                        "recommended_action": "Enable chunking.",
+                    },
+                    "warnings": [],
+                    "chunking": {"enabled": False},
+                    "snippets": {},
+                    "timing": {"calls": []},
+                }
+            ],
+            "skipped_files": [],
+            "created_at": "2026-08-24T00:00:00Z",
+            "updated_at": "2026-08-24T00:00:02Z",
+            "timing": {
+                "started_at": "2026-08-24T00:00:00.000Z",
+                "completed_at": "2026-08-24T00:00:02.000Z",
+                "duration_ms": 2000,
+            },
+        }
+
+        self.assertValid(status, "farm-status.schema.json")
 
     def test_running_status_with_progress_validates(self) -> None:
         status = {

@@ -257,9 +257,13 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(retry_status["request"]["instructions"], "Keep original intent.")
             self.assertEqual(retry_status["retry"]["source_run_id"], source["run_id"])
             self.assertEqual(retry_status["retry"]["retried_count"], 1)
+            self.assertEqual(retry_status["retry"]["failure_counts"], {"retryable": 1, "non_retryable": 0, "unknown": 0})
             self.assertEqual(retry_status["retry"]["jobs"][0]["source_job_id"], "job-0002")
             self.assertEqual(retry_status["retry"]["jobs"][0]["retry_job_id"], "job-0001")
+            self.assertEqual(retry_status["retry"]["jobs"][0]["source_failure"]["code"], "internal_error")
             self.assertEqual(retry_result["retry_run"]["run_id"], retry_status["run_id"])
+            self.assertEqual(retry_result["failure_counts"], {"retryable": 1, "non_retryable": 0, "unknown": 0})
+            self.assertEqual(retry_result["selected_jobs"][0]["source_failure"]["code"], "internal_error")
             self.assertTrue((retry_run_dir / "jobs" / "job-0001" / "result.json").exists())
             self.assertIn("## Retry", (retry_run_dir / "FARM_STATUS.md").read_text(encoding="utf-8"))
 
@@ -481,6 +485,31 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["status"], "partial")
             self.assertEqual(status["counts"]["complete"], 1)
             self.assertEqual(status["counts"]["failed"], 1)
+            failed_job = status["jobs"][1]
+            self.assertEqual(failed_job["failure"]["code"], "internal_error")
+            self.assertTrue(failed_job["failure"]["retryable"])
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0002/result.json")
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["failure"], failed_job["failure"])
+            self.assertIn("planned failure", result["error"])
+            self.assertTrue((run_dir / "jobs/job-0002/result.md").exists())
+
+    def test_failure_classifier_handles_common_cases(self) -> None:
+        cases = [
+            (TimeoutError("timed out"), "model_timeout", True, False),
+            (FileNotFoundError("missing input file"), "input_missing", False, True),
+            (ValueError("Reduce input exceeds reduce token budget of 100 tokens."), "context_overflow", False, True),
+            (RuntimeError("surprising boom"), "internal_error", True, False),
+        ]
+
+        for exc, code, retryable, retry_after_fix in cases:
+            with self.subTest(code=code):
+                failure = qwen_farm.classify_failure(exc)
+                self.assertEqual(failure["code"], code)
+                self.assertEqual(failure["retryable"], retryable)
+                self.assertEqual(failure["retry_after_fix"], retry_after_fix)
+                self.assertIn("recommended_action", failure)
 
     def test_single_pass_retry_obeys_max_attempts_and_keeps_failed_call_timing(self) -> None:
         attempts = 0
@@ -1328,6 +1357,12 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(status["status"], "failed")
             self.assertEqual(reduce_attempts, 1)
             self.assertIn("reduce stayed broken", status["jobs"][0]["error"])
+            self.assertEqual(status["jobs"][0]["failure"]["code"], "internal_error")
+            run_dir = Path(status["output"]["path"])
+            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["failure"], status["jobs"][0]["failure"])
+            self.assertTrue(result["chunking"]["enabled"])
 
     def test_chunked_snippets_are_selected_from_verified_chunk_snippets(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

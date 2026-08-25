@@ -95,6 +95,7 @@ Roadmap:
 
 - Add queue-only runs for offline work with a simple first contract: "work these inputs here, put results over there."
 - Continue hardening the stable run/job object and post-run helper contracts.
+- Add durable failure classifications so callers can tell transient retry candidates from failures that need input, config, or resource fixes first.
 - Add `python qwen.py farm scan` when drop-folder intake is ready.
 - Let immediate asks remain simple and separate from queued work.
 - Keep process-now as the default. Add `--queue-only` later for callers that want to stage jobs without running them yet.
@@ -369,6 +370,8 @@ Implemented failure policy:
 - Continue processing remaining files.
 - Mark the run `partial` if any file failed.
 - Mark the run `complete_with_warnings` if outputs exist but structured repair or other non-fatal issues occurred.
+- Retry failed files from a previous run as a new normal run.
+- Add failure code, category, retryability, retry-after-fix guidance, and recommended action metadata to failed job artifacts.
 
 The current farm config supports fixed retry and timeout knobs:
 
@@ -396,6 +399,11 @@ Longer term, failure behavior can grow into policy decisions:
 ```
 
 Review policy should be mode-dependent and caller-configurable. Some results may be final enough for automation, while others should be staged for human or AI review.
+
+Near-term failure hardening:
+
+- Dogfood failure guidance until it is reliable enough to drive stricter retry behavior.
+- Keep automatic fallback and stricter retry selection deferred until failure guidance is reliable enough to drive behavior.
 
 Possible review states:
 

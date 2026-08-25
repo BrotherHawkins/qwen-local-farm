@@ -340,6 +340,8 @@ python qwen.py farm retry-failed <run-id> --json
 
 The retry command creates a new normal run containing only source jobs with `status: "failed"`. It preserves the source run's durable mode, agent, runtime config, and stored instructions when available. Use `--instructions` when retrying an older run that lacks `request.instructions`, or when the human wants to change the retry prompt. The source run is append-only evidence and is not modified.
 
+Before retrying, inspect failed job `failure` objects when present. `retryable: true` means the same retry may be worthwhile, usually for transient model-call or output issues. `retry_after_fix: true` means the primary AI should first fix or ask about the underlying input, configuration, model availability, or resource/context setting. `farm retry-failed --json` reports selected failure counts as `retryable`, `non_retryable`, and `unknown`, and carries each selected source job's failure guidance forward.
+
 If `--output` is omitted, the farm writes outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm creates a structured run folder inside that destination and records it in `.run/farm/runs.json` so later status commands can find it.
 
 The first implementation processes immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
@@ -473,8 +475,8 @@ Possible run statuses:
 | `running` | Work is in progress. | Wait or inspect progress. |
 | `complete` | All work finished cleanly. | Collect and summarize results. |
 | `complete_with_warnings` | Outputs exist, but something needs attention. | Inspect warnings before using. |
-| `partial` | Some jobs failed. | Use successful outputs, inspect failures, maybe rerun. |
-| `failed` | The run did not meaningfully complete. | Inspect error and ask user if needed. |
+| `partial` | Some jobs failed. | Use successful outputs, inspect failure guidance, maybe retry. |
+| `failed` | The run did not meaningfully complete. | Inspect failure guidance and ask user if a fix is needed. |
 
 Future status may include:
 

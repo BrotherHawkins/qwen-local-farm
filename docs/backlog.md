@@ -120,6 +120,8 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
 | BL-0096 | Open | 0027 | `farm status --watch` or live polling helpers | Add a user-friendly watch/polling surface after stable in-progress status fields exist. |
 | BL-0097 | Open | 0027, 0028 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
+| BL-0098 | Implemented | 0029 | Failure classification and retry guidance | 0029 added durable failure codes, categories, retryability flags, retry-after-fix guidance, and recommended actions to failed job artifacts and status/retry surfaces. |
+| BL-0099 | Open | 0029 | Skip non-retryable jobs by default in `retry-failed` | After failure classification is dogfooded, consider making `retry-failed` skip non-retryable jobs unless an explicit override is supplied. |
 
 ## Notes
 

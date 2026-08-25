@@ -157,6 +157,47 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("Source run: `run-source`", markdown)
         self.assertIn("`job-0002` | `job-0001` | `fail.txt`", markdown)
 
+    def test_status_markdown_shows_failure_guidance(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-failed",
+                "status": "failed",
+                "mode": "summarize",
+                "agent": "default",
+                "model": "qwen-test",
+                "runtime": {
+                    "summarize": {},
+                    "concurrency": {},
+                },
+                "counts": {"total": 1, "failed": 1},
+                "jobs": [
+                    {
+                        "job_id": "job-0001",
+                        "status": "failed",
+                        "input_path": "too-big.txt",
+                        "result_md": "jobs/job-0001/result.md",
+                        "error": "too large",
+                        "warnings": [],
+                        "chunking": {"enabled": False, "strategy": "single-pass"},
+                        "snippets": {},
+                        "timing": {},
+                        "failure": {
+                            "code": "context_overflow",
+                            "category": "resource",
+                            "retryable": False,
+                            "retry_after_fix": True,
+                            "message": "too large",
+                            "recommended_action": "Enable chunking.",
+                        },
+                    }
+                ],
+            }
+        )
+
+        self.assertIn("Failure", markdown)
+        self.assertIn("context_overflow (resource; retryable: no; retry after fix: yes)", markdown)
+        self.assertIn("Next: Enable chunking.", markdown)
+
     def test_farm_overview_json_wraps_runs(self) -> None:
         runs = [
             {

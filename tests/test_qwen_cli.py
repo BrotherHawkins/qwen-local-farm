@@ -831,6 +831,8 @@ class FarmHandlerTests(unittest.TestCase):
             "status": "complete",
             "source_run": {"run_id": "farm-run-1"},
             "retry_run": {"run_id": "farm-run-2"},
+            "failure_counts": {"retryable": 1, "non_retryable": 0, "unknown": 0},
+            "selected_jobs": [],
             "counts": {},
             "warnings": [],
             "errors": [],
@@ -871,6 +873,8 @@ class FarmHandlerTests(unittest.TestCase):
             "status": "complete",
             "source_run": {"run_id": "farm-run-1"},
             "retry_run": {"run_id": "farm-run-2"},
+            "failure_counts": {"retryable": 1, "non_retryable": 0, "unknown": 0},
+            "selected_jobs": [],
             "counts": {},
             "warnings": [],
             "errors": [],
@@ -905,6 +909,7 @@ class FarmHandlerTests(unittest.TestCase):
         result = {
             "source_run": {"run_id": "farm-run-1"},
             "retry_run": {"retried_jobs": 1},
+            "failure_counts": {"retryable": 0, "non_retryable": 1, "unknown": 0},
             "warnings": ["Source run does not contain request.instructions; retrying without prior instructions."],
         }
 
@@ -922,6 +927,7 @@ class FarmHandlerTests(unittest.TestCase):
                 call("Retry run complete: farm-run-2"),
                 call("Source run: farm-run-1"),
                 call("Retried files: 1"),
+                call("Selected failures: 0 retryable, 1 non-retryable, 0 unknown"),
                 call("Status: complete"),
                 call("Output: .run/farm/farm-run-2"),
                 call("Warning: Source run does not contain request.instructions; retrying without prior instructions."),

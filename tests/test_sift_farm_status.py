@@ -2,28 +2,28 @@ from __future__ import annotations
 
 import unittest
 
-from src import qwen_farm_status
+from src import sift_farm_status
 
 
 class StatusCalculationTests(unittest.TestCase):
     def test_final_run_status_complete(self) -> None:
-        self.assertEqual(qwen_farm_status.final_run_status([{"status": "complete"}]), "complete")
+        self.assertEqual(sift_farm_status.final_run_status([{"status": "complete"}]), "complete")
 
     def test_final_run_status_partial(self) -> None:
         jobs = [{"status": "complete"}, {"status": "failed"}]
 
-        self.assertEqual(qwen_farm_status.final_run_status(jobs), "partial")
+        self.assertEqual(sift_farm_status.final_run_status(jobs), "partial")
 
     def test_final_run_status_failed_when_all_failed(self) -> None:
-        self.assertEqual(qwen_farm_status.final_run_status([{"status": "failed"}]), "failed")
+        self.assertEqual(sift_farm_status.final_run_status([{"status": "failed"}]), "failed")
 
     def test_final_run_status_complete_with_warnings(self) -> None:
         jobs = [{"status": "complete", "warnings": ["repaired"]}]
 
-        self.assertEqual(qwen_farm_status.final_run_status(jobs), "complete_with_warnings")
+        self.assertEqual(sift_farm_status.final_run_status(jobs), "complete_with_warnings")
 
     def test_count_jobs_includes_skipped(self) -> None:
-        counts = qwen_farm_status.count_jobs(
+        counts = sift_farm_status.count_jobs(
             [{"status": "queued"}, {"status": "running"}, {"status": "complete"}],
             skipped=2,
         )
@@ -35,7 +35,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertEqual(counts["skipped"], 2)
 
     def test_status_markdown_shows_selected_verified_requested_when_different(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-1",
                 "status": "complete",
@@ -68,7 +68,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("`2/3/4`", markdown)
 
     def test_status_markdown_shows_active_job_progress(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-1",
                 "status": "running",
@@ -124,7 +124,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("1/4 chunks complete, chunk-0002 running", markdown)
 
     def test_status_markdown_shows_retry_provenance(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-retry",
                 "status": "complete",
@@ -158,7 +158,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("`job-0002` | `job-0001` | `fail.txt`", markdown)
 
     def test_status_markdown_shows_failure_guidance(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-failed",
                 "status": "failed",
@@ -199,7 +199,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("Next: Enable chunking.", markdown)
 
     def test_status_markdown_shows_discovery_filters_and_skip_reasons(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-filtered",
                 "status": "complete",
@@ -232,7 +232,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("- `notes.md` - not_included_by_pattern", markdown)
 
     def test_status_markdown_shows_model_metadata(self) -> None:
-        markdown = qwen_farm_status.render_status_markdown(
+        markdown = sift_farm_status.render_status_markdown(
             {
                 "run_id": "run-model",
                 "status": "complete",
@@ -278,7 +278,7 @@ class StatusCalculationTests(unittest.TestCase):
             },
         ]
 
-        envelope = qwen_farm_status.farm_overview_json(runs)
+        envelope = sift_farm_status.farm_overview_json(runs)
 
         self.assertEqual(envelope["schema_version"], 1)
         self.assertEqual(envelope["scope"], "overview")
@@ -286,7 +286,7 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertEqual(envelope["runs"], runs)
 
     def test_farm_overview_json_handles_empty_runs(self) -> None:
-        envelope = qwen_farm_status.farm_overview_json([])
+        envelope = sift_farm_status.farm_overview_json([])
 
         self.assertEqual(envelope["scope"], "overview")
         self.assertEqual(envelope["counts"], {"runs": 0})
@@ -295,7 +295,7 @@ class StatusCalculationTests(unittest.TestCase):
     def test_run_status_json_wraps_loaded_status(self) -> None:
         status = {"run_id": "run-1", "status": "running", "jobs": [{"progress": {"phase": "reduce"}}]}
 
-        envelope = qwen_farm_status.run_status_json(status)
+        envelope = sift_farm_status.run_status_json(status)
 
         self.assertEqual(envelope["schema_version"], 1)
         self.assertEqual(envelope["scope"], "run")

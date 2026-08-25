@@ -18,8 +18,8 @@ Spec: [0025 Add Configurable Farm Failure Policy](../changes/0025-add-configurab
 ## Verification
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_profiles tests.test_qwen_cli tests.test_qwen_farm
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_profiles tests.test_sift_cli tests.test_sift_farm
 python -m unittest discover -s tests -p "test_*.py"
 python -m compileall sift.py examples src tests
 git diff --check

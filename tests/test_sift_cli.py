@@ -562,7 +562,7 @@ class FarmHandlerTests(unittest.TestCase):
         result = {"schema_version": 1, "valid": True, "exit_code": 0, "errors": []}
 
         with (
-            patch("src.qwen_farm_schema.validate_artifact", return_value=result) as validate_artifact,
+            patch("src.sift_farm_schema.validate_artifact", return_value=result) as validate_artifact,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -586,8 +586,8 @@ class FarmHandlerTests(unittest.TestCase):
         result = {"schema_version": 1, "valid": True, "exit_code": 0, "errors": []}
 
         with (
-            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
-            patch("src.qwen_farm_schema.render_validation_result", return_value="Valid: artifact.json") as render,
+            patch("src.sift_farm_schema.validate_artifact", return_value=result),
+            patch("src.sift_farm_schema.render_validation_result", return_value="Valid: artifact.json") as render,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -606,8 +606,8 @@ class FarmHandlerTests(unittest.TestCase):
         result = {"schema_version": 1, "valid": False, "exit_code": 1, "errors": ["bad"]}
 
         with (
-            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
-            patch("src.qwen_farm_schema.render_validation_result", return_value="Invalid: artifact.json"),
+            patch("src.sift_farm_schema.validate_artifact", return_value=result),
+            patch("src.sift_farm_schema.render_validation_result", return_value="Invalid: artifact.json"),
             patch("builtins.print"),
         ):
             with self.assertRaises(SystemExit) as raised:
@@ -626,7 +626,7 @@ class FarmHandlerTests(unittest.TestCase):
         result = {"schema_version": 1, "valid": False, "exit_code": 2, "errors": ["missing"]}
 
         with (
-            patch("src.qwen_farm_schema.validate_artifact", return_value=result),
+            patch("src.sift_farm_schema.validate_artifact", return_value=result),
             patch("builtins.print"),
         ):
             with self.assertRaises(SystemExit) as raised:
@@ -646,8 +646,8 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "ready"}
 
         with (
-            patch("src.qwen_farm_doctor.build_doctor_report", return_value=report) as build,
-            patch("src.qwen_farm_doctor.write_doctor_report") as write,
+            patch("src.sift_farm_doctor.build_doctor_report", return_value=report) as build,
+            patch("src.sift_farm_doctor.write_doctor_report") as write,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -672,9 +672,9 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "ready"}
 
         with (
-            patch("src.qwen_farm_doctor.build_doctor_report", return_value=report),
-            patch("src.qwen_farm_doctor.write_doctor_report"),
-            patch("src.qwen_farm_doctor.render_doctor_markdown", return_value="# Farm Doctor") as render,
+            patch("src.sift_farm_doctor.build_doctor_report", return_value=report),
+            patch("src.sift_farm_doctor.write_doctor_report"),
+            patch("src.sift_farm_doctor.render_doctor_markdown", return_value="# Farm Doctor") as render,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -695,8 +695,8 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "ready"}
 
         with (
-            patch("src.qwen_farm_recommend.build_recommendation_report", return_value=report) as build,
-            patch("src.qwen_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))) as write,
+            patch("src.sift_farm_recommend.build_recommendation_report", return_value=report) as build,
+            patch("src.sift_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))) as write,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -723,9 +723,9 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "ready"}
 
         with (
-            patch("src.qwen_farm_recommend.build_recommendation_report", return_value=report),
-            patch("src.qwen_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))),
-            patch("src.qwen_farm_recommend.render_recommendation_markdown", return_value="# Farm Recommendation") as render,
+            patch("src.sift_farm_recommend.build_recommendation_report", return_value=report),
+            patch("src.sift_farm_recommend.write_recommendation_report", return_value=(Path("rec.json"), Path("rec.md"))),
+            patch("src.sift_farm_recommend.render_recommendation_markdown", return_value="# Farm Recommendation") as render,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -752,8 +752,8 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "applied"}
 
         with (
-            patch("src.qwen_farm_recommend.build_config_apply_report", return_value=report) as build,
-            patch("src.qwen_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))) as write,
+            patch("src.sift_farm_recommend.build_config_apply_report", return_value=report) as build,
+            patch("src.sift_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))) as write,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -780,9 +780,9 @@ class FarmHandlerTests(unittest.TestCase):
         report = {"schema_version": 1, "status": "preview"}
 
         with (
-            patch("src.qwen_farm_recommend.build_config_apply_report", return_value=report),
-            patch("src.qwen_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))),
-            patch("src.qwen_farm_recommend.render_config_apply_markdown", return_value="# Farm Config Apply") as render,
+            patch("src.sift_farm_recommend.build_config_apply_report", return_value=report),
+            patch("src.sift_farm_recommend.write_config_apply_report", return_value=(Path("apply.json"), Path("apply.md"))),
+            patch("src.sift_farm_recommend.render_config_apply_markdown", return_value="# Farm Config Apply") as render,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -801,7 +801,7 @@ class FarmHandlerTests(unittest.TestCase):
         envelope = {"schema_version": 1, "scope": "run", "run_id": "farm-run-1", "run": {"run_id": "farm-run-1"}}
 
         with (
-            patch("src.qwen_farm.status_json", return_value=envelope) as status_json,
+            patch("src.sift_farm.status_json", return_value=envelope) as status_json,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -814,7 +814,7 @@ class FarmHandlerTests(unittest.TestCase):
         args = argparse.Namespace(farm_command="status", run_id=None, json=False)
 
         with (
-            patch("src.qwen_farm.status_text", return_value="# Farm Overview") as status_text,
+            patch("src.sift_farm.status_text", return_value="# Farm Overview") as status_text,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -847,10 +847,10 @@ class FarmHandlerTests(unittest.TestCase):
         }
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
-            patch("src.qwen_farm.build_retry_failed_plan", return_value=plan) as build,
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.sift_farm.build_retry_failed_plan", return_value=plan) as build,
             patch("sift.ensure_model") as ensure,
-            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)) as run_retry,
+            patch("src.sift_farm.run_retry_failed_plan", return_value=(status, result)) as run_retry,
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -891,10 +891,10 @@ class FarmHandlerTests(unittest.TestCase):
         stderr = io.StringIO()
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved),
-            patch("src.qwen_farm.build_retry_failed_plan", return_value=plan),
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved),
+            patch("src.sift_farm.build_retry_failed_plan", return_value=plan),
             patch("sift.ensure_model", side_effect=lambda _model: sys.stdout.write("Model is available\n")),
-            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
+            patch("src.sift_farm.run_retry_failed_plan", return_value=(status, result)),
             redirect_stdout(stdout),
             redirect_stderr(stderr),
         ):
@@ -922,10 +922,10 @@ class FarmHandlerTests(unittest.TestCase):
         }
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=Path("resolved-run")),
-            patch("src.qwen_farm.build_retry_failed_plan", return_value={"model": "qwen-test:1b"}),
+            patch("src.sift_farm.resolve_run_reference", return_value=Path("resolved-run")),
+            patch("src.sift_farm.build_retry_failed_plan", return_value={"model": "qwen-test:1b"}),
             patch("sift.ensure_model"),
-            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
+            patch("src.sift_farm.run_retry_failed_plan", return_value=(status, result)),
             patch("builtins.print") as printed,
         ):
             sift.handle_farm(args)
@@ -953,8 +953,8 @@ class FarmHandlerTests(unittest.TestCase):
         )
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=Path("resolved-run")),
-            patch("src.qwen_farm.build_retry_failed_plan", side_effect=ValueError("Source run has no failed jobs.")),
+            patch("src.sift_farm.resolve_run_reference", return_value=Path("resolved-run")),
+            patch("src.sift_farm.build_retry_failed_plan", side_effect=ValueError("Source run has no failed jobs.")),
             patch("builtins.print") as printed,
         ):
             with self.assertRaises(SystemExit) as raised:
@@ -976,9 +976,9 @@ class FarmHandlerTests(unittest.TestCase):
         )
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
-            patch("src.qwen_farm_snippet_packs.build_snippet_pack", return_value={"counts": {"selected": 1}}) as build,
-            patch("src.qwen_farm_snippet_packs.write_snippet_pack", return_value=(Path("pack.json"), Path("pack.md"))),
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.sift_farm_snippet_packs.build_snippet_pack", return_value={"counts": {"selected": 1}}) as build,
+            patch("src.sift_farm_snippet_packs.write_snippet_pack", return_value=(Path("pack.json"), Path("pack.md"))),
             patch("builtins.print"),
         ):
             sift.handle_farm(args)
@@ -1002,13 +1002,13 @@ class FarmHandlerTests(unittest.TestCase):
         )
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved) as resolve,
             patch(
-                "src.qwen_farm_synthesis_bundles.build_synthesis_bundle",
+                "src.sift_farm_synthesis_bundles.build_synthesis_bundle",
                 return_value={"counts": {"items": 1, "snippets_selected": 1}},
             ) as build,
             patch(
-                "src.qwen_farm_synthesis_bundles.write_synthesis_bundle",
+                "src.sift_farm_synthesis_bundles.write_synthesis_bundle",
                 return_value=(Path("bundle.json"), Path("bundle.md")),
             ),
             patch("builtins.print"),
@@ -1033,12 +1033,12 @@ class FarmHandlerTests(unittest.TestCase):
         )
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved) as resolve,
             patch(
-                "src.qwen_farm_dogfood.build_quality_record",
+                "src.sift_farm_dogfood.build_quality_record",
                 return_value={"label": "label", "run_id": "farm-run-1"},
             ) as build,
-            patch("src.qwen_farm_dogfood.write_quality_record", return_value=Path("record.json")),
+            patch("src.sift_farm_dogfood.write_quality_record", return_value=Path("record.json")),
             patch("builtins.print"),
         ):
             sift.handle_farm(args)
@@ -1058,12 +1058,12 @@ class FarmHandlerTests(unittest.TestCase):
         )
 
         with (
-            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.sift_farm.resolve_run_reference", return_value=resolved) as resolve,
             patch(
-                "src.qwen_farm_dogfood_timing.build_timing_record",
+                "src.sift_farm_dogfood_timing.build_timing_record",
                 return_value={"label": "label", "run_id": "farm-run-1", "totals": {"duration_ms": 1000}},
             ) as build,
-            patch("src.qwen_farm_dogfood_timing.write_timing_record", return_value=Path("record.json")),
+            patch("src.sift_farm_dogfood_timing.write_timing_record", return_value=Path("record.json")),
             patch("builtins.print"),
         ):
             sift.handle_farm(args)
@@ -1085,10 +1085,10 @@ class FarmHandlerTests(unittest.TestCase):
         comparison = {"baseline": baseline, "candidate": candidate}
 
         with (
-            patch("src.qwen_farm_dogfood_timing.read_json_object", side_effect=[baseline, candidate]) as read_json,
-            patch("src.qwen_farm_dogfood_timing.compare_timing_records", return_value=comparison) as compare,
+            patch("src.sift_farm_dogfood_timing.read_json_object", side_effect=[baseline, candidate]) as read_json,
+            patch("src.sift_farm_dogfood_timing.compare_timing_records", return_value=comparison) as compare,
             patch(
-                "src.qwen_farm_dogfood_timing.write_timing_comparison",
+                "src.sift_farm_dogfood_timing.write_timing_comparison",
                 return_value=(Path("comparison.json"), Path("comparison.md")),
             ) as write,
             patch("builtins.print"),

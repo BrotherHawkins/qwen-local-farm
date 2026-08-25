@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_synthesis_bundles
+from src import sift_farm_synthesis_bundles
 
 
 def write_json(path: Path, data: dict[str, object]) -> None:
@@ -118,7 +118,7 @@ class SynthesisBundleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
 
-            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
                 run_dir=run_dir,
                 label="candidate",
                 max_snippets=10,
@@ -152,7 +152,7 @@ class SynthesisBundleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
 
-            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
                 run_dir=run_dir,
                 max_snippets=1,
                 per_file=4,
@@ -201,7 +201,7 @@ class SynthesisBundleTests(unittest.TestCase):
             malformed.write_text("{nope", encoding="utf-8")
             write_json(run_dir / "jobs" / "job-0004" / "result.json", {"result": {"title": "Only title"}})
 
-            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
 
             self.assertEqual(bundle["counts"]["items"], 0)
             self.assertEqual(bundle["counts"]["jobs_skipped"], 4)
@@ -212,14 +212,14 @@ class SynthesisBundleTests(unittest.TestCase):
             )
             self.assertIn(
                 "No summary items included.",
-                qwen_farm_synthesis_bundles.render_synthesis_bundle_markdown(bundle),
+                sift_farm_synthesis_bundles.render_synthesis_bundle_markdown(bundle),
             )
 
     def test_write_synthesis_bundle_uses_safe_label_and_markdown_grouping(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, label="bad label/ok")
-            json_path, markdown_path = qwen_farm_synthesis_bundles.write_synthesis_bundle(
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, label="bad label/ok")
+            json_path, markdown_path = sift_farm_synthesis_bundles.write_synthesis_bundle(
                 bundle,
                 Path(temp_dir) / "bundles",
             )
@@ -234,20 +234,20 @@ class SynthesisBundleTests(unittest.TestCase):
             self.assertIn("Budget:", markdown)
 
     def test_estimate_tokens_from_chars_rounds_up(self) -> None:
-        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(0), 0)
-        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(1, 4.0), 1)
-        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(8, 4.0), 2)
-        self.assertEqual(qwen_farm_synthesis_bundles.estimate_tokens_from_chars(9, 4.0), 3)
+        self.assertEqual(sift_farm_synthesis_bundles.estimate_tokens_from_chars(0), 0)
+        self.assertEqual(sift_farm_synthesis_bundles.estimate_tokens_from_chars(1, 4.0), 1)
+        self.assertEqual(sift_farm_synthesis_bundles.estimate_tokens_from_chars(8, 4.0), 2)
+        self.assertEqual(sift_farm_synthesis_bundles.estimate_tokens_from_chars(9, 4.0), 3)
 
     def test_effective_max_chars_uses_strictest_cap(self) -> None:
-        self.assertIsNone(qwen_farm_synthesis_bundles.effective_max_chars())
-        self.assertEqual(qwen_farm_synthesis_bundles.effective_max_chars(max_chars=100), 100)
+        self.assertIsNone(sift_farm_synthesis_bundles.effective_max_chars())
+        self.assertEqual(sift_farm_synthesis_bundles.effective_max_chars(max_chars=100), 100)
         self.assertEqual(
-            qwen_farm_synthesis_bundles.effective_max_chars(max_estimated_tokens=20, chars_per_token=4.0),
+            sift_farm_synthesis_bundles.effective_max_chars(max_estimated_tokens=20, chars_per_token=4.0),
             80,
         )
         self.assertEqual(
-            qwen_farm_synthesis_bundles.effective_max_chars(
+            sift_farm_synthesis_bundles.effective_max_chars(
                 max_chars=100,
                 max_estimated_tokens=20,
                 chars_per_token=4.0,
@@ -260,31 +260,31 @@ class SynthesisBundleTests(unittest.TestCase):
             run_dir = self.make_run(Path(temp_dir))
 
             with self.assertRaisesRegex(ValueError, "--max-chars"):
-                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=0)
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=0)
             with self.assertRaisesRegex(ValueError, "--max-estimated-tokens"):
-                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_estimated_tokens=0)
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_estimated_tokens=0)
             with self.assertRaisesRegex(ValueError, "--chars-per-token"):
-                qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, chars_per_token=0)
+                sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, chars_per_token=0)
 
     def test_character_budget_drops_optional_content_and_fits_when_feasible(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            full = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
+            full = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir)
             max_chars = full["budget"]["output"]["chars"] - 250
 
-            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=max_chars)
+            capped = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=max_chars)
 
             self.assertTrue(capped["budget"]["was_capped"])
             self.assertTrue(capped["budget"]["fit"])
             self.assertLessEqual(capped["budget"]["output"]["chars"], max_chars)
             self.assertEqual(capped["budget"]["effective_max_chars"], max_chars)
             self.assertGreater(sum(capped["budget"]["dropped"].values()), 0)
-            self.assertEqual(capped["counts"]["snippets_selected"], qwen_farm_synthesis_bundles.count_bundle_snippets(capped["items"]))
+            self.assertEqual(capped["counts"]["snippets_selected"], sift_farm_synthesis_bundles.count_bundle_snippets(capped["items"]))
 
     def test_estimated_token_budget_resolves_to_character_cap(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+            capped = sift_farm_synthesis_bundles.build_synthesis_bundle(
                 run_dir=run_dir,
                 max_estimated_tokens=180,
                 chars_per_token=4.0,
@@ -297,7 +297,7 @@ class SynthesisBundleTests(unittest.TestCase):
     def test_budget_fitting_never_truncates_remaining_snippets(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=800)
+            capped = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=800)
             remaining_texts = [
                 snippet["text"]
                 for item in capped["items"]
@@ -313,7 +313,7 @@ class SynthesisBundleTests(unittest.TestCase):
     def test_tiny_budget_marks_unfit_when_minimum_bundle_exceeds_cap(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            capped = qwen_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=10)
+            capped = sift_farm_synthesis_bundles.build_synthesis_bundle(run_dir=run_dir, max_chars=10)
 
             self.assertTrue(capped["budget"]["was_capped"])
             self.assertFalse(capped["budget"]["fit"])

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from src import qwen_farm_chunks
+from src import sift_farm_chunks
 
 
 class FakeTokenCounter:
@@ -36,7 +36,7 @@ class ChunkPlanningTests(unittest.TestCase):
             ]
         )
 
-        markers = qwen_farm_chunks.markdown_heading_markers(content)
+        markers = sift_farm_chunks.markdown_heading_markers(content)
 
         self.assertEqual([(marker.level, marker.text, marker.line) for marker in markers], [(1, "Title", 1), (2, "Real Section", 7)])
 
@@ -52,7 +52,7 @@ class ChunkPlanningTests(unittest.TestCase):
             ]
         )
 
-        chunks = qwen_farm_chunks.chunk_text(content, max_chars=45)
+        chunks = sift_farm_chunks.chunk_text(content, max_chars=45)
 
         self.assertGreater(len(chunks), 1)
         detail_chunk = next(chunk for chunk in chunks if "B " in chunk.text)
@@ -60,7 +60,7 @@ class ChunkPlanningTests(unittest.TestCase):
             [(item["level"], item["text"]) for item in detail_chunk.heading_ancestry],
             [(1, "Title"), (2, "Section A"), (3, "Detail")],
         )
-        rendered = qwen_farm_chunks.render_chunk_input("article.md", detail_chunk)
+        rendered = sift_farm_chunks.render_chunk_input("article.md", detail_chunk)
         self.assertIn("Heading context:", rendered)
         self.assertIn("- # Title", rendered)
         self.assertIn("- ### Detail", rendered)
@@ -69,17 +69,17 @@ class ChunkPlanningTests(unittest.TestCase):
     def test_chunk_text_adds_character_overlap_metadata(self) -> None:
         content = "\n\n".join(["alpha " * 10, "beta " * 10, "gamma " * 10])
 
-        chunks = qwen_farm_chunks.chunk_text(content, max_chars=70, overlap_chars=12)
+        chunks = sift_farm_chunks.chunk_text(content, max_chars=70, overlap_chars=12)
 
         self.assertEqual(chunks[0].overlap_source, "none")
         self.assertEqual(chunks[1].overlap_source, "previous")
         self.assertLessEqual(chunks[1].overlap_before_chars, 12)
-        self.assertIn(chunks[1].overlap_text, qwen_farm_chunks.render_chunk_input("source.txt", chunks[1]))
+        self.assertIn(chunks[1].overlap_text, sift_farm_chunks.render_chunk_input("source.txt", chunks[1]))
 
     def test_chunk_text_groups_paragraphs_under_budget(self) -> None:
         content = "\n\n".join(["a" * 30, "b" * 30, "c" * 30])
 
-        chunks = qwen_farm_chunks.chunk_text(content, max_chars=70)
+        chunks = sift_farm_chunks.chunk_text(content, max_chars=70)
 
         self.assertEqual(len(chunks), 2)
         self.assertEqual(chunks[0].chunk_id, "chunk-0001")
@@ -89,12 +89,12 @@ class ChunkPlanningTests(unittest.TestCase):
         self.assertLessEqual(len(chunks[1].text), 70)
 
     def test_chunk_text_hard_splits_oversized_paragraph(self) -> None:
-        chunks = qwen_farm_chunks.chunk_text("x" * 25, max_chars=10)
+        chunks = sift_farm_chunks.chunk_text("x" * 25, max_chars=10)
 
         self.assertEqual([chunk.text for chunk in chunks], ["x" * 10, "x" * 10, "x" * 5])
 
     def test_render_reduce_input_includes_chunk_summaries(self) -> None:
-        text = qwen_farm_chunks.render_reduce_input(
+        text = sift_farm_chunks.render_reduce_input(
             "source.md",
             [
                 {
@@ -116,7 +116,7 @@ class ChunkPlanningTests(unittest.TestCase):
         counter = FakeTokenCounter()
         content = "\n\n".join(["alpha " * 5, "beta " * 5, "gamma " * 5])
 
-        chunks = qwen_farm_chunks.chunk_text_by_tokens(
+        chunks = sift_farm_chunks.chunk_text_by_tokens(
             content,
             max_input_tokens=18,
             token_counter=counter,
@@ -125,7 +125,7 @@ class ChunkPlanningTests(unittest.TestCase):
 
         self.assertGreater(len(chunks), 1)
         for chunk in chunks:
-            rendered = qwen_farm_chunks.render_chunk_input("source.txt", chunk)
+            rendered = sift_farm_chunks.render_chunk_input("source.txt", chunk)
             self.assertLessEqual(counter.count_tokens(rendered), 18)
             self.assertEqual(chunk.tokens, counter.count_tokens(rendered))
             self.assertEqual(chunk.chars, len(chunk.text))
@@ -134,7 +134,7 @@ class ChunkPlanningTests(unittest.TestCase):
         counter = FakeTokenCounter()
         content = "\n\n".join(["alpha " * 8, "beta " * 8, "gamma " * 8])
 
-        chunks = qwen_farm_chunks.chunk_text_by_tokens(
+        chunks = sift_farm_chunks.chunk_text_by_tokens(
             content,
             max_input_tokens=32,
             token_counter=counter,
@@ -146,14 +146,14 @@ class ChunkPlanningTests(unittest.TestCase):
         self.assertEqual(chunks[1].overlap_source, "previous")
         self.assertLessEqual(chunks[1].overlap_before_tokens or 0, 4)
         for chunk in chunks:
-            rendered = qwen_farm_chunks.render_chunk_input("source.txt", chunk)
+            rendered = sift_farm_chunks.render_chunk_input("source.txt", chunk)
             self.assertLessEqual(counter.count_tokens(rendered), 32)
 
     def test_token_overlap_uses_bounded_suffix_window(self) -> None:
         counter = RecordingTokenCounter()
         content = " ".join(f"word{index}" for index in range(5000))
 
-        overlap = qwen_farm_chunks.suffix_under_token_budget(content, 10, counter)
+        overlap = sift_farm_chunks.suffix_under_token_budget(content, 10, counter)
 
         self.assertLessEqual(counter.count_tokens(overlap), 10)
         self.assertLess(counter.max_chars_seen, len(content) // 2)
@@ -162,7 +162,7 @@ class ChunkPlanningTests(unittest.TestCase):
         counter = RecordingTokenCounter()
         content = "\n\n".join(["alpha " * 20, "beta " * 20, "gamma " * 20])
 
-        chunks = qwen_farm_chunks.chunk_text_by_tokens(
+        chunks = sift_farm_chunks.chunk_text_by_tokens(
             content,
             max_input_tokens=32,
             token_counter=counter,
@@ -174,14 +174,14 @@ class ChunkPlanningTests(unittest.TestCase):
         self.assertLess(counter.calls, 80)
         for chunk in chunks:
             self.assertLessEqual(
-                counter.count_tokens(qwen_farm_chunks.render_chunk_input("source.txt", chunk)),
+                counter.count_tokens(sift_farm_chunks.render_chunk_input("source.txt", chunk)),
                 32,
             )
 
     def test_chunk_text_by_tokens_splits_oversized_paragraph(self) -> None:
         counter = FakeTokenCounter()
 
-        chunks = qwen_farm_chunks.chunk_text_by_tokens(
+        chunks = sift_farm_chunks.chunk_text_by_tokens(
             " ".join(f"word{index}" for index in range(30)),
             max_input_tokens=20,
             token_counter=counter,
@@ -191,7 +191,7 @@ class ChunkPlanningTests(unittest.TestCase):
         self.assertGreater(len(chunks), 1)
         for chunk in chunks:
             self.assertLessEqual(
-                counter.count_tokens(qwen_farm_chunks.render_chunk_input("source.txt", chunk)),
+                counter.count_tokens(sift_farm_chunks.render_chunk_input("source.txt", chunk)),
                 20,
             )
 
@@ -199,8 +199,8 @@ class ChunkPlanningTests(unittest.TestCase):
         counter = FakeTokenCounter()
         content = "\n\n".join(["longword" * 80 for _ in range(6)])
 
-        char_chunks = qwen_farm_chunks.chunk_text(content, max_chars=100)
-        token_chunks = qwen_farm_chunks.chunk_text_by_tokens(
+        char_chunks = sift_farm_chunks.chunk_text(content, max_chars=100)
+        token_chunks = sift_farm_chunks.chunk_text_by_tokens(
             content,
             max_input_tokens=20,
             token_counter=counter,

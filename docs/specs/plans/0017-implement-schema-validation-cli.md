@@ -7,7 +7,7 @@ Spec: [0017 Add Schema Validation CLI](../changes/0017-add-schema-validation-cli
 
 Implement a public CLI around the tracked schema contracts and dependency-free validator:
 
-1. Extend `src/qwen_farm_schema.py`.
+1. Extend `src/sift_farm_schema.py`.
    - load `schemas/index.json`
    - resolve explicit schema references by local path or schema ID
    - auto-detect known artifact surfaces from stable top-level fields
@@ -70,7 +70,7 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

@@ -47,10 +47,10 @@ Created focused Python modules under `src/` rather than growing `sift.py` into a
 
 Likely split:
 
-- `src/qwen_farm.py`: run orchestration and CLI-facing operations.
-- `src/qwen_farm_files.py`: input discovery, skip rules, path helpers, run folder creation.
-- `src/qwen_farm_status.py`: status JSON and Markdown rendering.
-- `src/qwen_farm_model.py`: model prompt construction and gateway/Ollama invocation helpers.
+- `src/sift_farm.py`: run orchestration and CLI-facing operations.
+- `src/sift_farm_files.py`: input discovery, skip rules, path helpers, run folder creation.
+- `src/sift_farm_status.py`: status JSON and Markdown rendering.
+- `src/sift_farm_model.py`: model prompt construction and gateway/Ollama invocation helpers.
 
 Keep pure filesystem/status helpers unit-testable without Ollama.
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from src.qwen_farm_model_metadata import (
+from src.sift_farm_model_metadata import (
     QWEN_TOKENIZERS,
     exact_tokenizer_id,
     exact_tokenizer_models,

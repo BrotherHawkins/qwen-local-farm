@@ -7,7 +7,7 @@ Spec: [0012 Add Run-ID Lookup For Post-Run Helpers](../changes/0012-add-run-id-l
 
 Implement the small run-reference lookup behind the existing post-run helper commands:
 
-1. Add a shared `resolve_run_reference(root, run_ref)` helper in `qwen_farm`.
+1. Add a shared `resolve_run_reference(root, run_ref)` helper in `sift_farm`.
 2. Preserve existing path input by checking filesystem paths before run ID lookup.
 3. Resolve exact run IDs through the existing run index.
 4. Emit clear errors for unknown references, stale indexed paths, and directories missing `farm-status.json`.
@@ -24,7 +24,7 @@ Accepted by the user before implementation. No full dogfood rerun is required be
 
 Implemented with:
 
-- shared `qwen_farm.resolve_run_reference`
+- shared `sift_farm.resolve_run_reference`
 - run-ID support for `farm snippets pack`, `farm synthesis bundle`, and `farm dogfood record`
 - README and AI usage documentation updates
 - model-free resolver and CLI handler tests
@@ -32,6 +32,6 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm tests.test_qwen_cli
+python -m unittest tests.test_sift_farm tests.test_sift_cli
 python -m unittest discover -s tests
 ```

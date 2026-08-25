@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.qwen_farm_profiles import (
+from src.sift_farm_profiles import (
     PROFILE_NAMES,
     RuntimeOverrides,
     derive_token_budget,

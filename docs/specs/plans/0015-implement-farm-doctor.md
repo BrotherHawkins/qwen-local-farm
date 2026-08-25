@@ -7,17 +7,17 @@ Spec: [0015 Add Farm Doctor](../changes/0015-add-farm-doctor.md)
 
 Implement `farm doctor` as a read-only setup/capability report:
 
-1. Add `src/qwen_farm_doctor.py`.
+1. Add `src/sift_farm_doctor.py`.
    - build a JSON report with environment, Ollama, agent, runtime, tokenizers, recent runs, checks, recommendations, and report paths
    - render a Markdown report from the same data
    - write `.run/reports/setup-doctor.json` and `.run/reports/setup-doctor.md`
    - keep probes injectable for model-free tests
 2. Reuse existing helpers where practical.
    - `qwen.find_ollama` / `qwen.request_json` style probes passed in from CLI
-   - `qwen_farm.load_agent`
-   - `qwen_farm.resolve_run_agent_and_config`
-   - `qwen_farm.load_runs`
-   - `qwen_farm_tokenizer.tokenizer_status` without download
+   - `sift_farm.load_agent`
+   - `sift_farm.resolve_run_agent_and_config`
+   - `sift_farm.load_runs`
+   - `sift_farm_tokenizer.tokenizer_status` without download
 3. Add CLI support.
    - `python sift.py farm doctor`
    - `python sift.py farm doctor --json`
@@ -64,7 +64,7 @@ This implementation will not add benchmark-based profile recommendations, automa
 
 Implemented with:
 
-- `src/qwen_farm_doctor.py`
+- `src/sift_farm_doctor.py`
 - `python sift.py farm doctor`
 - `python sift.py farm doctor --json`
 - report writing under `.run/reports/`
@@ -75,7 +75,7 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_doctor tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_doctor tests.test_sift_cli
 python -m unittest discover -s tests
 git diff --check
 ```

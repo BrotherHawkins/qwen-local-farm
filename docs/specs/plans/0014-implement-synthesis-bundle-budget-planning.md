@@ -7,7 +7,7 @@ Spec: [0014 Add Synthesis Bundle Budget Planning](../changes/0014-add-synthesis-
 
 Implement budget planning as deterministic post-run synthesis bundle packaging:
 
-1. Add budget helpers in `qwen_farm_synthesis_bundles`.
+1. Add budget helpers in `sift_farm_synthesis_bundles`.
    - estimate tokens from rendered Markdown character count
    - resolve effective character cap from `--max-chars`, `--max-estimated-tokens`, and `--chars-per-token`
    - validate positive budget inputs before output is written
@@ -65,7 +65,7 @@ Implemented with:
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_synthesis_bundles tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_synthesis_bundles tests.test_sift_cli
 python -m unittest discover -s tests
 git diff --check
 ```

@@ -34,7 +34,7 @@ Deferred:
 
 ### 1. Add Dogfood History Module
 
-Create `src/qwen_farm_dogfood.py` with pure helpers:
+Create `src/sift_farm_dogfood.py` with pure helpers:
 
 - load compact farm status from a run directory
 - normalize optional quality notes

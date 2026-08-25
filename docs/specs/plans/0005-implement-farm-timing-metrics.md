@@ -38,7 +38,7 @@ Deferred:
 
 ### 1. Add Timing Helpers
 
-Add small helpers, likely in `src/qwen_farm.py` unless the code starts to feel crowded:
+Add small helpers, likely in `src/sift_farm.py` unless the code starts to feel crowded:
 
 - `utc_now()` or equivalent for timezone-aware UTC `datetime`
 - `format_timestamp(...)` for persisted UTC ISO-8601 strings ending in `Z`
@@ -134,7 +134,7 @@ For chunk result envelopes, include the individual chunk map call timing if avai
 
 ### 7. Write Run Timing Summary Artifacts
 
-Add summary builders, likely in a new `src/qwen_farm_timing.py` if this keeps `qwen_farm.py` cleaner:
+Add summary builders, likely in a new `src/sift_farm_timing.py` if this keeps `sift_farm.py` cleaner:
 
 - `build_timing_summary(status)`
 - `render_timing_summary_markdown(summary)`

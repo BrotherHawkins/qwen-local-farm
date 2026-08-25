@@ -7,18 +7,18 @@ from pathlib import Path
 from typing import Any
 
 from src import (
-    qwen_farm,
-    qwen_farm_collect,
-    qwen_farm_dogfood,
-    qwen_farm_doctor,
-    qwen_farm_recommend,
-    qwen_farm_schema,
-    qwen_farm_snippet_packs,
-    qwen_farm_status,
-    qwen_farm_synthesis_bundles,
-    qwen_farm_timing,
+    sift_farm,
+    sift_farm_collect,
+    sift_farm_dogfood,
+    sift_farm_doctor,
+    sift_farm_recommend,
+    sift_farm_schema,
+    sift_farm_snippet_packs,
+    sift_farm_status,
+    sift_farm_synthesis_bundles,
+    sift_farm_timing,
 )
-from src.qwen_farm_model import FarmModelResult
+from src.sift_farm_model import FarmModelResult
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,7 +60,7 @@ def ready_ollama(method: str, url: str, **_kwargs: object) -> dict[str, Any]:
 
 
 def write_recommendation_fixture(path: Path) -> dict[str, Any]:
-    recommendation = qwen_farm_recommend.build_recommendation_report(
+    recommendation = sift_farm_recommend.build_recommendation_report(
         root=ROOT,
         default_model="qwen3.5:4b",
         ollama_base_url="http://127.0.0.1:11434",
@@ -74,7 +74,7 @@ def write_recommendation_fixture(path: Path) -> dict[str, Any]:
 
 
 def load_schema(name: str) -> dict[str, Any]:
-    return qwen_farm_schema.load_json_object(SCHEMAS / name)
+    return sift_farm_schema.load_json_object(SCHEMAS / name)
 
 
 def write_package_fixture(root: Path) -> tuple[Path, dict[str, Any]]:
@@ -214,20 +214,20 @@ def write_package_fixture(root: Path) -> tuple[Path, dict[str, Any]]:
         },
     }
 
-    qwen_farm_status.write_json(result_dir / "result.json", result)
-    qwen_farm_status.write_json(run_dir / "farm-status.json", status)
+    sift_farm_status.write_json(result_dir / "result.json", result)
+    sift_farm_status.write_json(run_dir / "farm-status.json", status)
     return run_dir, status
 
 
 class FarmSchemaTests(unittest.TestCase):
     def assertValid(self, instance: dict[str, Any], schema_name: str) -> None:
-        errors = qwen_farm_schema.validate(instance, load_schema(schema_name))
+        errors = sift_farm_schema.validate(instance, load_schema(schema_name))
         self.assertEqual(errors, [], "\n".join(errors))
 
     def test_all_schema_files_are_json_objects_with_metadata(self) -> None:
         for path in sorted(SCHEMAS.glob("*.schema.json")):
             with self.subTest(path=path.name):
-                schema = qwen_farm_schema.load_json_object(path)
+                schema = sift_farm_schema.load_json_object(path)
                 self.assertEqual(schema.get("$schema"), "https://json-schema.org/draft/2020-12/schema")
                 self.assertIsInstance(schema.get("$id"), str)
                 self.assertIsInstance(schema.get("title"), str)
@@ -236,7 +236,7 @@ class FarmSchemaTests(unittest.TestCase):
                 self.assertIsInstance(schema.get("required"), list)
 
     def test_schema_index_points_to_existing_files(self) -> None:
-        index = qwen_farm_schema.load_json_object(SCHEMAS / "index.json")
+        index = sift_farm_schema.load_json_object(SCHEMAS / "index.json")
 
         self.assertEqual(index["schema_version"], 1)
         self.assertGreater(len(index["schemas"]), 0)
@@ -244,7 +244,7 @@ class FarmSchemaTests(unittest.TestCase):
             with self.subTest(path=record["path"]):
                 schema_path = ROOT / record["path"]
                 self.assertTrue(schema_path.exists())
-                schema = qwen_farm_schema.load_json_object(schema_path)
+                schema = sift_farm_schema.load_json_object(schema_path)
                 self.assertEqual(record["id"], schema["$id"])
 
     def test_generated_farm_status_and_job_result_validate(self) -> None:
@@ -254,7 +254,7 @@ class FarmSchemaTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.txt").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "results",
@@ -266,7 +266,7 @@ class FarmSchemaTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs" / "job-0001" / "result.json")
+            result = sift_farm.read_json(run_dir / "jobs" / "job-0001" / "result.json")
 
             self.assertValid(status, "farm-status.schema.json")
             self.assertValid(result, "farm-job-result.schema.json")
@@ -280,8 +280,8 @@ class FarmSchemaTests(unittest.TestCase):
             "jobs": [],
         }
 
-        overview = qwen_farm_status.farm_overview_json([status])
-        run = qwen_farm_status.run_status_json(status)
+        overview = sift_farm_status.farm_overview_json([status])
+        run = sift_farm_status.run_status_json(status)
 
         self.assertValid(overview, "farm-status-overview.schema.json")
         self.assertValid(run, "farm-status-run.schema.json")
@@ -487,7 +487,7 @@ class FarmSchemaTests(unittest.TestCase):
         }
 
         self.assertValid(status, "farm-status.schema.json")
-        self.assertValid(qwen_farm_status.run_status_json(status), "farm-status-run.schema.json")
+        self.assertValid(sift_farm_status.run_status_json(status), "farm-status-run.schema.json")
 
     def test_running_status_with_progress_validates(self) -> None:
         status = {
@@ -606,11 +606,11 @@ class FarmSchemaTests(unittest.TestCase):
         }
 
         self.assertValid(status, "farm-status.schema.json")
-        self.assertValid(qwen_farm_status.run_status_json(status), "farm-status-run.schema.json")
+        self.assertValid(sift_farm_status.run_status_json(status), "farm-status-run.schema.json")
 
     def test_generated_doctor_report_validates(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -626,7 +626,7 @@ class FarmSchemaTests(unittest.TestCase):
 
     def test_generated_recommendation_report_validates(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -644,7 +644,7 @@ class FarmSchemaTests(unittest.TestCase):
             recommendation_path = root / "farm-recommendation.json"
             write_recommendation_fixture(recommendation_path)
 
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=root / ".sift-farm.json",
@@ -659,25 +659,25 @@ class FarmSchemaTests(unittest.TestCase):
             root = Path(temp_dir)
             run_dir, status = write_package_fixture(root)
 
-            timing_summary = qwen_farm_timing.build_timing_summary(status)
-            snippet_pack = qwen_farm_snippet_packs.build_snippet_pack(
+            timing_summary = sift_farm_timing.build_timing_summary(status)
+            snippet_pack = sift_farm_snippet_packs.build_snippet_pack(
                 run_dir=run_dir,
                 label="schema-pack",
                 created_at="2026-08-24T00:00:03Z",
             )
-            synthesis_bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
+            synthesis_bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
                 run_dir=run_dir,
                 label="schema-bundle",
                 created_at="2026-08-24T00:00:04Z",
                 max_estimated_tokens=2000,
             )
-            collection = qwen_farm_collect.build_collection(
+            collection = sift_farm_collect.build_collection(
                 run_dir=run_dir,
                 output_dir=root / "collections",
                 label="schema-collection",
                 created_at="2026-08-24T00:00:05Z",
             )
-            dogfood_record = qwen_farm_dogfood.build_quality_record(
+            dogfood_record = sift_farm_dogfood.build_quality_record(
                 root=root,
                 run_dir=run_dir,
                 label="schema-record",
@@ -686,7 +686,7 @@ class FarmSchemaTests(unittest.TestCase):
             candidate_record = json.loads(json.dumps(dogfood_record))
             candidate_record["label"] = "schema-candidate"
             candidate_record["duration_ms"] = 2200
-            dogfood_comparison = qwen_farm_dogfood.compare_records(dogfood_record, candidate_record)
+            dogfood_comparison = sift_farm_dogfood.compare_records(dogfood_record, candidate_record)
 
             self.assertValid(timing_summary, "farm-timing-summary.schema.json")
             self.assertValid(snippet_pack, "farm-snippet-pack.schema.json")
@@ -704,7 +704,7 @@ class FarmSchemaTests(unittest.TestCase):
             "runs": [{"run_id": "run-1", "status": "bogus"}],
         }
 
-        errors = qwen_farm_schema.validate(malformed, schema)
+        errors = sift_farm_schema.validate(malformed, schema)
 
         self.assertIn("$.counts: missing required field 'runs'", "\n".join(errors))
         self.assertIn("$.runs[0]: missing required field 'mode'", "\n".join(errors))
@@ -727,13 +727,13 @@ class FarmSchemaTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertEqual(qwen_farm_schema.validate_file(instance, schema), [])
+            self.assertEqual(sift_farm_schema.validate_file(instance, schema), [])
 
     def test_resolve_schema_reference_accepts_index_id_and_path(self) -> None:
         schema_id = "https://sift.local/schemas/farm-doctor.schema.json"
 
-        by_id = qwen_farm_schema.resolve_schema_reference(ROOT, schema_id)
-        by_path = qwen_farm_schema.resolve_schema_reference(ROOT, "schemas/farm-doctor.schema.json")
+        by_id = sift_farm_schema.resolve_schema_reference(ROOT, schema_id)
+        by_path = sift_farm_schema.resolve_schema_reference(ROOT, "schemas/farm-doctor.schema.json")
 
         self.assertEqual(by_id["path"], "schemas/farm-doctor.schema.json")
         self.assertEqual(by_path["id"], schema_id)
@@ -882,18 +882,18 @@ class FarmSchemaTests(unittest.TestCase):
 
         for artifact, expected_path in cases:
             with self.subTest(expected_path=expected_path):
-                detected = qwen_farm_schema.detect_schema(ROOT, artifact)
+                detected = sift_farm_schema.detect_schema(ROOT, artifact)
                 self.assertEqual(detected["path"], expected_path)
                 self.assertTrue(detected["detected"])
 
     def test_detect_schema_rejects_unknown_shape(self) -> None:
         with self.assertRaisesRegex(ValueError, "Could not infer"):
-            qwen_farm_schema.detect_schema(ROOT, {"schema_version": 1, "hello": "world"})
+            sift_farm_schema.detect_schema(ROOT, {"schema_version": 1, "hello": "world"})
 
     def test_validate_artifact_auto_detects_schema_and_returns_result(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "doctor.json"
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -904,17 +904,17 @@ class FarmSchemaTests(unittest.TestCase):
             )
             artifact.write_text(json.dumps(report), encoding="utf-8")
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertTrue(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_VALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_VALID)
             self.assertEqual(result["schema"]["path"], "schemas/farm-doctor.schema.json")
             self.assertTrue(result["schema"]["detected"])
 
     def test_validate_artifact_auto_detects_recommendation_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "farm-recommendation.json"
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -925,7 +925,7 @@ class FarmSchemaTests(unittest.TestCase):
             )
             artifact.write_text(json.dumps(report), encoding="utf-8")
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertTrue(result["valid"])
             self.assertEqual(result["schema"]["path"], "schemas/farm-recommendation.schema.json")
@@ -937,7 +937,7 @@ class FarmSchemaTests(unittest.TestCase):
             recommendation_path = root / "farm-recommendation.json"
             artifact = root / "farm-config-apply.json"
             write_recommendation_fixture(recommendation_path)
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=root / ".sift-farm.json",
@@ -946,7 +946,7 @@ class FarmSchemaTests(unittest.TestCase):
             )
             artifact.write_text(json.dumps(report), encoding="utf-8")
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertTrue(result["valid"])
             self.assertEqual(result["schema"]["path"], "schemas/farm-config-apply.schema.json")
@@ -955,7 +955,7 @@ class FarmSchemaTests(unittest.TestCase):
     def test_validate_artifact_accepts_recommendation_schema_path_and_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact = Path(temp_dir) / "farm-recommendation.json"
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -966,12 +966,12 @@ class FarmSchemaTests(unittest.TestCase):
             )
             artifact.write_text(json.dumps(report), encoding="utf-8")
 
-            by_path = qwen_farm_schema.validate_artifact(
+            by_path = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "schemas/farm-recommendation.schema.json",
             )
-            by_id = qwen_farm_schema.validate_artifact(
+            by_id = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "https://sift.local/schemas/farm-recommendation.schema.json",
@@ -988,7 +988,7 @@ class FarmSchemaTests(unittest.TestCase):
             recommendation_path = root / "farm-recommendation.json"
             artifact = root / "farm-config-apply.json"
             write_recommendation_fixture(recommendation_path)
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=root / ".sift-farm.json",
@@ -997,12 +997,12 @@ class FarmSchemaTests(unittest.TestCase):
             )
             artifact.write_text(json.dumps(report), encoding="utf-8")
 
-            by_path = qwen_farm_schema.validate_artifact(
+            by_path = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "schemas/farm-config-apply.schema.json",
             )
-            by_id = qwen_farm_schema.validate_artifact(
+            by_id = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "https://sift.local/schemas/farm-config-apply.schema.json",
@@ -1017,7 +1017,7 @@ class FarmSchemaTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             run_dir, _status = write_package_fixture(root)
-            pack = qwen_farm_snippet_packs.build_snippet_pack(
+            pack = sift_farm_snippet_packs.build_snippet_pack(
                 run_dir=run_dir,
                 label="schema-pack",
                 created_at="2026-08-24T00:00:03Z",
@@ -1025,12 +1025,12 @@ class FarmSchemaTests(unittest.TestCase):
             artifact = root / "schema-pack.json"
             artifact.write_text(json.dumps(pack), encoding="utf-8")
 
-            by_path = qwen_farm_schema.validate_artifact(
+            by_path = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "schemas/farm-snippet-pack.schema.json",
             )
-            by_id = qwen_farm_schema.validate_artifact(
+            by_id = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "https://sift.local/schemas/farm-snippet-pack.schema.json",
@@ -1046,10 +1046,10 @@ class FarmSchemaTests(unittest.TestCase):
             artifact = Path(temp_dir) / "overview.json"
             artifact.write_text(json.dumps({"schema_version": 1, "scope": "overview", "counts": {}, "runs": []}), encoding="utf-8")
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertFalse(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_INVALID)
             self.assertIn("$.counts: missing required field 'runs'", result["errors"])
 
     def test_validate_artifact_reports_malformed_recommendation_errors(self) -> None:
@@ -1079,10 +1079,10 @@ class FarmSchemaTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertFalse(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_INVALID)
             self.assertIn("$.resource_mode.recommended: expected one of", "\n".join(result["errors"]))
 
     def test_validate_artifact_reports_malformed_config_apply_errors(self) -> None:
@@ -1116,10 +1116,10 @@ class FarmSchemaTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertFalse(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_INVALID)
             self.assertIn("$.status: expected one of", "\n".join(result["errors"]))
 
     def test_validate_artifact_reports_malformed_resource_mode_errors(self) -> None:
@@ -1154,10 +1154,10 @@ class FarmSchemaTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = qwen_farm_schema.validate_artifact(ROOT, artifact)
+            result = sift_farm_schema.validate_artifact(ROOT, artifact)
 
             self.assertFalse(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_INVALID)
             self.assertIn("$.resource_mode.effective: expected one of", "\n".join(result["errors"]))
 
     def test_validate_artifact_reports_malformed_package_schema_errors(self) -> None:
@@ -1183,25 +1183,25 @@ class FarmSchemaTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            result = qwen_farm_schema.validate_artifact(
+            result = sift_farm_schema.validate_artifact(
                 ROOT,
                 artifact,
                 "schemas/farm-synthesis-bundle.schema.json",
             )
 
             self.assertFalse(result["valid"])
-            self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_INVALID)
+            self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_INVALID)
             self.assertIn("$.budget: missing required field 'input'", result["errors"])
 
     def test_validate_artifact_reports_input_errors_as_exit_error(self) -> None:
-        result = qwen_farm_schema.validate_artifact(ROOT, Path("missing.json"))
+        result = sift_farm_schema.validate_artifact(ROOT, Path("missing.json"))
 
         self.assertFalse(result["valid"])
-        self.assertEqual(result["exit_code"], qwen_farm_schema.EXIT_ERROR)
+        self.assertEqual(result["exit_code"], sift_farm_schema.EXIT_ERROR)
         self.assertIn("missing.json", result["errors"][0])
 
     def test_render_validation_result(self) -> None:
-        rendered = qwen_farm_schema.render_validation_result(
+        rendered = sift_farm_schema.render_validation_result(
             {
                 "valid": False,
                 "artifact_path": "artifact.json",

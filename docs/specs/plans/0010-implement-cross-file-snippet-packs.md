@@ -35,7 +35,7 @@ Deferred:
 
 ### 1. Add Snippet Pack Module
 
-Create `src/qwen_farm_snippet_packs.py` with pure helpers:
+Create `src/sift_farm_snippet_packs.py` with pure helpers:
 
 - read `farm-status.json`
 - resolve job `result_json` paths relative to the run directory

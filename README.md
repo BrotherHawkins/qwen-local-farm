@@ -345,7 +345,7 @@ Minimal experimental agent example:
 }
 ```
 
-For exact token-aware chunking on a new model, add exact Hugging Face tokenizer metadata to the agent and verify it with `python sift.py farm tokenizer status --model <model>`. If the model should become a bundled default or recognized alias, extend the tokenizer adapter registry in `src/qwen_farm_model_metadata.py` and add model-free tests for the mapping. Until exact tokenizer metadata is present and verified, token-aware chunking should fail early with guidance rather than guessing.
+For exact token-aware chunking on a new model, add exact Hugging Face tokenizer metadata to the agent and verify it with `python sift.py farm tokenizer status --model <model>`. If the model should become a bundled default or recognized alias, extend the tokenizer adapter registry in `src/sift_farm_model_metadata.py` and add model-free tests for the mapping. Until exact tokenizer metadata is present and verified, token-aware chunking should fail early with guidance rather than guessing.
 
 Markdown heading ancestry is enabled by default for chunked summarize inputs. Chunk input artifacts include a compact `Heading context` block so a worker processing chunk 4 still knows it is inside headings such as `# Title` and `## Section`. Overlap is opt-in:
 

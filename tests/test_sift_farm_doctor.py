@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_doctor
+from src import sift_farm_doctor
 
 
 def ready_tokenizers(**_kwargs: object) -> dict[str, object]:
@@ -29,7 +29,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -63,7 +63,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -81,7 +81,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -98,7 +98,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -115,7 +115,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -130,7 +130,7 @@ class FarmDoctorTests(unittest.TestCase):
 
     def test_render_markdown_includes_major_sections(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -139,7 +139,7 @@ class FarmDoctorTests(unittest.TestCase):
                 tokenizer_status_fn=ready_tokenizers,
             )
 
-            markdown = qwen_farm_doctor.render_doctor_markdown(report)
+            markdown = sift_farm_doctor.render_doctor_markdown(report)
 
             self.assertIn("# Farm Doctor", markdown)
             self.assertIn("## Ollama", markdown)
@@ -170,7 +170,7 @@ class FarmDoctorTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -180,7 +180,7 @@ class FarmDoctorTests(unittest.TestCase):
                 tokenizer_status_fn=ready_tokenizers,
             )
 
-            markdown = qwen_farm_doctor.render_doctor_markdown(report)
+            markdown = sift_farm_doctor.render_doctor_markdown(report)
 
             self.assertEqual(report["agent"]["model_metadata"]["family"], "llama")
             self.assertEqual(report["agent"]["model_metadata"]["support"], "experimental")
@@ -210,7 +210,7 @@ class FarmDoctorTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -227,7 +227,7 @@ class FarmDoctorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             output = root / "reports"
-            report = qwen_farm_doctor.build_doctor_report(
+            report = sift_farm_doctor.build_doctor_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -237,7 +237,7 @@ class FarmDoctorTests(unittest.TestCase):
                 tokenizer_status_fn=ready_tokenizers,
             )
 
-            markdown_path, json_path = qwen_farm_doctor.write_doctor_report(report)
+            markdown_path, json_path = sift_farm_doctor.write_doctor_report(report)
 
             self.assertEqual(markdown_path, output / "setup-doctor.md")
             self.assertEqual(json_path, output / "setup-doctor.json")
@@ -245,11 +245,11 @@ class FarmDoctorTests(unittest.TestCase):
             self.assertEqual(json.loads(json_path.read_text(encoding="utf-8"))["schema_version"], 1)
 
     def test_calculate_report_status(self) -> None:
-        self.assertEqual(qwen_farm_doctor.calculate_report_status([]), "unknown")
-        self.assertEqual(qwen_farm_doctor.calculate_report_status([{"status": "ok"}]), "ready")
-        self.assertEqual(qwen_farm_doctor.calculate_report_status([{"status": "warn"}]), "ready_with_warnings")
-        self.assertEqual(qwen_farm_doctor.calculate_report_status([{"status": "unknown"}]), "ready_with_warnings")
-        self.assertEqual(qwen_farm_doctor.calculate_report_status([{"status": "fail"}]), "needs_setup")
+        self.assertEqual(sift_farm_doctor.calculate_report_status([]), "unknown")
+        self.assertEqual(sift_farm_doctor.calculate_report_status([{"status": "ok"}]), "ready")
+        self.assertEqual(sift_farm_doctor.calculate_report_status([{"status": "warn"}]), "ready_with_warnings")
+        self.assertEqual(sift_farm_doctor.calculate_report_status([{"status": "unknown"}]), "ready_with_warnings")
+        self.assertEqual(sift_farm_doctor.calculate_report_status([{"status": "fail"}]), "needs_setup")
 
 
 if __name__ == "__main__":

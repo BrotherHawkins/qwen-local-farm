@@ -8,7 +8,7 @@ Spec: [0019 Add Dogfood Timing History](../changes/0019-add-dogfood-timing-histo
 Implement a timing-focused dogfood history workflow that records compact, comparable performance data from existing farm runs and compares baseline/candidate timing records without model calls.
 
 1. Add a timing history module.
-   - create a focused helper module, likely `src/qwen_farm_dogfood_timing.py`
+   - create a focused helper module, likely `src/sift_farm_dogfood_timing.py`
    - read an existing run's `farm-status.json`
    - use `timing-summary.json` when present for slowest jobs, slowest calls, and aggregate call-kind data
    - gracefully fall back to `farm-status.json` job timing when `timing-summary.json` is missing
@@ -160,7 +160,7 @@ This implementation will not add automatic tuning, benchmark scheduling, tracked
 Completed checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_dogfood_timing tests.test_qwen_farm_dogfood tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_dogfood_timing tests.test_sift_farm_dogfood tests.test_sift_cli
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

@@ -41,7 +41,7 @@ Deferred:
 
 ### 1. Add Runtime Profile Helpers
 
-Add a small module for profile behavior, likely `src/qwen_farm_profiles.py`.
+Add a small module for profile behavior, likely `src/sift_farm_profiles.py`.
 
 The module should define:
 

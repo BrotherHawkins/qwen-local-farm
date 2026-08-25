@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_tokenizer
+from src import sift_farm_tokenizer
 
 
 class FakeTokenizer:
@@ -18,15 +18,15 @@ def fake_loader(*args: object, **kwargs: object) -> FakeTokenizer:
 
 class FarmTokenizerTests(unittest.TestCase):
     def test_supported_qwen_model_aliases_map_to_tokenizers(self) -> None:
-        self.assertEqual(qwen_farm_tokenizer.tokenizer_id_for_model("qwen3.5:4b"), "Qwen/Qwen3.5-4B")
-        self.assertEqual(qwen_farm_tokenizer.tokenizer_id_for_model("qwen3:4b"), "Qwen/Qwen3-4B")
-        self.assertEqual(qwen_farm_tokenizer.tokenizer_id_for_model("qwen3:8b"), "Qwen/Qwen3-8B")
-        self.assertEqual(qwen_farm_tokenizer.tokenizer_id_for_model("qwen3:14b"), "Qwen/Qwen3-14B")
+        self.assertEqual(sift_farm_tokenizer.tokenizer_id_for_model("qwen3.5:4b"), "Qwen/Qwen3.5-4B")
+        self.assertEqual(sift_farm_tokenizer.tokenizer_id_for_model("qwen3:4b"), "Qwen/Qwen3-4B")
+        self.assertEqual(sift_farm_tokenizer.tokenizer_id_for_model("qwen3:8b"), "Qwen/Qwen3-8B")
+        self.assertEqual(sift_farm_tokenizer.tokenizer_id_for_model("qwen3:14b"), "Qwen/Qwen3-14B")
 
     def test_unknown_model_fails_clearly(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            with self.assertRaisesRegex(qwen_farm_tokenizer.TokenizerUnavailableError, "No exact tokenizer mapping"):
-                qwen_farm_tokenizer.load_exact_token_counter(
+            with self.assertRaisesRegex(sift_farm_tokenizer.TokenizerUnavailableError, "No exact tokenizer mapping"):
+                sift_farm_tokenizer.load_exact_token_counter(
                     root=Path(temp_dir),
                     model="other:1b",
                     tokenizer_loader=fake_loader,
@@ -34,7 +34,7 @@ class FarmTokenizerTests(unittest.TestCase):
 
     def test_status_uses_fake_loader_without_network(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            status = qwen_farm_tokenizer.tokenizer_status(
+            status = sift_farm_tokenizer.tokenizer_status(
                 root=Path(temp_dir),
                 models=["qwen3:4b"],
                 download=True,
@@ -50,7 +50,7 @@ class FarmTokenizerTests(unittest.TestCase):
 
     def test_explicit_model_metadata_can_provide_exact_tokenizer(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            counter = qwen_farm_tokenizer.load_exact_token_counter(
+            counter = sift_farm_tokenizer.load_exact_token_counter(
                 root=Path(temp_dir),
                 model="llama3.1:8b",
                 model_metadata={
@@ -69,15 +69,15 @@ class FarmTokenizerTests(unittest.TestCase):
     def test_write_tokenizer_status_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            status = qwen_farm_tokenizer.tokenizer_status(
+            status = sift_farm_tokenizer.tokenizer_status(
                 root=root,
                 models=["qwen3:4b"],
                 tokenizer_loader=fake_loader,
             )
 
-            qwen_farm_tokenizer.write_tokenizer_status(root, status)
+            sift_farm_tokenizer.write_tokenizer_status(root, status)
 
-            json_path, md_path = qwen_farm_tokenizer.tokenizer_report_paths(root)
+            json_path, md_path = sift_farm_tokenizer.tokenizer_report_paths(root)
             self.assertTrue(json_path.exists())
             self.assertTrue(md_path.exists())
             self.assertIn("Tokenizer Status", md_path.read_text(encoding="utf-8"))

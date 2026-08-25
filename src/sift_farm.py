@@ -7,7 +7,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Callable
 
-from src.qwen_farm_chunks import (
+from src.sift_farm_chunks import (
     CHUNK_STRATEGY,
     TOKEN_CHUNK_STRATEGY,
     TextChunk,
@@ -17,7 +17,7 @@ from src.qwen_farm_chunks import (
     render_chunk_input,
     render_reduce_input,
 )
-from src.qwen_farm_files import (
+from src.sift_farm_files import (
     DiscoveredFile,
     DiscoveryResult,
     FARM_SCHEMA_VERSION,
@@ -28,7 +28,7 @@ from src.qwen_farm_files import (
     relative_to,
     utc_timestamp,
 )
-from src.qwen_farm_model import (
+from src.sift_farm_model import (
     SUMMARY_MAX_INPUT_CHARS,
     SUMMARY_NUM_BATCH,
     SUMMARY_NUM_PREDICT,
@@ -37,8 +37,8 @@ from src.qwen_farm_model import (
     process_file_with_model,
     render_summary_markdown,
 )
-from src.qwen_farm_model_metadata import apply_model_metadata
-from src.qwen_farm_profiles import (
+from src.sift_farm_model_metadata import apply_model_metadata
+from src.sift_farm_profiles import (
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_PER_FILE_TIMEOUT_SECONDS,
     RuntimeOverrides,
@@ -51,7 +51,7 @@ from src.qwen_farm_profiles import (
     set_effective_model,
     validate_resolved_config,
 )
-from src.qwen_farm_status import (
+from src.sift_farm_status import (
     count_jobs,
     final_run_status,
     load_run_status,
@@ -64,7 +64,7 @@ from src.qwen_farm_status import (
     write_json,
     write_status,
 )
-from src.qwen_farm_snippets import (
+from src.sift_farm_snippets import (
     DEFAULT_CHUNK_CANDIDATE_SNIPPETS,
     apply_snippet_warning_policy,
     compact_snippet_status,
@@ -72,8 +72,8 @@ from src.qwen_farm_snippets import (
     resolve_snippet_request,
     reselect_snippets,
 )
-from src.qwen_farm_timing import duration_between, finish_timing, format_timestamp, timestamp_now, utc_now, write_timing_summary
-from src.qwen_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
+from src.sift_farm_timing import duration_between, finish_timing, format_timestamp, timestamp_now, utc_now, write_timing_summary
+from src.sift_farm_tokenizer import ExactTokenCounter, load_exact_token_counter
 
 
 SUPPORTED_MODES = {"summarize", "prompt"}

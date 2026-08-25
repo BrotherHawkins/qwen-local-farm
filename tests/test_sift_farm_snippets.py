@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.qwen_farm_snippets import (
+from src.sift_farm_snippets import (
     apply_snippet_warning_policy,
     parse_snippet_candidates,
     resolve_snippet_request,

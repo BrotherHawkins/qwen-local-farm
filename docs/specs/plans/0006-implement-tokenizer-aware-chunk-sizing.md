@@ -77,7 +77,7 @@ If local Ollama is unavailable, record that blocker and continue with model-free
 
 ### 2. Add Tokenizer Support Module
 
-Add a small module, likely `src/qwen_farm_tokenizer.py`, that provides:
+Add a small module, likely `src/sift_farm_tokenizer.py`, that provides:
 
 - supported Ollama alias to Hugging Face tokenizer ID mapping
 - tokenizer dependency availability check
@@ -121,7 +121,7 @@ Do not require this command in GitHub CI.
 
 ### 4. Extend Runtime Config
 
-Update `src/qwen_farm_profiles.py` and CLI override plumbing to support:
+Update `src/sift_farm_profiles.py` and CLI override plumbing to support:
 
 - `summarize.chunk_strategy`: `character` or `token`
 - `summarize.chunk_tokens`
@@ -150,7 +150,7 @@ Do not silently use model marketing context length if the agent config has a sma
 
 ### 6. Implement Token-Aware Chunk Planning
 
-Extend `src/qwen_farm_chunks.py` with a tokenizer-aware planning path while leaving the character path intact.
+Extend `src/sift_farm_chunks.py` with a tokenizer-aware planning path while leaving the character path intact.
 
 The token planner should:
 

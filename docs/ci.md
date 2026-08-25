@@ -39,7 +39,7 @@ Run these before pushing when touching Python:
 ```bash
 python -m compileall sift.py examples src tests
 python -m unittest discover -s tests -p "test_*.py"
-python -m src.qwen_spec_guard
+python -m src.sift_spec_guard
 ```
 
 ## GitHub Required Check Setup

@@ -162,7 +162,7 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm tests.test_qwen_cli tests.test_qwen_farm_status
+python -m unittest tests.test_sift_farm tests.test_sift_cli tests.test_sift_farm_status
 python -m unittest discover -s tests
 ```
 

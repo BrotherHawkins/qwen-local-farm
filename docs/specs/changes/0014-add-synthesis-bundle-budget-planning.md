@@ -202,7 +202,7 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_synthesis_bundles tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_synthesis_bundles tests.test_sift_cli
 python -m unittest discover -s tests
 git diff --check
 ```

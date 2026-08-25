@@ -8,7 +8,7 @@ Spec: [0020 Add Benchmark-Based Profile Recommendations](../changes/0020-add-ben
 Implement a conservative measured recommendation workflow that gives power users CLI-ready settings and gives a primary AI a clear JSON/Markdown artifact to inspect for less technical users.
 
 1. Add a recommendation module.
-   - create a focused helper module, likely `src/qwen_farm_recommend.py`
+   - create a focused helper module, likely `src/sift_farm_recommend.py`
    - keep recommendation scoring deterministic and model-free when fed synthetic evidence
    - combine doctor-style environment evidence, selected agent/profile config, tokenizer readiness, and bounded benchmark evidence
    - keep recommendations conservative when evidence is missing, stale, failed, or weak
@@ -126,7 +126,7 @@ This implementation will not add automatic config writing, automatic Ollama envi
 Completed checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_doctor tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_recommend tests.test_sift_farm_doctor tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

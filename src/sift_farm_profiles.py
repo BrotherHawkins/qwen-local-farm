@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.qwen_farm_snippets import (
+from src.sift_farm_snippets import (
     DEFAULT_SNIPPET_MAX_CHARS,
     DEFAULT_SNIPPET_MAX_COUNT,
     DEFAULT_SNIPPET_MIN_COUNT,

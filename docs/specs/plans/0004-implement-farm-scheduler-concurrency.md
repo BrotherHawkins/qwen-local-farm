@@ -54,7 +54,7 @@ Keep per-job artifact paths unchanged.
 
 ### 2. Add Scheduler Helper
 
-Add a bounded scheduler helper, likely inside `src/qwen_farm.py` for this first version.
+Add a bounded scheduler helper, likely inside `src/sift_farm.py` for this first version.
 
 The helper should:
 

@@ -237,8 +237,8 @@ Add model-free tests for:
 Run:
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_tokenizer tests.test_qwen_farm_profiles tests.test_qwen_farm_doctor tests.test_qwen_farm_recommend tests.test_qwen_farm tests.test_qwen_farm_schema
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_tokenizer tests.test_sift_farm_profiles tests.test_sift_farm_doctor tests.test_sift_farm_recommend tests.test_sift_farm tests.test_sift_farm_schema
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

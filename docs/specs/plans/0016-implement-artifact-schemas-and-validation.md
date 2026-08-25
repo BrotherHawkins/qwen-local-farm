@@ -102,14 +102,14 @@ Implemented with:
 - status overview CLI envelope schema
 - status run CLI envelope schema
 - doctor report schema
-- dependency-free validation helper in `src/qwen_farm_schema.py`
+- dependency-free validation helper in `src/sift_farm_schema.py`
 - model-free tests for schema metadata, index integrity, positive validation, and negative validation
 - README, AI usage, and roadmap docs
 
 Checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm tests.test_qwen_farm_status tests.test_qwen_farm_doctor
+python -m unittest tests.test_sift_farm_schema tests.test_sift_farm tests.test_sift_farm_status tests.test_sift_farm_doctor
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

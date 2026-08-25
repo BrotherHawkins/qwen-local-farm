@@ -39,7 +39,7 @@ Deferred:
 
 ### 1. Refactor Snippet Verification Into Selection-Friendly Helpers
 
-Update `src/qwen_farm_snippets.py` so candidate handling can distinguish:
+Update `src/sift_farm_snippets.py` so candidate handling can distinguish:
 
 - parsed candidate count
 - exact verification success/failure
@@ -138,7 +138,7 @@ The reducer summary content should remain unchanged unless a tiny prompt tweak i
 
 ### 7. Update Status Rendering
 
-Update `src/qwen_farm_status.py` to preserve compact readability:
+Update `src/sift_farm_status.py` to preserve compact readability:
 
 - keep the existing snippets column
 - show selected/requested when selected differs from verified or when diagnostics are present

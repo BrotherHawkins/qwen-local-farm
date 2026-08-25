@@ -18,8 +18,8 @@ Spec: [0024 Add Farm Collect](../changes/0024-add-farm-collect.md)
 ## Verification
 
 ```powershell
-python -m src.qwen_spec_guard
-python -m unittest tests.test_qwen_farm_collect tests.test_qwen_farm_schema
+python -m src.sift_spec_guard
+python -m unittest tests.test_sift_farm_collect tests.test_sift_farm_schema
 python -m unittest discover -s tests -p "test_*.py"
 python -m compileall sift.py examples src tests
 git diff --check

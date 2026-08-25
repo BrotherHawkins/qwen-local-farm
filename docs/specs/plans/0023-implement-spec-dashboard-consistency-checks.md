@@ -17,7 +17,7 @@ Spec: [0023 Add Spec Dashboard Consistency Checks](../changes/0023-add-spec-dash
    - accepted/implemented change specs have plans after legacy exemptions
    - plan `Spec:` links resolve
 3. [x] Add CI coverage.
-   - run `python -m src.qwen_spec_guard`
+   - run `python -m src.sift_spec_guard`
 4. [x] Add unit tests.
    - valid fixture
    - dashboard count mismatch

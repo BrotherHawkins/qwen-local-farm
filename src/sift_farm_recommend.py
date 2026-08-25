@@ -7,12 +7,12 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable
 
-from src import qwen_farm
-from src.qwen_farm_files import utc_timestamp
-from src.qwen_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
-from src.qwen_farm_profiles import compact_runtime_config, derive_token_budget, normalize_config_data, read_config_file
-from src.qwen_farm_schema import EXIT_VALID, validate_artifact
-from src.qwen_farm_tokenizer import tokenizer_status
+from src import sift_farm
+from src.sift_farm_files import utc_timestamp
+from src.sift_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
+from src.sift_farm_profiles import compact_runtime_config, derive_token_budget, normalize_config_data, read_config_file
+from src.sift_farm_schema import EXIT_VALID, validate_artifact
+from src.sift_farm_tokenizer import tokenizer_status
 
 
 RECOMMENDATION_SCHEMA_VERSION = 1
@@ -872,7 +872,7 @@ def _resolve_agent_runtime(
     resource_mode: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any], str | None]:
     try:
-        agent, runtime = qwen_farm.resolve_run_agent_and_config(
+        agent, runtime = sift_farm.resolve_run_agent_and_config(
             root=root,
             agent_id=agent_id,
             default_model=default_model,

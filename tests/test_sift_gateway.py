@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src import qwen_gateway
+from src import sift_gateway
 
 
 class JsonFileTests(unittest.TestCase):
@@ -15,7 +15,7 @@ class JsonFileTests(unittest.TestCase):
             path = Path(temp_dir) / "agent.json"
             path.write_text(json.dumps({"id": "helper"}), encoding="utf-8")
 
-            self.assertEqual(qwen_gateway.read_json_file(path), {"id": "helper"})
+            self.assertEqual(sift_gateway.read_json_file(path), {"id": "helper"})
 
     def test_read_json_file_rejects_non_object_json(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -23,7 +23,7 @@ class JsonFileTests(unittest.TestCase):
             path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
 
             with self.assertRaises(ValueError):
-                qwen_gateway.read_json_file(path)
+                sift_gateway.read_json_file(path)
 
 
 class AgentLoadingTests(unittest.TestCase):
@@ -32,10 +32,10 @@ class AgentLoadingTests(unittest.TestCase):
             agents_dir = Path(temp_dir)
             (agents_dir / "worker.json").write_text(json.dumps({"name": "Worker"}), encoding="utf-8")
 
-            with patch.object(qwen_gateway, "AGENTS_DIR", agents_dir), patch.object(
-                qwen_gateway, "DEFAULT_MODEL", "qwen-test:1b"
+            with patch.object(sift_gateway, "AGENTS_DIR", agents_dir), patch.object(
+                sift_gateway, "DEFAULT_MODEL", "qwen-test:1b"
             ):
-                agents = qwen_gateway.load_agents()
+                agents = sift_gateway.load_agents()
 
         self.assertEqual(sorted(agents), ["worker"])
         self.assertEqual(agents["worker"]["id"], "worker")
@@ -54,7 +54,7 @@ class AgentLoadingTests(unittest.TestCase):
         }
 
         self.assertEqual(
-            qwen_gateway.public_agent(agent),
+            sift_gateway.public_agent(agent),
             {
                 "id": "coder",
                 "name": "Coder",
@@ -83,7 +83,7 @@ class MessageNormalizationTests(unittest.TestCase):
     def test_messages_for_agent_inserts_system_prompt_for_single_message(self) -> None:
         agent = {"system_prompt": "Be concise."}
 
-        messages = qwen_gateway.messages_for_agent(agent, {"message": "Hello"})
+        messages = sift_gateway.messages_for_agent(agent, {"message": "Hello"})
 
         self.assertEqual(
             messages,
@@ -102,14 +102,14 @@ class MessageNormalizationTests(unittest.TestCase):
             ]
         }
 
-        messages = qwen_gateway.messages_for_agent(agent, body)
+        messages = sift_gateway.messages_for_agent(agent, body)
 
         self.assertEqual(messages, body["messages"])
 
     def test_messages_for_agent_requires_message_or_messages(self) -> None:
         with self.assertRaises(ValueError):
-            qwen_gateway.messages_for_agent({}, {})
+            sift_gateway.messages_for_agent({}, {})
 
     def test_messages_for_agent_rejects_non_list_messages(self) -> None:
         with self.assertRaises(ValueError):
-            qwen_gateway.messages_for_agent({}, {"messages": "hello"})
+            sift_gateway.messages_for_agent({}, {"messages": "hello"})

@@ -30,4 +30,4 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py"
 
       - name: Check spec dashboard consistency
-        run: python -m src.qwen_spec_guard
+        run: python -m src.sift_spec_guard

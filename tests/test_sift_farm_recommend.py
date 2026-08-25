@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from src import qwen_farm_recommend
+from src import sift_farm_recommend
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,7 +102,7 @@ class FarmRecommendTests(unittest.TestCase):
                 json.dumps({"id": "default", "model": "qwen3.5:4b", "options": {"num_ctx": 8192}}),
                 encoding="utf-8",
             )
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -154,7 +154,7 @@ class FarmRecommendTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -164,7 +164,7 @@ class FarmRecommendTests(unittest.TestCase):
                 tokenizer_status_fn=ready_tokenizers,
             )
 
-            markdown = qwen_farm_recommend.render_recommendation_markdown(report)
+            markdown = sift_farm_recommend.render_recommendation_markdown(report)
 
             self.assertEqual(report["model_metadata"]["family"], "llama")
             self.assertEqual(report["model_metadata"]["support"], "experimental")
@@ -178,7 +178,7 @@ class FarmRecommendTests(unittest.TestCase):
             raise OSError("connection refused")
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -209,7 +209,7 @@ class FarmRecommendTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -224,7 +224,7 @@ class FarmRecommendTests(unittest.TestCase):
 
     def test_explicit_resource_mode_cpu_recommends_cpu(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -240,7 +240,7 @@ class FarmRecommendTests(unittest.TestCase):
 
     def test_local_24gb_profile_still_recommends_single_worker_without_parallel_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=Path(temp_dir),
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -259,7 +259,7 @@ class FarmRecommendTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             output = root / "recommendations"
-            report = qwen_farm_recommend.build_recommendation_report(
+            report = sift_farm_recommend.build_recommendation_report(
                 root=root,
                 default_model="qwen3.5:4b",
                 ollama_base_url="http://127.0.0.1:11434",
@@ -269,7 +269,7 @@ class FarmRecommendTests(unittest.TestCase):
                 tokenizer_status_fn=ready_tokenizers,
             )
 
-            json_path, markdown_path = qwen_farm_recommend.write_recommendation_report(report)
+            json_path, markdown_path = sift_farm_recommend.write_recommendation_report(report)
 
             self.assertEqual(json_path, output / "farm-recommendation.json")
             self.assertEqual(markdown_path, output / "FARM_RECOMMENDATION.md")
@@ -284,7 +284,7 @@ class FarmRecommendTests(unittest.TestCase):
             output = root / "reports"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
 
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=config_path,
@@ -309,7 +309,7 @@ class FarmRecommendTests(unittest.TestCase):
             config_path = root / ".sift-farm.json"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
 
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=config_path,
@@ -346,7 +346,7 @@ class FarmRecommendTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=config_path,
@@ -370,7 +370,7 @@ class FarmRecommendTests(unittest.TestCase):
             config_path.write_text(json.dumps({"surprise": True}), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "Existing farm config is invalid"):
-                qwen_farm_recommend.build_config_apply_report(
+                sift_farm_recommend.build_config_apply_report(
                     root=ROOT,
                     recommendation_path=recommendation_path,
                     config_path=config_path,
@@ -385,7 +385,7 @@ class FarmRecommendTests(unittest.TestCase):
             recommendation_path.write_text(json.dumps(recommendation_fixture("needs_setup")), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "needs_setup"):
-                qwen_farm_recommend.build_config_apply_report(
+                sift_farm_recommend.build_config_apply_report(
                     root=ROOT,
                     recommendation_path=recommendation_path,
                     config_path=root / ".sift-farm.json",
@@ -402,7 +402,7 @@ class FarmRecommendTests(unittest.TestCase):
             recommendation_path.write_text(json.dumps(recommendation), encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "schema validation"):
-                qwen_farm_recommend.build_config_apply_report(
+                sift_farm_recommend.build_config_apply_report(
                     root=ROOT,
                     recommendation_path=recommendation_path,
                     config_path=root / ".sift-farm.json",
@@ -417,7 +417,7 @@ class FarmRecommendTests(unittest.TestCase):
             recommendation_path = root / "farm-recommendation.json"
             recommendation_path.write_text(json.dumps(recommendation), encoding="utf-8")
 
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=root / ".sift-farm.json",
@@ -433,14 +433,14 @@ class FarmRecommendTests(unittest.TestCase):
             recommendation_path = root / "farm-recommendation.json"
             output = root / "reports"
             recommendation_path.write_text(json.dumps(recommendation_fixture()), encoding="utf-8")
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=recommendation_path,
                 config_path=root / ".sift-farm.json",
                 output_dir=output,
             )
 
-            json_path, markdown_path = qwen_farm_recommend.write_config_apply_report(report)
+            json_path, markdown_path = sift_farm_recommend.write_config_apply_report(report)
 
             self.assertEqual(json_path, output / "farm-config-apply.json")
             self.assertEqual(markdown_path, output / "FARM_CONFIG_APPLY.md")

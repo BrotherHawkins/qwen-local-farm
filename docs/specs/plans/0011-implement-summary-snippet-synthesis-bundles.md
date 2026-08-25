@@ -35,7 +35,7 @@ Deferred:
 
 ### 1. Reuse 0010 Snippet Pack Primitives
 
-Use `src/qwen_farm_snippet_packs.py` for:
+Use `src/sift_farm_snippet_packs.py` for:
 
 - reading JSON objects where sensible
 - resolving per-job `result_json` paths
@@ -50,7 +50,7 @@ Avoid copying 0010 logic unless the bundle schema genuinely needs a different re
 
 ### 2. Add Synthesis Bundle Module
 
-Create `src/qwen_farm_synthesis_bundles.py` with pure helpers:
+Create `src/sift_farm_synthesis_bundles.py` with pure helpers:
 
 - read `farm-status.json`
 - iterate successful and warning-complete jobs in farm-status order

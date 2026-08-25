@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_snippet_packs
+from src import sift_farm_snippet_packs
 
 
 def write_json(path: Path, data: dict[str, object]) -> None:
@@ -89,7 +89,7 @@ class SnippetPackTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
 
-            pack = qwen_farm_snippet_packs.build_snippet_pack(
+            pack = sift_farm_snippet_packs.build_snippet_pack(
                 run_dir=run_dir,
                 label="candidate",
                 max_snippets=10,
@@ -120,9 +120,9 @@ class SnippetPackTests(unittest.TestCase):
             {"input_path": "c.txt", "job_id": "job-3", "text": "C side evidence.", "score": 1},
         ]
 
-        deduped, duplicates = qwen_farm_snippet_packs.dedupe_snippets(snippets)
-        selected = qwen_farm_snippet_packs.apply_caps(deduped, max_snippets=3, per_file=4)
-        tiny_budget = qwen_farm_snippet_packs.apply_caps(deduped, max_snippets=1, per_file=4)
+        deduped, duplicates = sift_farm_snippet_packs.dedupe_snippets(snippets)
+        selected = sift_farm_snippet_packs.apply_caps(deduped, max_snippets=3, per_file=4)
+        tiny_budget = sift_farm_snippet_packs.apply_caps(deduped, max_snippets=1, per_file=4)
 
         self.assertEqual(duplicates, 1)
         self.assertEqual([item["input_path"] for item in selected], ["a.txt", "b.txt", "c.txt"])
@@ -167,7 +167,7 @@ class SnippetPackTests(unittest.TestCase):
             malformed.write_text("{nope", encoding="utf-8")
             write_json(run_dir / "jobs" / "job-0004" / "result.json", {"result": {"snippets": []}})
 
-            pack = qwen_farm_snippet_packs.build_snippet_pack(run_dir=run_dir)
+            pack = sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir)
 
             self.assertEqual(pack["counts"]["selected"], 0)
             self.assertEqual(pack["counts"]["jobs_skipped"], 4)
@@ -176,13 +176,13 @@ class SnippetPackTests(unittest.TestCase):
                 reasons,
                 {"job_not_complete", "missing_result_file", "malformed_result_json", "no_selected_snippets"},
             )
-            self.assertIn("No snippets selected.", qwen_farm_snippet_packs.render_snippet_pack_markdown(pack))
+            self.assertIn("No snippets selected.", sift_farm_snippet_packs.render_snippet_pack_markdown(pack))
 
     def test_write_snippet_pack_uses_safe_label_and_markdown_grouping(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = self.make_run(Path(temp_dir))
-            pack = qwen_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, label="bad label/ok")
-            json_path, markdown_path = qwen_farm_snippet_packs.write_snippet_pack(pack, Path(temp_dir) / "packs")
+            pack = sift_farm_snippet_packs.build_snippet_pack(run_dir=run_dir, label="bad label/ok")
+            json_path, markdown_path = sift_farm_snippet_packs.write_snippet_pack(pack, Path(temp_dir) / "packs")
 
             self.assertEqual(json_path.name, "bad-label-ok.json")
             self.assertEqual(markdown_path.name, "bad-label-ok.md")

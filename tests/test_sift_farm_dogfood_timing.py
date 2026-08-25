@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_dogfood_timing
+from src import sift_farm_dogfood_timing
 
 
 def write_json(path: Path, data: dict[str, object]) -> None:
@@ -128,7 +128,7 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
             root = Path(temp_dir)
             run_dir = self.make_run(root)
 
-            record = qwen_farm_dogfood_timing.build_timing_record(
+            record = sift_farm_dogfood_timing.build_timing_record(
                 root=root,
                 run_dir=run_dir,
                 label="baseline",
@@ -161,7 +161,7 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
             root = Path(temp_dir)
             run_dir = self.make_run(root, with_summary=False)
 
-            record = qwen_farm_dogfood_timing.build_timing_record(root=root, run_dir=run_dir, label=None)
+            record = sift_farm_dogfood_timing.build_timing_record(root=root, run_dir=run_dir, label=None)
 
             self.assertEqual(record["slowest_jobs"][0]["job_id"], "job-0002")
             self.assertEqual(record["slowest_calls"][0]["kind"], "single")
@@ -182,7 +182,7 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
                 },
             )
 
-            record = qwen_farm_dogfood_timing.build_timing_record(root=root, run_dir=run_dir)
+            record = sift_farm_dogfood_timing.build_timing_record(root=root, run_dir=run_dir)
 
             self.assertEqual(record["totals"]["jobs"], 1)
             self.assertEqual(record["totals"]["chunks"], 1)
@@ -263,12 +263,12 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
             ],
         }
 
-        comparison = qwen_farm_dogfood_timing.compare_timing_records(
+        comparison = sift_farm_dogfood_timing.compare_timing_records(
             baseline,
             candidate,
             compared_at="2026-08-24T00:00:01Z",
         )
-        markdown = qwen_farm_dogfood_timing.render_timing_comparison_markdown(comparison)
+        markdown = sift_farm_dogfood_timing.render_timing_comparison_markdown(comparison)
 
         self.assertEqual(comparison["totals"]["duration_ms"]["delta"], -200)
         self.assertEqual(comparison["totals"]["queue_wait_ms"]["delta"], 10)
@@ -284,7 +284,7 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
     def test_write_helpers_use_safe_labels(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir)
-            record_path = qwen_farm_dogfood_timing.write_timing_record(
+            record_path = sift_farm_dogfood_timing.write_timing_record(
                 {"label": "bad label/ok", "run_id": "run"},
                 output / "runs",
             )
@@ -295,7 +295,7 @@ class DogfoodTimingHistoryTests(unittest.TestCase):
                 "by_call_kind": {},
                 "jobs": [],
             }
-            json_path, md_path = qwen_farm_dogfood_timing.write_timing_comparison(
+            json_path, md_path = sift_farm_dogfood_timing.write_timing_comparison(
                 comparison,
                 output / "comparisons",
             )

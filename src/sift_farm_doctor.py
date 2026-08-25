@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from src import qwen_farm
-from src.qwen_farm_files import utc_timestamp
-from src.qwen_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
-from src.qwen_farm_profiles import compact_runtime_config
-from src.qwen_farm_tokenizer import tokenizer_status
+from src import sift_farm
+from src.sift_farm_files import utc_timestamp
+from src.sift_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
+from src.sift_farm_profiles import compact_runtime_config
+from src.sift_farm_tokenizer import tokenizer_status
 
 
 DOCTOR_SCHEMA_VERSION = 1
@@ -52,7 +52,7 @@ def installed_model_names(tags: dict[str, Any]) -> list[str]:
 
 
 def recent_runs(root: Path, limit: int = 5) -> dict[str, Any]:
-    runs = qwen_farm.load_runs(root)
+    runs = sift_farm.load_runs(root)
     latest = []
     for run in runs[:limit]:
         latest.append(
@@ -150,7 +150,7 @@ def build_doctor_report(
     apply_model_metadata(agent)
     runtime: dict[str, Any] = {"error": None}
     try:
-        loaded_agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
+        loaded_agent, runtime_config = sift_farm.resolve_run_agent_and_config(
             root=root,
             agent_id=agent_id,
             default_model=default_model,

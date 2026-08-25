@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_spec_guard
+from src import sift_spec_guard
 
 
 def write(path: Path, text: str) -> None:
@@ -70,7 +70,7 @@ class SpecGuardTests(unittest.TestCase):
             root = Path(temp_dir)
             valid_fixture(root)
 
-            self.assertEqual(qwen_spec_guard.validate_specs(root), [])
+            self.assertEqual(sift_spec_guard.validate_specs(root), [])
 
     def test_dashboard_count_mismatch_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -79,7 +79,7 @@ class SpecGuardTests(unittest.TestCase):
             dashboard = root / "docs/specs/SPEC_DASHBOARD.md"
             dashboard.write_text(dashboard.read_text(encoding="utf-8").replace("| Implemented | 2 |", "| Implemented | 1 |"), encoding="utf-8")
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             self.assertIn("change spec Implemented count mismatch", "\n".join(errors))
 
@@ -96,7 +96,7 @@ class SpecGuardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             self.assertIn("missing Change Specs row for 0001", "\n".join(errors))
 
@@ -110,7 +110,7 @@ class SpecGuardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             self.assertIn("status mismatch for 0001", "\n".join(errors))
 
@@ -121,7 +121,7 @@ class SpecGuardTests(unittest.TestCase):
             spec = root / "docs/specs/changes/0001-add-worker-farm-mvp.md"
             spec.write_text("# 0001 Add Worker Farm MVP\n\nStatus: Done\nType: Create\n", encoding="utf-8")
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             joined = "\n".join(errors)
             self.assertIn("invalid or missing Status", joined)
@@ -133,7 +133,7 @@ class SpecGuardTests(unittest.TestCase):
             valid_fixture(root)
             (root / "docs/specs/plans/0001-implement-worker-farm-mvp.md").unlink()
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             self.assertIn("missing implementation plan for 0001", "\n".join(errors))
 
@@ -148,7 +148,7 @@ class SpecGuardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            errors = qwen_spec_guard.validate_specs(root)
+            errors = sift_spec_guard.validate_specs(root)
 
             self.assertIn("Spec: link target does not exist", "\n".join(errors))
 
@@ -163,7 +163,7 @@ class SpecGuardTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertEqual(qwen_spec_guard.validate_specs(root), [])
+            self.assertEqual(sift_spec_guard.validate_specs(root), [])
 
 
 if __name__ == "__main__":

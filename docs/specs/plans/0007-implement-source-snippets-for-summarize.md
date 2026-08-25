@@ -43,7 +43,7 @@ Deferred:
 
 ### 1. Extend Runtime Config
 
-Update `src/qwen_farm_profiles.py` to accept snippet settings under `summarize`:
+Update `src/sift_farm_profiles.py` to accept snippet settings under `summarize`:
 
 - `snippet_policy`: `off`, `fixed`, or `auto`
 - `snippet_count`: integer or null
@@ -93,7 +93,7 @@ Reject invalid values before run folder creation when possible.
 
 ### 3. Add Snippet Data Helpers
 
-Add small helpers, likely in a new `src/qwen_farm_snippets.py` unless `qwen_farm_model.py` remains cleaner:
+Add small helpers, likely in a new `src/sift_farm_snippets.py` unless `sift_farm_model.py` remains cleaner:
 
 - `resolve_snippet_request(...)`
 - `parse_snippet_candidates(...)`

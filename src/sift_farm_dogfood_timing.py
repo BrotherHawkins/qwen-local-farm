@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.qwen_farm_dogfood import safe_label
-from src.qwen_farm_timing import duration_label
+from src.sift_farm_dogfood import safe_label
+from src.sift_farm_timing import duration_label
 
 
 DOGFOOD_TIMING_SCHEMA_VERSION = 1

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm_dogfood
+from src import sift_farm_dogfood
 
 
 def write_json(path: Path, data: dict[str, object]) -> None:
@@ -105,7 +105,7 @@ class DogfoodHistoryTests(unittest.TestCase):
                 },
             )
 
-            record = qwen_farm_dogfood.build_quality_record(
+            record = sift_farm_dogfood.build_quality_record(
                 root=root,
                 run_dir=run_dir,
                 label="candidate",
@@ -150,7 +150,7 @@ class DogfoodHistoryTests(unittest.TestCase):
                 },
             )
 
-            record = qwen_farm_dogfood.build_quality_record(root=root, run_dir=run_dir, label=None)
+            record = sift_farm_dogfood.build_quality_record(root=root, run_dir=run_dir, label=None)
 
             self.assertEqual(record["totals"]["requested_snippets"], 0)
             self.assertEqual(record["totals"]["selected_snippets"], 0)
@@ -159,7 +159,7 @@ class DogfoodHistoryTests(unittest.TestCase):
     def test_write_quality_record_uses_safe_label(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "runs"
-            path = qwen_farm_dogfood.write_quality_record({"label": "bad label/ok", "run_id": "run"}, output)
+            path = sift_farm_dogfood.write_quality_record({"label": "bad label/ok", "run_id": "run"}, output)
 
             self.assertEqual(path.name, "bad-label-ok.json")
             self.assertTrue(path.exists())
@@ -201,8 +201,8 @@ class DogfoodHistoryTests(unittest.TestCase):
             ],
         }
 
-        comparison = qwen_farm_dogfood.compare_records(baseline, candidate)
-        markdown = qwen_farm_dogfood.render_comparison_markdown(comparison)
+        comparison = sift_farm_dogfood.compare_records(baseline, candidate)
+        markdown = sift_farm_dogfood.render_comparison_markdown(comparison)
 
         self.assertEqual(comparison["duration_ms"]["delta"], -200)
         self.assertEqual(comparison["totals"]["warnings"]["delta"], -1)

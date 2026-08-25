@@ -162,7 +162,7 @@ Automated:
 Verification:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm_snippet_packs tests.test_qwen_farm_synthesis_bundles tests.test_qwen_farm_dogfood
+python -m unittest tests.test_sift_farm_schema tests.test_sift_farm_snippet_packs tests.test_sift_farm_synthesis_bundles tests.test_sift_farm_dogfood
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

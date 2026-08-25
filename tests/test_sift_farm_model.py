@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from src import qwen_farm_model
-from src.qwen_farm_model import FarmModelResult
+from src import sift_farm_model
+from src.sift_farm_model import FarmModelResult
 
 
 class FakeClient:
@@ -32,17 +32,17 @@ class FakeClient:
 
 class JsonParsingTests(unittest.TestCase):
     def test_parse_json_object_accepts_code_fence(self) -> None:
-        data = qwen_farm_model.parse_json_object('```json\n{"title":"A"}\n```')
+        data = sift_farm_model.parse_json_object('```json\n{"title":"A"}\n```')
 
         self.assertEqual(data, {"title": "A"})
 
     def test_parse_json_object_extracts_object_from_text(self) -> None:
-        data = qwen_farm_model.parse_json_object('Here: {"title":"A"} done')
+        data = sift_farm_model.parse_json_object('Here: {"title":"A"} done')
 
         self.assertEqual(data, {"title": "A"})
 
     def test_normalize_summary_payload_supplies_defaults(self) -> None:
-        payload = qwen_farm_model.normalize_summary_payload({"title": "T", "bullets": "one", "confidence": "wild"})
+        payload = sift_farm_model.normalize_summary_payload({"title": "T", "bullets": "one", "confidence": "wild"})
 
         self.assertEqual(
             payload,
@@ -69,7 +69,7 @@ class JsonParsingTests(unittest.TestCase):
             ]
         )
 
-        payload, valid = qwen_farm_model.parse_summary_response(raw)
+        payload, valid = sift_farm_model.parse_summary_response(raw)
 
         self.assertTrue(valid)
         self.assertEqual(payload["title"], "Example")
@@ -93,7 +93,7 @@ class JsonParsingTests(unittest.TestCase):
             ]
         )
 
-        payload, valid = qwen_farm_model.parse_summary_response(raw)
+        payload, valid = sift_farm_model.parse_summary_response(raw)
 
         self.assertTrue(valid)
         self.assertEqual(payload["snippets"], [{"text": "Exact source passage.", "reason": "Captures the thesis."}])
@@ -101,7 +101,7 @@ class JsonParsingTests(unittest.TestCase):
     def test_apply_agent_guidance_appends_to_system_message(self) -> None:
         messages = [{"role": "system", "content": "Base"}, {"role": "user", "content": "Hi"}]
 
-        updated = qwen_farm_model.apply_agent_guidance(messages, "Agent rule")
+        updated = sift_farm_model.apply_agent_guidance(messages, "Agent rule")
 
         self.assertIn("Base", updated[0]["content"])
         self.assertIn("Agent guidance:", updated[0]["content"])
@@ -109,7 +109,7 @@ class JsonParsingTests(unittest.TestCase):
         self.assertEqual(messages[0]["content"], "Base")
 
     def test_summarize_prompt_is_source_grounded_and_neutral(self) -> None:
-        messages = qwen_farm_model.summarize_messages("article.txt", "Article body")
+        messages = sift_farm_model.summarize_messages("article.txt", "Article body")
 
         system = messages[0]["content"]
         self.assertIn("Use only facts present in the file content", system)
@@ -117,7 +117,7 @@ class JsonParsingTests(unittest.TestCase):
         self.assertNotIn("qwen", system.lower())
 
     def test_summarize_prompt_guides_snippet_selection(self) -> None:
-        messages = qwen_farm_model.summarize_messages(
+        messages = sift_farm_model.summarize_messages(
             "article.txt",
             "Article body",
             snippet_request={"policy": "auto", "requested_count": 2, "max_chars": 600},
@@ -129,7 +129,7 @@ class JsonParsingTests(unittest.TestCase):
         self.assertIn("Avoid titles, URLs, tags, front matter", combined)
 
     def test_prepare_summary_content_truncates_large_inputs_with_warning(self) -> None:
-        content, warnings = qwen_farm_model.prepare_summary_content("a" * 25, max_chars=10)
+        content, warnings = sift_farm_model.prepare_summary_content("a" * 25, max_chars=10)
 
         self.assertTrue(content.startswith("aaaaaaaaaa"))
         self.assertIn("Input truncated", content)
@@ -140,7 +140,7 @@ class JsonParsingTests(unittest.TestCase):
             '{"title":"T","abstract":"A","bullets":["B"],"open_questions":[],"confidence":"high"}'
         )
 
-        result = qwen_farm_model.process_file_with_model(
+        result = sift_farm_model.process_file_with_model(
             client=client,  # type: ignore[arg-type]
             mode="summarize",
             file_path="article.txt",
@@ -172,7 +172,7 @@ class JsonParsingTests(unittest.TestCase):
             )
         )
 
-        result = qwen_farm_model.process_file_with_model(
+        result = sift_farm_model.process_file_with_model(
             client=client,  # type: ignore[arg-type]
             mode="summarize",
             file_path="article.txt",
@@ -205,7 +205,7 @@ class JsonParsingTests(unittest.TestCase):
             )
         )
 
-        result = qwen_farm_model.process_file_with_model(
+        result = sift_farm_model.process_file_with_model(
             client=client,  # type: ignore[arg-type]
             mode="summarize",
             file_path="article.txt",

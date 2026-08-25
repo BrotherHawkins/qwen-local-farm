@@ -135,7 +135,7 @@ function Start-Gateway {
     }
 
     $python = Get-PythonExe
-    $server = Join-Path $Root "src\qwen_gateway.py"
+    $server = Join-Path $Root "src\sift_gateway.py"
     $env:SIFT_MODEL = $Model
     $env:OLLAMA_BASE_URL = $OllamaBase
     $env:SIFT_GATEWAY_HOST = $GatewayHost

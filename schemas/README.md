@@ -32,7 +32,7 @@ Schemas describe the current emitted shape for each surface. They are not a migr
 
 ## Validation Notes
 
-The test suite validates representative generated artifacts against these schemas with a dependency-free helper in `src/qwen_farm_schema.py`. The helper supports the subset of JSON Schema used here and keeps validation model-free and CI-friendly.
+The test suite validates representative generated artifacts against these schemas with a dependency-free helper in `src/sift_farm_schema.py`. The helper supports the subset of JSON Schema used here and keeps validation model-free and CI-friendly.
 
 Use the public CLI when validating local artifacts:
 

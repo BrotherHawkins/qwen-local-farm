@@ -7,29 +7,29 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
-from src import qwen_farm_files
+from src import sift_farm_files
 
 
 class RunIdTests(unittest.TestCase):
     def test_make_run_id_uses_timestamp_and_suffix(self) -> None:
-        run_id = qwen_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22), "a7f3")
+        run_id = sift_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22), "a7f3")
 
         self.assertEqual(run_id, "farm-run-2026-08-23-143022-a7f3")
         self.assertRegex(run_id, r"^farm-run-\d{4}-\d{2}-\d{2}-\d{6}-[0-9a-f]{4}$")
 
     def test_job_id_for_uses_four_digits(self) -> None:
-        self.assertEqual(qwen_farm_files.job_id_for(1), "job-0001")
-        self.assertEqual(qwen_farm_files.job_id_for(42), "job-0042")
+        self.assertEqual(sift_farm_files.job_id_for(1), "job-0001")
+        self.assertEqual(sift_farm_files.job_id_for(42), "job-0042")
 
 
 class FarmHomeTests(unittest.TestCase):
     def test_farm_home_defaults_under_run_farm(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
-            self.assertEqual(qwen_farm_files.farm_home(Path("/repo")), Path("/repo/.run/farm"))
+            self.assertEqual(sift_farm_files.farm_home(Path("/repo")), Path("/repo/.run/farm"))
 
     def test_farm_home_uses_environment_override(self) -> None:
         with patch.dict("os.environ", {"SIFT_FARM_HOME": "/tmp/qwen-farm"}):
-            self.assertEqual(qwen_farm_files.farm_home(Path("/repo")), Path("/tmp/qwen-farm"))
+            self.assertEqual(sift_farm_files.farm_home(Path("/repo")), Path("/tmp/qwen-farm"))
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -45,7 +45,7 @@ class DiscoveryTests(unittest.TestCase):
             (root / "node_modules").mkdir()
             (root / "node_modules" / "dep.txt").write_text("skip me", encoding="utf-8")
 
-            result = qwen_farm_files.discover_text_files(root)
+            result = sift_farm_files.discover_text_files(root)
 
         self.assertEqual([item.relative_path for item in result.files], ["notes/a.md", "script.js"])
         self.assertIn("bundle.min.js", result.skipped)
@@ -62,7 +62,7 @@ class DiscoveryTests(unittest.TestCase):
             (root / "notes" / "b.md").write_text("B", encoding="utf-8")
             (root / "c.txt").write_text("C", encoding="utf-8")
 
-            result = qwen_farm_files.discover_text_files(root, include=["articles/*.txt"])
+            result = sift_farm_files.discover_text_files(root, include=["articles/*.txt"])
 
         self.assertEqual([item.relative_path for item in result.files], ["articles/a.txt"])
         self.assertIn("notes/b.md", result.skipped)
@@ -78,7 +78,7 @@ class DiscoveryTests(unittest.TestCase):
             (root / "raw" / "page.txt").write_text("raw", encoding="utf-8")
             (root / "articles" / "keep.txt").write_text("keep", encoding="utf-8")
 
-            result = qwen_farm_files.discover_text_files(root, exclude=["**/raw/**"])
+            result = sift_farm_files.discover_text_files(root, exclude=["**/raw/**"])
 
         self.assertEqual([item.relative_path for item in result.files], ["articles/keep.txt"])
         self.assertIn("raw/page.txt", result.skipped)
@@ -93,7 +93,7 @@ class DiscoveryTests(unittest.TestCase):
             (root / "articles" / "keep.txt").write_text("keep", encoding="utf-8")
             (root / "articles" / "draft.txt").write_text("draft", encoding="utf-8")
 
-            result = qwen_farm_files.discover_text_files(
+            result = sift_farm_files.discover_text_files(
                 root,
                 include=["articles/*.txt"],
                 exclude=["**/draft.txt"],
@@ -111,7 +111,7 @@ class DiscoveryTests(unittest.TestCase):
             (root / "node_modules").mkdir()
             (root / "node_modules" / "dep.txt").write_text("dep", encoding="utf-8")
 
-            result = qwen_farm_files.discover_text_files(root, include=["**/*", "*.png"])
+            result = sift_farm_files.discover_text_files(root, include=["**/*", "*.png"])
 
         self.assertEqual([item.relative_path for item in result.files], ["good.txt"])
         details = {item["path"]: item["reason"] for item in result.skipped_details or []}
@@ -119,7 +119,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(details["node_modules/dep.txt"], "built_in_skipped_dir")
 
     def test_make_run_id_pattern_when_suffix_generated(self) -> None:
-        run_id = qwen_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22))
+        run_id = sift_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22))
 
         self.assertTrue(re.match(r"^farm-run-2026-08-23-143022-[0-9a-f]{4}$", run_id))
 
@@ -128,4 +128,4 @@ class DiscoveryTests(unittest.TestCase):
             path = Path(temp_dir) / "box.txt"
             path.write_bytes(("a" * 8191).encode("utf-8") + "│ text".encode("utf-8"))
 
-            self.assertTrue(qwen_farm_files.is_probably_text_file(path))
+            self.assertTrue(sift_farm_files.is_probably_text_file(path))

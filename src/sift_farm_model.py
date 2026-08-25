@@ -6,7 +6,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from src.qwen_farm_snippets import (
+from src.sift_farm_snippets import (
     apply_snippet_warning_policy,
     parse_snippet_candidates,
     select_snippet_candidates,

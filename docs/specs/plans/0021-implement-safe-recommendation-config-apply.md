@@ -8,7 +8,7 @@ Spec: [0021 Add Safe Recommendation Config Apply](../changes/0021-add-safe-recom
 Implement a safe recommendation-to-config workflow that previews by default, writes only with explicit intent, validates both input and output, and leaves machine-readable evidence for primary AIs.
 
 1. Add apply helpers to the recommendation module.
-   - extend `src/qwen_farm_recommend.py` or a small sibling module only if the file gets unwieldy
+   - extend `src/sift_farm_recommend.py` or a small sibling module only if the file gets unwieldy
    - load recommendation JSON from the default or explicit path
    - validate recommendation JSON against `schemas/farm-recommendation.schema.json`
    - block missing, malformed, invalid, or `needs_setup` recommendations
@@ -125,7 +125,7 @@ This implementation will not add interactive prompts, automatic config writes fr
 Completed checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_recommend tests.test_qwen_farm_profiles tests.test_qwen_farm_schema tests.test_qwen_cli
+python -m unittest tests.test_sift_farm_recommend tests.test_sift_farm_profiles tests.test_sift_farm_schema tests.test_sift_cli
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

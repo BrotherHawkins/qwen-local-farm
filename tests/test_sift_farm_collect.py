@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src import qwen_farm, qwen_farm_collect, qwen_farm_schema
+from src import sift_farm, sift_farm_collect, sift_farm_schema
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,13 +100,13 @@ class FarmCollectTests(unittest.TestCase):
             run_dir = self.make_run(root)
             output_dir = root / "collections"
 
-            collection = qwen_farm_collect.build_collection(
+            collection = sift_farm_collect.build_collection(
                 run_dir=run_dir,
                 output_dir=output_dir,
                 label="dogfood lite",
                 created_at="2026-08-24T00:00:00Z",
             )
-            json_path, markdown_path = qwen_farm_collect.write_collection(collection, output_dir)
+            json_path, markdown_path = sift_farm_collect.write_collection(collection, output_dir)
 
             self.assertEqual(collection["label"], "dogfood lite")
             self.assertEqual(collection["run_id"], "farm-run-collect")
@@ -148,8 +148,8 @@ class FarmCollectTests(unittest.TestCase):
                 },
             )
 
-            collection = qwen_farm_collect.build_collection(run_dir=run_dir, output_dir=root / "collections")
-            json_path, markdown_path = qwen_farm_collect.write_collection(collection, root / "collections")
+            collection = sift_farm_collect.build_collection(run_dir=run_dir, output_dir=root / "collections")
+            json_path, markdown_path = sift_farm_collect.write_collection(collection, root / "collections")
 
             self.assertEqual(collection["counts"]["items_collected"], 0)
             self.assertEqual(collection["counts"]["jobs_skipped"], 2)
@@ -160,10 +160,10 @@ class FarmCollectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             run_dir = self.make_run(root)
-            qwen_farm.write_run_index(root, [{"run_id": "farm-run-collect", "path": str(run_dir)}])
+            sift_farm.write_run_index(root, [{"run_id": "farm-run-collect", "path": str(run_dir)}])
 
-            resolved = qwen_farm.resolve_run_reference(root, "farm-run-collect")
-            collection = qwen_farm_collect.build_collection(
+            resolved = sift_farm.resolve_run_reference(root, "farm-run-collect")
+            collection = sift_farm_collect.build_collection(
                 run_dir=resolved,
                 output_dir=root / "collections",
             )
@@ -175,21 +175,21 @@ class FarmCollectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             run_dir = self.make_run(root)
-            collection = qwen_farm_collect.build_collection(
+            collection = sift_farm_collect.build_collection(
                 run_dir=run_dir,
                 output_dir=root / "collections",
                 created_at="2026-08-24T00:00:00Z",
             )
-            json_path, _markdown_path = qwen_farm_collect.write_collection(collection, root / "collections")
+            json_path, _markdown_path = sift_farm_collect.write_collection(collection, root / "collections")
 
-            result = qwen_farm_schema.validate_artifact(ROOT, json_path)
+            result = sift_farm_schema.validate_artifact(ROOT, json_path)
 
             self.assertTrue(result["valid"], "\n".join(result["errors"]))
             self.assertEqual(result["schema"]["path"], "schemas/farm-collection.schema.json")
             self.assertTrue(result["schema"]["detected"])
 
     def test_safe_item_stem_keeps_sequence_prefix_and_slug(self) -> None:
-        stem = qwen_farm_collect.safe_item_stem(
+        stem = sift_farm_collect.safe_item_stem(
             item_id="item-0007",
             input_path="folder/Hello There!!.txt",
         )

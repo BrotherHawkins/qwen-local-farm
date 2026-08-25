@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from src.qwen_farm_model_metadata import apply_model_metadata
+from src.sift_farm_model_metadata import apply_model_metadata
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src import qwen_farm
-from src.qwen_farm_model import FarmModelResult
+from src import sift_farm
+from src.sift_farm_model import FarmModelResult
 
 
 class FakeTokenCounter:
@@ -135,7 +135,7 @@ class FarmRunTests(unittest.TestCase):
     def latest_status(self, root: Path) -> dict[str, object]:
         status_paths = list((root / ".run" / "farm").glob("farm-run-*/farm-status.json"))
         self.assertTrue(status_paths)
-        return qwen_farm.read_json(max(status_paths, key=lambda path: path.stat().st_mtime))
+        return sift_farm.read_json(max(status_paths, key=lambda path: path.stat().st_mtime))
 
     def test_run_farm_happy_path_creates_status_and_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -146,7 +146,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "b.txt").write_text("B", encoding="utf-8")
             output = root / "results"
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=output,
@@ -184,11 +184,11 @@ class FarmRunTests(unittest.TestCase):
             self.assertTimingComplete(status["jobs"][0]["timing"])
             self.assertIn("Max attempts: `2`", (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8"))
 
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             self.assertEqual(result["timing"]["calls"][0]["kind"], "single")
             self.assertTimingComplete(result["timing"]["calls"][0])
 
-            timing_summary = qwen_farm.read_json(run_dir / "timing-summary.json")
+            timing_summary = sift_farm.read_json(run_dir / "timing-summary.json")
             self.assertEqual(timing_summary["run_id"], status["run_id"])
             self.assertEqual(timing_summary["resource_mode"]["effective"], "gpu")
             self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
@@ -200,7 +200,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.txt").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "results",
@@ -224,7 +224,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "a.txt").write_text("A", encoding="utf-8")
             (root / "input" / "fail.txt").write_text("Fail once", encoding="utf-8")
 
-            source = qwen_farm.run_farm(
+            source = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "source-results",
@@ -236,9 +236,9 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
             source_run_dir = Path(source["output"]["path"])
-            before_source = qwen_farm.read_json(source_run_dir / "farm-status.json")
+            before_source = sift_farm.read_json(source_run_dir / "farm-status.json")
 
-            retry_status, retry_result = qwen_farm.run_retry_failed(
+            retry_status, retry_result = sift_farm.run_retry_failed(
                 root=root,
                 source_run_dir=source_run_dir,
                 output_dir=root / "retry-results",
@@ -247,7 +247,7 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=always_success_processor,
             )
 
-            after_source = qwen_farm.read_json(source_run_dir / "farm-status.json")
+            after_source = sift_farm.read_json(source_run_dir / "farm-status.json")
             retry_run_dir = Path(retry_status["output"]["path"])
             self.assertEqual(before_source, after_source)
             self.assertEqual(source["status"], "partial")
@@ -273,7 +273,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "agents").mkdir()
             (root / "input").mkdir()
             (root / "input" / "fail.txt").write_text("Fail once", encoding="utf-8")
-            source = qwen_farm.run_farm(
+            source = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "source-results",
@@ -285,7 +285,7 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
 
-            retry_status, _retry_result = qwen_farm.run_retry_failed(
+            retry_status, _retry_result = sift_farm.run_retry_failed(
                 root=root,
                 source_run_dir=Path(source["output"]["path"]),
                 output_dir=root / "retry-results",
@@ -303,7 +303,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "agents").mkdir()
             (root / "input").mkdir()
             (root / "input" / "a.txt").write_text("A", encoding="utf-8")
-            source = qwen_farm.run_farm(
+            source = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "source-results",
@@ -316,7 +316,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "no failed jobs"):
-                qwen_farm.build_retry_failed_plan(
+                sift_farm.build_retry_failed_plan(
                     root=root,
                     source_run_dir=Path(source["output"]["path"]),
                     default_model="qwen-test:1b",
@@ -329,7 +329,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             fail_path = root / "input" / "fail.txt"
             fail_path.write_text("Fail once", encoding="utf-8")
-            source = qwen_farm.run_farm(
+            source = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "source-results",
@@ -343,7 +343,7 @@ class FarmRunTests(unittest.TestCase):
             fail_path.unlink()
 
             with self.assertRaisesRegex(FileNotFoundError, "source files are missing"):
-                qwen_farm.build_retry_failed_plan(
+                sift_farm.build_retry_failed_plan(
                     root=root,
                     source_run_dir=Path(source["output"]["path"]),
                     default_model="qwen-test:1b",
@@ -358,7 +358,7 @@ class FarmRunTests(unittest.TestCase):
             (input_dir / "fail.txt").write_text("Prompt input", encoding="utf-8")
             run_dir = root / "source-results" / "farm-run-old"
             run_dir.mkdir(parents=True)
-            qwen_farm.write_json(
+            sift_farm.write_json(
                 run_dir / "farm-status.json",
                 {
                     "schema_version": "0.1",
@@ -381,7 +381,7 @@ class FarmRunTests(unittest.TestCase):
                             "raw_response": None,
                             "error": "old failure",
                             "warnings": [],
-                            "chunking": qwen_farm.single_pass_chunking(),
+                            "chunking": sift_farm.single_pass_chunking(),
                             "snippets": {},
                             "timing": {"calls": []},
                         }
@@ -394,7 +394,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "prompt-mode"):
-                qwen_farm.build_retry_failed_plan(
+                sift_farm.build_retry_failed_plan(
                     root=root,
                     source_run_dir=run_dir,
                     default_model="qwen-test:1b",
@@ -412,10 +412,10 @@ class FarmRunTests(unittest.TestCase):
         def fake_process(**kwargs: object) -> FarmModelResult:
             return fake_processor(**kwargs)
 
-        with patch.object(qwen_farm, "OllamaChatClient", CapturingClient), patch.object(
-            qwen_farm, "process_file_with_model", fake_process
+        with patch.object(sift_farm, "OllamaChatClient", CapturingClient), patch.object(
+            sift_farm, "process_file_with_model", fake_process
         ):
-            qwen_farm.default_model_processor(
+            sift_farm.default_model_processor(
                 mode="summarize",
                 file_path="a.txt",
                 content="A",
@@ -434,7 +434,7 @@ class FarmRunTests(unittest.TestCase):
         assert isinstance(options, dict)
         self.assertEqual(options["num_ctx"], 8192)
         self.assertEqual(options["num_predict"], 256)
-        self.assertEqual(options["num_batch"], qwen_farm.SUMMARY_NUM_BATCH)
+        self.assertEqual(options["num_batch"], sift_farm.SUMMARY_NUM_BATCH)
 
     def test_run_farm_skips_vendor_and_binary_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -445,7 +445,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "node_modules" / "dep.txt").write_text("skip", encoding="utf-8")
             (root / "input" / "binary.dat").write_bytes(b"a\x00b")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -474,7 +474,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "notes.md").write_text("notes", encoding="utf-8")
             (root / "input" / "image.png").write_bytes(b"\x89PNG\r\n")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -489,7 +489,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
+            resolved = sift_farm.read_json(run_dir / "farm-config.resolved.json")
             self.assertEqual(status["counts"]["total"], 1)
             self.assertEqual(status["jobs"][0]["input_path"], "articles/keep.txt")
             self.assertEqual(status["runtime"]["discovery"]["include"], ["articles/*.txt", "raw/*.txt"])
@@ -527,7 +527,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "note.txt").write_text("hello", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -540,8 +540,8 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
-            result = qwen_farm.read_json(run_dir / "jobs" / "job-0001" / "result.json")
+            resolved = sift_farm.read_json(run_dir / "farm-config.resolved.json")
+            result = sift_farm.read_json(run_dir / "jobs" / "job-0001" / "result.json")
             markdown = (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8")
 
             self.assertEqual(status["runtime"]["model_metadata"]["family"], "llama")
@@ -570,7 +570,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "note.txt").write_text("hello", encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "model_family must be one of"):
-                qwen_farm.run_farm(
+                sift_farm.run_farm(
                     root=root,
                     input_folder=root / "input",
                     output_dir=None,
@@ -592,7 +592,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
             (root / "input" / "fail.txt").write_text("fail", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -611,7 +611,7 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(failed_job["failure"]["code"], "internal_error")
             self.assertTrue(failed_job["failure"]["retryable"])
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0002/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0002/result.json")
             self.assertEqual(result["status"], "failed")
             self.assertEqual(result["failure"], failed_job["failure"])
             self.assertIn("planned failure", result["error"])
@@ -627,7 +627,7 @@ class FarmRunTests(unittest.TestCase):
 
         for exc, code, retryable, retry_after_fix in cases:
             with self.subTest(code=code):
-                failure = qwen_farm.classify_failure(exc)
+                failure = sift_farm.classify_failure(exc)
                 self.assertEqual(failure["code"], code)
                 self.assertEqual(failure["retryable"], retryable)
                 self.assertEqual(failure["retry_after_fix"], retry_after_fix)
@@ -649,7 +649,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -663,7 +663,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
 
             self.assertEqual(status["status"], "complete")
             self.assertEqual(attempts, 2)
@@ -684,7 +684,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -710,7 +710,7 @@ class FarmRunTests(unittest.TestCase):
             output = root / "results"
 
             with self.assertRaisesRegex(ValueError, "--max-attempts"):
-                qwen_farm.run_farm(
+                sift_farm.run_farm(
                     root=root,
                     input_folder=root / "input",
                     output_dir=output,
@@ -732,7 +732,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -744,9 +744,9 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
 
-            listing = qwen_farm.list_runs_text(root)
-            overview = qwen_farm.status_text(root)
-            one_run = qwen_farm.status_text(root, status["run_id"])
+            listing = sift_farm.list_runs_text(root)
+            overview = sift_farm.status_text(root)
+            one_run = sift_farm.status_text(root, status["run_id"])
 
             self.assertIn(status["run_id"], listing)
             self.assertIn("# Farm Overview", overview)
@@ -759,7 +759,7 @@ class FarmRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            status = qwen_farm.status_json(root)
+            status = sift_farm.status_json(root)
 
             self.assertEqual(status["scope"], "overview")
             self.assertEqual(status["counts"], {"runs": 0})
@@ -772,7 +772,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            run_status = qwen_farm.run_farm(
+            run_status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -784,8 +784,8 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
 
-            overview = qwen_farm.status_json(root)
-            one_run = qwen_farm.status_json(root, run_status["run_id"])
+            overview = sift_farm.status_json(root)
+            one_run = sift_farm.status_json(root, run_status["run_id"])
 
             self.assertEqual(overview["schema_version"], 1)
             self.assertEqual(overview["scope"], "overview")
@@ -804,7 +804,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
             output = root / "custom-results"
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=output,
@@ -816,27 +816,27 @@ class FarmRunTests(unittest.TestCase):
                 model_processor=fake_processor,
             )
 
-            self.assertIn(status["run_id"], qwen_farm.list_runs_text(root))
-            self.assertIn(status["run_id"], qwen_farm.status_text(root, status["run_id"]))
+            self.assertIn(status["run_id"], sift_farm.list_runs_text(root))
+            self.assertIn(status["run_id"], sift_farm.status_text(root, status["run_id"]))
 
     def test_resolve_run_reference_accepts_existing_run_directory_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             run_dir = root / "runs" / "farm-run-path"
             run_dir.mkdir(parents=True)
-            qwen_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-path"})
+            sift_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-path"})
 
-            self.assertEqual(qwen_farm.resolve_run_reference(root, str(run_dir)), run_dir)
+            self.assertEqual(sift_farm.resolve_run_reference(root, str(run_dir)), run_dir)
 
     def test_resolve_run_reference_accepts_indexed_run_id(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             run_dir = root / "runs" / "farm-run-indexed"
             run_dir.mkdir(parents=True)
-            qwen_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-indexed"})
-            qwen_farm.remember_run(root, "farm-run-indexed", run_dir)
+            sift_farm.write_json(run_dir / "farm-status.json", {"run_id": "farm-run-indexed"})
+            sift_farm.remember_run(root, "farm-run-indexed", run_dir)
 
-            self.assertEqual(qwen_farm.resolve_run_reference(root, "farm-run-indexed"), run_dir)
+            self.assertEqual(sift_farm.resolve_run_reference(root, "farm-run-indexed"), run_dir)
 
     def test_resolve_run_reference_prefers_existing_path_before_run_id_lookup(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -845,20 +845,20 @@ class FarmRunTests(unittest.TestCase):
             indexed_run = root / "runs" / "indexed-run"
             path_run.mkdir(parents=True)
             indexed_run.mkdir(parents=True)
-            qwen_farm.write_json(path_run / "farm-status.json", {"run_id": "path-run"})
-            qwen_farm.write_json(indexed_run / "farm-status.json", {"run_id": "indexed-run"})
-            qwen_farm.remember_run(root, str(path_run), indexed_run)
+            sift_farm.write_json(path_run / "farm-status.json", {"run_id": "path-run"})
+            sift_farm.write_json(indexed_run / "farm-status.json", {"run_id": "indexed-run"})
+            sift_farm.remember_run(root, str(path_run), indexed_run)
 
-            self.assertEqual(qwen_farm.resolve_run_reference(root, str(path_run)), path_run)
+            self.assertEqual(sift_farm.resolve_run_reference(root, str(path_run)), path_run)
 
     def test_resolve_run_reference_rejects_stale_index_entry(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             missing_run = root / "runs" / "missing"
-            qwen_farm.remember_run(root, "farm-run-stale", missing_run)
+            sift_farm.remember_run(root, "farm-run-stale", missing_run)
 
             with self.assertRaisesRegex(FileNotFoundError, "farm-run-stale"):
-                qwen_farm.resolve_run_reference(root, "farm-run-stale")
+                sift_farm.resolve_run_reference(root, "farm-run-stale")
 
     def test_resolve_run_reference_rejects_directory_without_status(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -867,7 +867,7 @@ class FarmRunTests(unittest.TestCase):
             run_dir.mkdir(parents=True)
 
             with self.assertRaisesRegex(FileNotFoundError, "missing farm-status.json"):
-                qwen_farm.resolve_run_reference(root, str(run_dir))
+                sift_farm.resolve_run_reference(root, str(run_dir))
 
     def test_resolve_run_reference_rejects_file_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -876,14 +876,14 @@ class FarmRunTests(unittest.TestCase):
             run_file.write_text("not a directory", encoding="utf-8")
 
             with self.assertRaisesRegex(FileNotFoundError, "not a directory"):
-                qwen_farm.resolve_run_reference(root, str(run_file))
+                sift_farm.resolve_run_reference(root, str(run_file))
 
     def test_resolve_run_reference_rejects_unknown_reference_with_list_hint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
             with self.assertRaisesRegex(FileNotFoundError, "farm list"):
-                qwen_farm.resolve_run_reference(root, "farm-run-missing")
+                sift_farm.resolve_run_reference(root, "farm-run-missing")
 
     def test_list_runs_orders_by_updated_at_across_output_folders(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -892,7 +892,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            older = qwen_farm.run_farm(
+            older = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -903,7 +903,7 @@ class FarmRunTests(unittest.TestCase):
                 ollama_base_url="http://127.0.0.1:11434",
                 model_processor=fake_processor,
             )
-            newer = qwen_farm.run_farm(
+            newer = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=root / "custom-results",
@@ -917,14 +917,14 @@ class FarmRunTests(unittest.TestCase):
 
             older_path = Path(older["output"]["path"]) / "farm-status.json"
             newer_path = Path(newer["output"]["path"]) / "farm-status.json"
-            older_data = qwen_farm.read_json(older_path)
-            newer_data = qwen_farm.read_json(newer_path)
+            older_data = sift_farm.read_json(older_path)
+            newer_data = sift_farm.read_json(newer_path)
             older_data["updated_at"] = "2026-08-23T10:00:00Z"
             newer_data["updated_at"] = "2026-08-23T11:00:00Z"
             older_path.write_text(json.dumps(older_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             newer_path.write_text(json.dumps(newer_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-            listing = qwen_farm.list_runs_text(root).splitlines()
+            listing = sift_farm.list_runs_text(root).splitlines()
 
             self.assertTrue(listing[1].startswith(newer["run_id"]))
             self.assertTrue(listing[2].startswith(older["run_id"]))
@@ -937,7 +937,7 @@ class FarmRunTests(unittest.TestCase):
             content = "\n\n".join(["alpha " * 600, "beta " * 600, "gamma " * 600])
             (root / "input" / "long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -951,8 +951,8 @@ class FarmRunTests(unittest.TestCase):
 
             run_dir = Path(status["output"]["path"])
             job = status["jobs"][0]
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
-            chunk_result = qwen_farm.read_json(run_dir / "jobs/job-0001/chunk-results/chunk-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            chunk_result = sift_farm.read_json(run_dir / "jobs/job-0001/chunk-results/chunk-0001/result.json")
 
             self.assertEqual(status["status"], "complete")
             self.assertTrue(job["chunking"]["enabled"])
@@ -985,7 +985,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "medium.txt").write_text("x" * 1200, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1000,7 +1000,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            resolved = qwen_farm.read_json(run_dir / "farm-config.resolved.json")
+            resolved = sift_farm.read_json(run_dir / "farm-config.resolved.json")
 
             self.assertTrue(status["jobs"][0]["chunking"]["enabled"])
             self.assertEqual(status["jobs"][0]["chunking"]["chunk_count"], 3)
@@ -1025,7 +1025,7 @@ class FarmRunTests(unittest.TestCase):
             )
             (root / "input" / "article.md").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1041,10 +1041,10 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             chunk_records = result["chunking"]["chunks"]
             overlapped = next(chunk for chunk in chunk_records if chunk["overlap"]["source"] == "previous")
-            chunk_result = qwen_farm.read_json(run_dir / overlapped["result_json"])
+            chunk_result = sift_farm.read_json(run_dir / overlapped["result_json"])
             chunk_input = (run_dir / overlapped["input"]).read_text(encoding="utf-8")
             status_md = (run_dir / "FARM_STATUS.md").read_text(encoding="utf-8")
 
@@ -1073,7 +1073,7 @@ class FarmRunTests(unittest.TestCase):
                     snapshots.append(self.latest_status(root))
                 return fake_processor(**kwargs)
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1117,7 +1117,7 @@ class FarmRunTests(unittest.TestCase):
                     snapshots.append(self.latest_status(root))
                 return fake_processor(**kwargs)
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1164,7 +1164,7 @@ class FarmRunTests(unittest.TestCase):
                     snapshots.append(self.latest_status(root))
                 return fake_processor(**kwargs)
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1211,7 +1211,7 @@ class FarmRunTests(unittest.TestCase):
             content = "longword" * 1000
             (root / "input" / "long-chars.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1229,7 +1229,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
 
             self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
             self.assertEqual(result["chunking"]["strategy"], "single-pass-token")
@@ -1245,7 +1245,7 @@ class FarmRunTests(unittest.TestCase):
             content = "\n\n".join([" ".join(f"word{index}" for index in range(30)) for _ in range(3)])
             (root / "input" / "token-long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1264,7 +1264,7 @@ class FarmRunTests(unittest.TestCase):
 
             run_dir = Path(status["output"]["path"])
             job = status["jobs"][0]
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
 
             self.assertTrue(job["chunking"]["enabled"])
             self.assertEqual(job["chunking"]["strategy"], "paragraph-token")
@@ -1289,7 +1289,7 @@ class FarmRunTests(unittest.TestCase):
             output = root / "results"
 
             with self.assertRaisesRegex(RuntimeError, "missing tokenizer"):
-                qwen_farm.run_farm(
+                sift_farm.run_farm(
                     root=root,
                     input_folder=root / "input",
                     output_dir=output,
@@ -1321,7 +1321,7 @@ class FarmRunTests(unittest.TestCase):
             content = "\n\n".join([" ".join(f"word{index}" for index in range(30)) for _ in range(2)])
             (root / "input" / "token-long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1360,7 +1360,7 @@ class FarmRunTests(unittest.TestCase):
             content = " ".join(f"word{index}" for index in range(80))
             (root / "input" / "long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1380,7 +1380,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             failed_calls = [call for call in result["timing"]["calls"] if call["status"] == "failed"]
 
             self.assertEqual(status["status"], "complete")
@@ -1410,7 +1410,7 @@ class FarmRunTests(unittest.TestCase):
             content = " ".join(f"word{index}" for index in range(80))
             (root / "input" / "long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1430,7 +1430,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             reduce_calls = [call for call in result["timing"]["calls"] if call["kind"] == "reduce"]
 
             self.assertEqual(status["status"], "complete")
@@ -1457,7 +1457,7 @@ class FarmRunTests(unittest.TestCase):
             content = " ".join(f"word{index}" for index in range(80))
             (root / "input" / "long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1481,7 +1481,7 @@ class FarmRunTests(unittest.TestCase):
             self.assertIn("reduce stayed broken", status["jobs"][0]["error"])
             self.assertEqual(status["jobs"][0]["failure"]["code"], "internal_error")
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             self.assertEqual(result["status"], "failed")
             self.assertEqual(result["failure"], status["jobs"][0]["failure"])
             self.assertTrue(result["chunking"]["enabled"])
@@ -1499,7 +1499,7 @@ class FarmRunTests(unittest.TestCase):
             )
             (root / "input" / "long.txt").write_text(content, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1515,7 +1515,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
             snippet_texts = [snippet["text"] for snippet in result["result"]["snippets"]]
 
             self.assertEqual(status["status"], "complete_with_warnings")
@@ -1541,7 +1541,7 @@ class FarmRunTests(unittest.TestCase):
             output = root / "results"
 
             with self.assertRaisesRegex(ValueError, "Unknown config field"):
-                qwen_farm.run_farm(
+                sift_farm.run_farm(
                     root=root,
                     input_folder=root / "input",
                     output_dir=output,
@@ -1575,7 +1575,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
             (root / ".sift-farm.json").write_text(json.dumps({"model": "config-model:1b"}), encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1610,7 +1610,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "a.md").write_text("A", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1641,7 +1641,7 @@ class FarmRunTests(unittest.TestCase):
             output = root / "results"
 
             with self.assertRaisesRegex(ValueError, "conflicts"):
-                qwen_farm.run_farm(
+                sift_farm.run_farm(
                     root=root,
                     input_folder=root / "input",
                     output_dir=output,
@@ -1663,7 +1663,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "long.txt").write_text("x" * 9000, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1685,7 +1685,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input").mkdir()
             (root / "input" / "long.txt").write_text("x" * 9000, encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,
@@ -1698,7 +1698,7 @@ class FarmRunTests(unittest.TestCase):
             )
 
             run_dir = Path(status["output"]["path"])
-            result = qwen_farm.read_json(run_dir / "jobs/job-0001/result.json")
+            result = sift_farm.read_json(run_dir / "jobs/job-0001/result.json")
 
             self.assertFalse(status["jobs"][0]["chunking"]["enabled"])
             self.assertFalse(result["chunking"]["enabled"])
@@ -1716,11 +1716,11 @@ class FarmRunTests(unittest.TestCase):
             for index in range(8)
         ]
 
-        batches = qwen_farm.reduce_payload_batches("source.txt", payloads, max_chars=700)
+        batches = sift_farm.reduce_payload_batches("source.txt", payloads, max_chars=700)
 
         self.assertGreater(len(batches), 1)
         for batch in batches:
-            self.assertLessEqual(len(qwen_farm.render_reduce_input("source.txt", batch)), 700)
+            self.assertLessEqual(len(sift_farm.render_reduce_input("source.txt", batch)), 700)
 
     def test_parallel_jobs_limit_and_status_running_count(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1756,7 +1756,7 @@ class FarmRunTests(unittest.TestCase):
             def run() -> None:
                 try:
                     run_status.update(
-                        qwen_farm.run_farm(
+                        sift_farm.run_farm(
                             root=root,
                             input_folder=root / "input",
                             output_dir=output,
@@ -1778,7 +1778,7 @@ class FarmRunTests(unittest.TestCase):
                 self.assertTrue(two_running.wait(5), "Expected two concurrent jobs to start")
                 run_dirs = [path for path in output.iterdir() if path.is_dir()]
                 self.assertEqual(len(run_dirs), 1)
-                status = qwen_farm.read_json(run_dirs[0] / "farm-status.json")
+                status = sift_farm.read_json(run_dirs[0] / "farm-status.json")
 
                 self.assertEqual(status["counts"]["running"], 2)
                 self.assertEqual(status["counts"]["queued"], 1)
@@ -1802,7 +1802,7 @@ class FarmRunTests(unittest.TestCase):
             (root / "input" / "fail.txt").write_text("fail", encoding="utf-8")
             (root / "input" / "z.md").write_text("Z", encoding="utf-8")
 
-            status = qwen_farm.run_farm(
+            status = sift_farm.run_farm(
                 root=root,
                 input_folder=root / "input",
                 output_dir=None,

@@ -19,7 +19,7 @@ Implement tracked schema contracts and validator support for current post-run pa
    - add all new schemas to `schemas/index.json`
    - document them in `schemas/README.md`
    - update README and AI usage docs to mention expanded package validation coverage
-3. Extend schema auto-detection in `src/qwen_farm_schema.py`.
+3. Extend schema auto-detection in `src/sift_farm_schema.py`.
    - detect timing summaries from `aggregate_by_call_kind`, `slowest_jobs`, and `slowest_calls`
    - detect snippet packs from `limits.source`, `snippets`, and `diagnostics`
    - detect synthesis bundles from `items`, `budget`, and `limits.snippet_source`
@@ -82,7 +82,7 @@ This implementation will not add new package commands, schema migrations, genera
 Completed checks:
 
 ```powershell
-python -m unittest tests.test_qwen_farm_schema tests.test_qwen_farm_snippet_packs tests.test_qwen_farm_synthesis_bundles tests.test_qwen_farm_dogfood
+python -m unittest tests.test_sift_farm_schema tests.test_sift_farm_snippet_packs tests.test_sift_farm_synthesis_bundles tests.test_sift_farm_dogfood
 python -m unittest discover -s tests
 python -m compileall sift.py src tests
 git diff --check

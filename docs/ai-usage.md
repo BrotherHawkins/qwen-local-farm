@@ -159,7 +159,7 @@ Use these first-pass metadata values:
 | `support` | `tested`, `experimental`, `unknown` |
 | `tokenizer.strategy` | `huggingface`, `none`, `unknown` |
 
-Exact token-aware chunking for a new model requires a Hugging Face tokenizer ID declared in the agent with `tokenizer.strategy: huggingface` and `tokenizer.exact: true`, plus local tokenizer readiness verified by `python sift.py farm tokenizer status --model <model>`. If the model is added as a bundled default or recognized alias, also update `src/qwen_farm_model_metadata.py` and add model-free tests. Otherwise keep character chunking as the recommended route.
+Exact token-aware chunking for a new model requires a Hugging Face tokenizer ID declared in the agent with `tokenizer.strategy: huggingface` and `tokenizer.exact: true`, plus local tokenizer readiness verified by `python sift.py farm tokenizer status --model <model>`. If the model is added as a bundled default or recognized alias, also update `src/sift_farm_model_metadata.py` and add model-free tests. Otherwise keep character chunking as the recommended route.
 
 ## Immediate Ask Interface
 

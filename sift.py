@@ -214,7 +214,7 @@ def start_gateway() -> None:
     env["OLLAMA_BASE_URL"] = OLLAMA_BASE_URL
     env["SIFT_GATEWAY_HOST"] = GATEWAY_HOST
     env["SIFT_GATEWAY_PORT"] = str(GATEWAY_PORT)
-    server = ROOT / "src" / "qwen_gateway.py"
+    server = ROOT / "src" / "sift_gateway.py"
 
     proc = subprocess.Popen(
         [sys.executable, str(server)],
@@ -339,13 +339,13 @@ def stop_all() -> None:
 
 
 def handle_farm(args: argparse.Namespace) -> None:
-    from src import qwen_farm
+    from src import sift_farm
 
     if args.farm_command == "doctor":
-        from src import qwen_farm_doctor
+        from src import sift_farm_doctor
 
         output_dir = Path(args.output) if args.output else RUN_DIR / "reports"
-        report = qwen_farm_doctor.build_doctor_report(
+        report = sift_farm_doctor.build_doctor_report(
             root=ROOT,
             default_model=MODEL,
             ollama_base_url=OLLAMA_BASE_URL,
@@ -356,35 +356,35 @@ def handle_farm(args: argparse.Namespace) -> None:
             find_ollama_fn=find_ollama,
             request_json_fn=request_json,
         )
-        qwen_farm_doctor.write_doctor_report(report)
+        sift_farm_doctor.write_doctor_report(report)
         if args.json:
             print(json.dumps(report, ensure_ascii=False, indent=2))
         else:
-            print(qwen_farm_doctor.render_doctor_markdown(report))
+            print(sift_farm_doctor.render_doctor_markdown(report))
         return
 
     if args.farm_command == "recommend":
-        from src import qwen_farm_recommend
+        from src import sift_farm_recommend
 
         output_dir = Path(args.output) if args.output else RUN_DIR / "recommendations"
         if args.recommend_command == "apply":
-            report = qwen_farm_recommend.build_config_apply_report(
+            report = sift_farm_recommend.build_config_apply_report(
                 root=ROOT,
                 recommendation_path=Path(args.recommendation_path) if args.recommendation_path else None,
                 config_path=Path(args.config) if args.config else None,
                 output_dir=output_dir,
                 write=args.write,
             )
-            json_path, markdown_path = qwen_farm_recommend.write_config_apply_report(report)
+            json_path, markdown_path = sift_farm_recommend.write_config_apply_report(report)
             if args.json:
                 print(json.dumps(report, ensure_ascii=False, indent=2))
             else:
-                print(qwen_farm_recommend.render_config_apply_markdown(report))
+                print(sift_farm_recommend.render_config_apply_markdown(report))
                 print(f"Apply JSON: {json_path}")
                 print(f"Apply Markdown: {markdown_path}")
             return
 
-        report = qwen_farm_recommend.build_recommendation_report(
+        report = sift_farm_recommend.build_recommendation_report(
             root=ROOT,
             default_model=MODEL,
             ollama_base_url=OLLAMA_BASE_URL,
@@ -395,20 +395,20 @@ def handle_farm(args: argparse.Namespace) -> None:
             find_ollama_fn=find_ollama,
             request_json_fn=request_json,
         )
-        json_path, markdown_path = qwen_farm_recommend.write_recommendation_report(report)
+        json_path, markdown_path = sift_farm_recommend.write_recommendation_report(report)
         if args.json:
             print(json.dumps(report, ensure_ascii=False, indent=2))
         else:
-            print(qwen_farm_recommend.render_recommendation_markdown(report))
+            print(sift_farm_recommend.render_recommendation_markdown(report))
             print(f"Recommendation JSON: {json_path}")
             print(f"Recommendation Markdown: {markdown_path}")
         return
 
     if args.farm_command == "schema":
-        from src import qwen_farm_schema
+        from src import sift_farm_schema
 
         if args.schema_command == "validate":
-            result = qwen_farm_schema.validate_artifact(
+            result = sift_farm_schema.validate_artifact(
                 root=ROOT,
                 artifact_path=Path(args.json_path),
                 schema_reference=args.schema,
@@ -416,7 +416,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
             else:
-                print(qwen_farm_schema.render_validation_result(result))
+                print(sift_farm_schema.render_validation_result(result))
             if int(result["exit_code"]) != 0:
                 raise SystemExit(int(result["exit_code"]))
             return
@@ -424,34 +424,34 @@ def handle_farm(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Unknown farm schema command: {args.schema_command}")
 
     if args.farm_command == "collect":
-        from src import qwen_farm_collect
+        from src import sift_farm_collect
 
         output_dir = Path(args.output) if args.output else RUN_DIR / "farm_collections"
-        collection = qwen_farm_collect.build_collection(
-            run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+        collection = sift_farm_collect.build_collection(
+            run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
             output_dir=output_dir,
             label=args.label,
         )
-        json_path, markdown_path = qwen_farm_collect.write_collection(collection, output_dir)
+        json_path, markdown_path = sift_farm_collect.write_collection(collection, output_dir)
         print(f"Farm collection written: {json_path}")
         print(f"Markdown: {markdown_path}")
         print(f"Items collected: {collection['counts']['items_collected']}")
         return
 
     if args.farm_command == "dogfood":
-        from src import qwen_farm_dogfood
+        from src import sift_farm_dogfood
 
         if args.dogfood_command == "timing":
-            from src import qwen_farm_dogfood_timing
+            from src import sift_farm_dogfood_timing
 
             if args.timing_command == "record":
                 output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "runs"
-                record = qwen_farm_dogfood_timing.build_timing_record(
+                record = sift_farm_dogfood_timing.build_timing_record(
                     root=ROOT,
-                    run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+                    run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
                     label=args.label,
                 )
-                path = qwen_farm_dogfood_timing.write_timing_record(record, output_dir)
+                path = sift_farm_dogfood_timing.write_timing_record(record, output_dir)
                 print(f"Dogfood timing record written: {path}")
                 print(f"Label: {record['label']}")
                 print(f"Run: {record['run_id']}")
@@ -459,11 +459,11 @@ def handle_farm(args: argparse.Namespace) -> None:
                 return
 
             if args.timing_command == "compare":
-                baseline = qwen_farm_dogfood_timing.read_json_object(Path(args.baseline_record))
-                candidate = qwen_farm_dogfood_timing.read_json_object(Path(args.candidate_record))
+                baseline = sift_farm_dogfood_timing.read_json_object(Path(args.baseline_record))
+                candidate = sift_farm_dogfood_timing.read_json_object(Path(args.candidate_record))
                 output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_timing" / "comparisons"
-                comparison = qwen_farm_dogfood_timing.compare_timing_records(baseline, candidate)
-                json_path, md_path = qwen_farm_dogfood_timing.write_timing_comparison(comparison, output_dir)
+                comparison = sift_farm_dogfood_timing.compare_timing_records(baseline, candidate)
+                json_path, md_path = sift_farm_dogfood_timing.write_timing_comparison(comparison, output_dir)
                 print(f"Dogfood timing comparison written: {json_path}")
                 print(f"Markdown: {md_path}")
                 return
@@ -472,24 +472,24 @@ def handle_farm(args: argparse.Namespace) -> None:
 
         if args.dogfood_command == "record":
             output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "runs"
-            record = qwen_farm_dogfood.build_quality_record(
+            record = sift_farm_dogfood.build_quality_record(
                 root=ROOT,
-                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 notes_path=Path(args.notes) if args.notes else None,
             )
-            path = qwen_farm_dogfood.write_quality_record(record, output_dir)
+            path = sift_farm_dogfood.write_quality_record(record, output_dir)
             print(f"Dogfood record written: {path}")
             print(f"Label: {record['label']}")
             print(f"Run: {record['run_id']}")
             return
 
         if args.dogfood_command == "compare":
-            baseline = qwen_farm_dogfood.read_json_object(Path(args.baseline_record))
-            candidate = qwen_farm_dogfood.read_json_object(Path(args.candidate_record))
+            baseline = sift_farm_dogfood.read_json_object(Path(args.baseline_record))
+            candidate = sift_farm_dogfood.read_json_object(Path(args.candidate_record))
             output_dir = Path(args.output) if args.output else RUN_DIR / "dogfood_history" / "comparisons"
-            comparison = qwen_farm_dogfood.compare_records(baseline, candidate)
-            json_path, md_path = qwen_farm_dogfood.write_comparison(comparison, output_dir)
+            comparison = sift_farm_dogfood.compare_records(baseline, candidate)
+            json_path, md_path = sift_farm_dogfood.write_comparison(comparison, output_dir)
             print(f"Dogfood comparison written: {json_path}")
             print(f"Markdown: {md_path}")
             return
@@ -497,17 +497,17 @@ def handle_farm(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Unknown farm dogfood command: {args.dogfood_command}")
 
     if args.farm_command == "snippets":
-        from src import qwen_farm_snippet_packs
+        from src import sift_farm_snippet_packs
 
         if args.snippets_command == "pack":
             output_dir = Path(args.output) if args.output else RUN_DIR / "snippet_packs"
-            pack = qwen_farm_snippet_packs.build_snippet_pack(
-                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+            pack = sift_farm_snippet_packs.build_snippet_pack(
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 max_snippets=args.max_snippets,
                 per_file=args.per_file,
             )
-            json_path, markdown_path = qwen_farm_snippet_packs.write_snippet_pack(pack, output_dir)
+            json_path, markdown_path = sift_farm_snippet_packs.write_snippet_pack(pack, output_dir)
             print(f"Snippet pack written: {json_path}")
             print(f"Markdown: {markdown_path}")
             print(f"Selected snippets: {pack['counts']['selected']}")
@@ -516,12 +516,12 @@ def handle_farm(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Unknown farm snippets command: {args.snippets_command}")
 
     if args.farm_command == "synthesis":
-        from src import qwen_farm_synthesis_bundles
+        from src import sift_farm_synthesis_bundles
 
         if args.synthesis_command == "bundle":
             output_dir = Path(args.output) if args.output else RUN_DIR / "synthesis_bundles"
-            bundle = qwen_farm_synthesis_bundles.build_synthesis_bundle(
-                run_dir=qwen_farm.resolve_run_reference(ROOT, args.run_dir),
+            bundle = sift_farm_synthesis_bundles.build_synthesis_bundle(
+                run_dir=sift_farm.resolve_run_reference(ROOT, args.run_dir),
                 label=args.label,
                 max_snippets=args.max_snippets,
                 per_file=args.per_file,
@@ -529,7 +529,7 @@ def handle_farm(args: argparse.Namespace) -> None:
                 max_estimated_tokens=args.max_estimated_tokens,
                 chars_per_token=args.chars_per_token,
             )
-            json_path, markdown_path = qwen_farm_synthesis_bundles.write_synthesis_bundle(bundle, output_dir)
+            json_path, markdown_path = sift_farm_synthesis_bundles.write_synthesis_bundle(bundle, output_dir)
             print(f"Synthesis bundle written: {json_path}")
             print(f"Markdown: {markdown_path}")
             print(f"Items: {bundle['counts']['items']}")
@@ -540,8 +540,8 @@ def handle_farm(args: argparse.Namespace) -> None:
 
     if args.farm_command == "retry-failed":
         try:
-            source_run_dir = qwen_farm.resolve_run_reference(ROOT, args.run_dir)
-            plan = qwen_farm.build_retry_failed_plan(
+            source_run_dir = sift_farm.resolve_run_reference(ROOT, args.run_dir)
+            plan = sift_farm.build_retry_failed_plan(
                 root=ROOT,
                 source_run_dir=source_run_dir,
                 default_model=MODEL,
@@ -553,7 +553,7 @@ def handle_farm(args: argparse.Namespace) -> None:
                     ensure_model(str(plan["model"]))
             else:
                 ensure_model(str(plan["model"]))
-            status, result = qwen_farm.run_retry_failed_plan(
+            status, result = sift_farm.run_retry_failed_plan(
                 root=ROOT,
                 plan=plan,
                 output_dir=Path(args.output) if args.output else None,
@@ -562,7 +562,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             )
         except (FileNotFoundError, ValueError) as exc:
             if args.json:
-                print(json.dumps(qwen_farm.retry_failed_error_result(run_ref=args.run_dir, error=str(exc)), ensure_ascii=False, indent=2))
+                print(json.dumps(sift_farm.retry_failed_error_result(run_ref=args.run_dir, error=str(exc)), ensure_ascii=False, indent=2))
             else:
                 print(f"Retry failed: {exc}", file=sys.stderr)
             raise SystemExit(2) from exc
@@ -588,7 +588,7 @@ def handle_farm(args: argparse.Namespace) -> None:
         return
 
     if args.farm_command == "run":
-        agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
+        agent, runtime_config = sift_farm.resolve_run_agent_and_config(
             root=ROOT,
             agent_id=args.agent,
             default_model=MODEL,
@@ -617,7 +617,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             exclude=args.exclude,
         )
         ensure_model(str(agent["model"]))
-        status = qwen_farm.run_farm(
+        status = sift_farm.run_farm(
             root=ROOT,
             input_folder=Path(args.input_folder),
             output_dir=Path(args.output) if args.output else None,
@@ -634,7 +634,7 @@ def handle_farm(args: argparse.Namespace) -> None:
         return
 
     if args.farm_command == "tokenizer":
-        from src.qwen_farm_tokenizer import (
+        from src.sift_farm_tokenizer import (
             SUPPORTED_QWEN_TOKENIZERS,
             render_tokenizer_status_markdown,
             tokenizer_status,
@@ -650,14 +650,14 @@ def handle_farm(args: argparse.Namespace) -> None:
         return
 
     if args.farm_command == "list":
-        print(qwen_farm.list_runs_text(ROOT))
+        print(sift_farm.list_runs_text(ROOT))
         return
 
     if args.farm_command == "status":
         if args.json:
-            print(json.dumps(qwen_farm.status_json(ROOT, args.run_id), ensure_ascii=False, indent=2))
+            print(json.dumps(sift_farm.status_json(ROOT, args.run_id), ensure_ascii=False, indent=2))
             return
-        print(qwen_farm.status_text(ROOT, args.run_id))
+        print(sift_farm.status_text(ROOT, args.run_id))
         return
 
     raise RuntimeError(f"Unknown farm command: {args.farm_command}")

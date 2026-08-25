@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.qwen_farm_snippet_packs import (
+from src.sift_farm_snippet_packs import (
     DEFAULT_MAX_SNIPPETS,
     DEFAULT_PER_FILE_SNIPPETS,
     PACK_SOURCE,

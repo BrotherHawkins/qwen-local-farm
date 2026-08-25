@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from src import qwen_farm_model_metadata
+from src import sift_farm_model_metadata
 
 
 class ModelMetadataTests(unittest.TestCase):
     def test_resolves_qwen_metadata_from_bundled_shape(self) -> None:
-        metadata = qwen_farm_model_metadata.resolve_model_metadata(
+        metadata = sift_farm_model_metadata.resolve_model_metadata(
             {
                 "model": "qwen3.5:4b",
                 "model_family": "qwen",
@@ -30,7 +30,7 @@ class ModelMetadataTests(unittest.TestCase):
         self.assertEqual(metadata["context"], {"tokens": 8192, "source": "agent.options.num_ctx"})
 
     def test_unknown_model_gets_unknown_family_fallback(self) -> None:
-        metadata = qwen_farm_model_metadata.resolve_model_metadata(
+        metadata = sift_farm_model_metadata.resolve_model_metadata(
             {
                 "model": "local-custom:1b",
                 "options": {},
@@ -43,7 +43,7 @@ class ModelMetadataTests(unittest.TestCase):
         self.assertFalse(metadata["tokenizer"]["exact"])
 
     def test_experimental_non_qwen_agent_metadata(self) -> None:
-        metadata = qwen_farm_model_metadata.resolve_model_metadata(
+        metadata = sift_farm_model_metadata.resolve_model_metadata(
             {
                 "model": "llama3.1:8b",
                 "model_family": "llama",
@@ -61,7 +61,7 @@ class ModelMetadataTests(unittest.TestCase):
 
     def test_invalid_metadata_fails_clearly(self) -> None:
         with self.assertRaisesRegex(ValueError, "model_family must be one of"):
-            qwen_farm_model_metadata.resolve_model_metadata(
+            sift_farm_model_metadata.resolve_model_metadata(
                 {
                     "model": "qwen3.5:4b",
                     "model_family": "surprise",
@@ -71,7 +71,7 @@ class ModelMetadataTests(unittest.TestCase):
 
     def test_huggingface_tokenizer_requires_id(self) -> None:
         with self.assertRaisesRegex(ValueError, "tokenizer.id is required"):
-            qwen_farm_model_metadata.resolve_model_metadata(
+            sift_farm_model_metadata.resolve_model_metadata(
                 {
                     "model": "llama3.1:8b",
                     "model_family": "llama",
@@ -82,7 +82,7 @@ class ModelMetadataTests(unittest.TestCase):
 
     def test_exact_tokenizer_id_respects_explicit_none_strategy(self) -> None:
         self.assertIsNone(
-            qwen_farm_model_metadata.exact_tokenizer_id(
+            sift_farm_model_metadata.exact_tokenizer_id(
                 "qwen3.5:4b",
                 {
                     "tokenizer": {

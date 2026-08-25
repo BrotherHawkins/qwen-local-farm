@@ -10,6 +10,20 @@ Human -> primary AI -> local farm -> staged outputs/status -> primary AI -> huma
 
 The human should be able to enable or disable farm availability, but the primary AI should usually decide whether a task is worth delegating.
 
+## Skills Library
+
+Sift ships portable AI skill instructions under `skills/`.
+
+Use the skills library when a user asks an AI assistant to clone Sift, install Sift skills, get set up, run a first smoke test, operate farm jobs, inspect outputs, package results, or compare dogfood runs.
+
+Start with:
+
+- `skills/README.md`
+- `skills/sift-setup/SKILL.md`
+- `skills/sift-operator/SKILL.md`
+
+If the current AI app cannot install skills directly, read or paste the relevant `SKILL.md` as session instructions. The skill files are intentionally platform-agnostic Markdown and should guide the assistant through doctor, recommend, safe config apply, schema validation, tiny smoke tests, `.run/` artifact hygiene, and output inspection.
+
 ## Core Rule
 
 Use the farm when the work is suitable for slower, local, staged processing.

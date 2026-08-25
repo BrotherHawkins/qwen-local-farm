@@ -4,6 +4,8 @@ Sift runs local AI workers over folders of text and turns bulky source material 
 
 Planning docs: [roadmap](docs/roadmap.md), [AI usage](docs/ai-usage.md), [chunking roadmap](docs/chunking-roadmap.md), [specs](docs/specs/README.md), [CI](docs/ci.md)
 
+AI assistants can use the repo-shipped [skills library](skills/README.md) to guide setup and operation in skills-familiar tools such as Codex or Claude Code.
+
 Default model: `qwen3.5:4b`
 
 That is the comfortable default for an 8GB VRAM card. The larger installed models are available for slower offline work when you want more depth.

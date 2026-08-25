@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "skills": [
+    {
+      "id": "sift-setup",
+      "path": "skills/sift-setup/SKILL.md",
+      "description": "Guide a user through Sift setup, diagnosis, configuration, and a first smoke test.",
+      "required_commands": [
+        "python sift.py --help",
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --json",
+        "python sift.py farm recommend apply --json",
+        "python sift.py farm recommend apply --write --json",
+        "python sift.py farm tokenizer status",
+        "python sift.py farm tokenizer setup",
+        "python sift.py farm run <input-folder> --mode summarize --output <output-folder>",
+        "python sift.py farm status <run-ref> --json",
+        "python sift.py farm schema validate <path> --json"
+      ]
+    },
+    {
+      "id": "sift-operator",
+      "path": "skills/sift-operator/SKILL.md",
+      "description": "Run Sift farm jobs, inspect outputs, package results, and record dogfood evidence.",
+      "required_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm run <input-folder> --output <output-folder> --mode summarize",
+        "python sift.py farm run <input-folder> --output <output-folder> --mode prompt --instructions <instructions>",
+        "python sift.py farm status <run-ref> --json",
+        "python sift.py farm collect <run-ref> --output <output-folder> --label <label>",
+        "python sift.py farm snippets pack <run-ref> --output <output-folder> --label <label>",
+        "python sift.py farm synthesis bundle <run-ref> --output <output-folder> --label <label>",
+        "python sift.py farm dogfood record <run-ref> --output <output-folder> --label <label>",
+        "python sift.py farm dogfood timing record <run-ref> --output <output-folder> --label <label>",
+        "python sift.py farm schema validate <path> --json"
+      ]
+    }
+  ]
+}
+

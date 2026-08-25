@@ -21,7 +21,7 @@ The dashboard is manually maintained and CI-guarded. Update it when adding, acce
 | --- | ---: |
 | Draft | 0 |
 | Accepted | 0 |
-| Implemented | 32 |
+| Implemented | 33 |
 | Deprecated | 0 |
 
 ## Draft Canonical Specs
@@ -96,6 +96,7 @@ None.
 | 0029 | Implemented | Add | [0029-add-failure-classification-and-retry-guidance.md](changes/0029-add-failure-classification-and-retry-guidance.md) | Adds durable failure codes, retryability flags, and recommended next actions for failed farm jobs. |
 | 0030 | Implemented | Add | [0030-add-farm-discovery-include-exclude-overrides.md](changes/0030-add-farm-discovery-include-exclude-overrides.md) | Adds reproducible include/exclude controls for farm file discovery. |
 | 0031 | Implemented | Add | [0031-add-model-family-adapter-foundation.md](changes/0031-add-model-family-adapter-foundation.md) | Adds a model-family adapter foundation so Qwen stays the default while other local model families can be added later without changing farm interfaces. |
+| 0032 | Implemented | Add | [0032-add-ai-skills-library.md](changes/0032-add-ai-skills-library.md) | Adds a portable AI skills library so AI assistants can guide users through Sift setup and operation. |
 
 ## Stale Drafts To Revisit
 

@@ -129,6 +129,12 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0104 | Implemented | 0031 | Model family adapter foundation | 0031 added normalized backend/family/support/tokenizer/context metadata so Qwen remains the tested default while other Ollama model families can be added later. |
 | BL-0105 | Open | 0031 | Non-Qwen dogfood benchmark matrix | Add quality/performance dogfood runs for selected non-Qwen local families only after adapter metadata exists. |
 | BL-0106 | Open | 0031 | Product naming and CLI alias review | Revisit Qwen-centered naming only if broader model-family support becomes a real product promise. |
+| BL-0107 | Open | 0032 | Platform-specific skill installation helpers | Add helper commands or docs for installing Sift skills into specific AI apps only after the portable skill folder shape proves useful. |
+| BL-0108 | Open | 0032 | Published AI skill packages | Package or publish Sift skills for Codex, Claude Code, or other app ecosystems after local repo-shipped skills are stable. |
+| BL-0109 | Open | 0032 | First-run interactive setup wizard | Add a guided setup wizard only if skill-driven doctor/recommend/apply flows still feel too manual for less technical users. |
+| BL-0110 | Open | 0032 | Generated skill metadata documentation | Generate docs from skill frontmatter if the skill library grows beyond a few hand-maintained skills. |
+| BL-0111 | Open | 0032 | Specialized Sift skills | Add focused skills for dogfood benchmarking, model extension, article ingestion, or advanced troubleshooting after the initial setup/operator skills are dogfooded. |
+| BL-0112 | Open | 0032 | Skill manifest JSON Schema | Add a tracked schema for `skills/index.json` if the manifest starts being consumed by automation beyond the first model-free sync tests. |
 
 ## Notes
 

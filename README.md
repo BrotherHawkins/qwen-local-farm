@@ -322,6 +322,8 @@ Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by defa
 
 To compare dogfood runs over time, record compact local quality history with `python sift.py farm dogfood record <run-ref>` and compare records with `python sift.py farm dogfood compare <baseline.json> <candidate.json>`. For timing regressions, use `python sift.py farm dogfood timing record <run-ref>` and `python sift.py farm dogfood timing compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and `docs/dogfood-timing.md` for timing interpretation.
 
+Committed synthetic dogfood fixtures live under `dogfood/`. These are authored, anonymous, license-clean sources that can be cloned and reused. Generated outputs, downloaded article text, scraped pages, private notes, and timing/quality records should stay under `.run/`.
+
 ### Token-Aware Chunking
 
 Token-aware chunking can also be configured in `.sift-farm.json`:

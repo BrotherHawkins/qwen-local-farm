@@ -1,0 +1,92 @@
+Source URL: synthetic://sift/dogfood/extract-lite/004-research-long-chunked
+
+# SiftDesk Long Research Fixture
+
+This file is synthetic and intentionally verbose. It exists to force chunked extract behavior during local dogfood when run with `--chunk-strategy character --chunk-chars 2500`. The content repeats some ideas with slight wording changes so deterministic dedupe can prove that duplicate items are merged while preserving multiple source references.
+
+## Section 1: Setup
+
+Lena Ortiz led a small evaluation of SiftDesk, a fictional local extraction assistant for operations notes. Theo Grant maintained the benchmark harness called CedarBench. Harbor Notes was the internal note system that supplied long, messy exports. The team wrote its method summary at https://example.test/cedarbench/method and its SiftDesk report at https://example.test/siftdesk/report.
+
+The central claim was that SiftDesk can harvest useful evidence before a frontier model performs final synthesis. The team did not claim that SiftDesk replaces the final model. Instead, the expected value was triage: highlight claims, examples, links, and entities so the primary AI can decide which original passages deserve attention.
+
+Fact: the first evaluation used twelve synthetic customer-call notes and four anonymized planning notes. Each file had a planted set of claims, tasks, entities, and links. Theo recorded whether extracted snippets could be located in the original source text.
+
+Example: one call note described a customer who wanted weekly inventory alerts. SiftDesk extracted the requirement, the customer name, and a risk about stale CSV exports. The final synthesis used those extracted items to open the correct section of the original file.
+
+Question: should SiftDesk prefer fewer high-confidence items or a medium number of possibly useful items? Lena argued for sparse-to-medium output because frontier handoff gets worse when local workers flood the context.
+
+Tension: fast extraction is valuable, but fragile source wording can lead to missed snippets. The group accepted missing a low-value item more readily than inventing a high-value one.
+
+## Section 2: Repeated Claim With Different Context
+
+The SiftDesk team repeated the same claim in the second review: local extraction can reduce frontier-model context load before synthesis. This was not framed as a replacement for reading the source. It was framed as a cheaper first pass that keeps source references attached to every useful item.
+
+Lena Ortiz asked for original-file character offsets because a frontier model may still need to reopen the source. Theo Grant added the offset check to CedarBench so every verified snippet records where it appeared in the file. The team decided that offsets are more useful than pretty prose when debugging extract quality.
+
+Fact: CedarBench marked an item as snippet_verified only when the exact snippet appeared in the source text. If a worker returned a plausible paraphrase, Python kept the item but marked source support as chunk_only. That distinction helped reviewers separate solid evidence from weaker scan output.
+
+Example: SiftDesk found the phrase "weekly inventory alerts" exactly in a customer note, so the requirement received verified source support. In another case, the worker wrote "inventory warning system" even though the source said "stock alert feed"; that item stayed useful but did not get verified snippet support.
+
+Question: should chunked extract use a model reduce pass? The v1 decision was no. Python should dedupe and aggregate so chunked extraction stays fast and predictable.
+
+Tension: dedupe needs to merge repeated claims, but aggressive merging can hide subtle differences. The team chose conservative deterministic dedupe for v1 and backlogged model-assisted dedupe for later.
+
+## Section 3: Entities And Links
+
+Lena Ortiz is a person entity. Theo Grant is a person entity. SiftDesk is a product entity. CedarBench is a benchmark harness. Harbor Notes is a knowledge-base tool. Northwind Analytics appears only as a comparison vendor in this section and should not dominate the result.
+
+The useful links are https://example.test/siftdesk/report and https://example.test/cedarbench/method. A less important appendix link is https://example.test/siftdesk/appendix. The report link explains why extract mode prefers compact tagged lines. The method link explains how planted signals are counted.
+
+The team also listed two optional observers: Priya Shah from Support and Omar Ellis from Platform. Priya cared about customer examples. Omar cared about runtime metrics and whether chunk counts increased latency.
+
+Fact: the entity preset should find people, organizations, tools, and links without trying to summarize the whole file. The research preset should find evidence plus entities, but it does not need to extract every observer name.
+
+Example: when a note says "Lena Ortiz approved the CedarBench method," the useful extracted entities are Lena Ortiz and CedarBench. The useful evidence item is that Lena approved the method. Both can share the same source snippet if the line appears once.
+
+Question: should entity extraction include role attributes? The team said yes when the role is explicit and short. It should avoid nested objects and long biographies.
+
+Tension: entities without context are compact, but too little context makes a frontier handoff less useful. Role attributes offer a small middle ground.
+
+## Section 4: Work Signals
+
+Although this long file is mainly for research extraction, it intentionally plants work items too. Decision: keep extract mode map-only for v1 chunked inputs. Task: Theo Grant will add a chunked extract fixture to the committed dogfood folder. Risk: a long chunked source may produce duplicate claims if dedupe keys are too loose or too strict. Requirement: run-level extract JSON must include coverage metadata. Blocker: real model latency cannot be measured in GitHub CI because CI must stay model-free. Follow-up: compare extracted items against expected-signals.json after the first runtime dogfood run.
+
+The work items above should be visible to the work preset, but research mode may ignore some of them because research focuses on evidence and entities. That is acceptable. A sparse result can be correct when the requested preset does not match every planted signal.
+
+Fact: the fixture intentionally includes one chunked case and three smaller files. The small files are easier to inspect manually. The long file makes chunk directories, chunk raw responses, and per-chunk result JSON easier to verify.
+
+Example: if `jobs/job-0004/chunks/chunk-0002/result.json` contains a repeated SiftDesk claim, the run-level `extract-results.json` should preserve one selected item with multiple source entries after dedupe.
+
+Question: should benchmark records track item count per second? The team said it would be useful later, but the first committed fixture only provides inputs and expected signals.
+
+Tension: committing dogfood fixtures improves reproducibility, but committing generated outputs would create churn. The rule is to commit synthetic inputs and keep run outputs under `.run/`.
+
+## Section 5: Source Grounding
+
+Source grounding matters because a frontier model may use extract output as a guide, then reopen only the relevant original passages. If a snippet cannot be verified, the handoff should say so rather than pretending the evidence is stronger than it is.
+
+Lena Ortiz described the target behavior this way: "The extract should point to the shelf, not rewrite the book." The quote is intentionally short so a worker can extract it verbatim. Theo Grant added that exact snippets are easier to validate than local-model JSON because Python can search the source directly.
+
+Fact: a verified snippet includes `char_start` and `char_end` relative to the original file as read by Sift. Chunk-local offsets are useful internally, but original-file offsets are the public contract for extract handoff.
+
+Example: if the source says "fast extraction versus fragile source wording," the extracted tension should use that exact phrase or a nearby exact snippet. If the worker returns only "speed against nuance," the item may still be plausible, but it should not claim snippet_verified support.
+
+Question: how many snippets should each item carry? The v1 answer is enough to support the item, capped and type-aware. Entity and link items may need sparse snippets. Claims, decisions, risks, requirements, and tensions benefit from stronger snippets.
+
+Tension: source snippets add tokens to the final handoff, but they save much larger source rereads when they are accurate. The best value comes from short, exact, high-signal snippets.
+
+## Section 6: Closing Notes
+
+The long fixture repeats the main SiftDesk claim one final time: local extraction can reduce frontier-model context load before synthesis while preserving source pointers. That repeated claim should merge with earlier versions when deterministic dedupe sees close normalized text.
+
+The file also repeats the important entities: Lena Ortiz, Theo Grant, SiftDesk, CedarBench, and Harbor Notes. It repeats the useful links: https://example.test/siftdesk/report and https://example.test/cedarbench/method. These repetitions are intentional and should help test source merging.
+
+Fact: the fixture is anonymous, fictional, and license-clean. It does not contain downloaded article text or private notes.
+
+Example: future summarize fixtures can mimic the length and structure of prior article dogfood inputs without copying article wording. The same fixture rule applies: authored content can be committed; generated outputs should remain ignored.
+
+Question: should this fixture eventually become part of automated runtime smoke? Yes, but only behind an explicit local-model command so GitHub CI stays model-free.
+
+Tension: the dataset must be rich enough to catch behavior drift, but small enough that a developer can run it casually while reviewing a PR.
+

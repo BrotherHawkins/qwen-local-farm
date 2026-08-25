@@ -1,0 +1,16 @@
+Source URL: synthetic://sift/dogfood/extract-lite/001-evidence-small
+
+# Local Scout Pilot Evidence Note
+
+The Local Scout pilot tested whether a small local model could scan internal research notes before a frontier model handled final synthesis. The main claim was simple: local preprocessing can reduce the amount of context sent to the expensive model without removing the human review step.
+
+Fact: in the six-week pilot, Local Scout reduced frontier-context load by 38 percent compared with sending every source note directly. Sixteen of twenty-one weekly briefings used the local extracts without reopening the full archive. The median local scan finished in under two minutes on the test workstation, while the final synthesis still used a frontier model.
+
+Example: one analyst investigated battery-supply risk. Instead of reading thirty pages, she reviewed three extracted paragraphs about supplier lead times, a pricing anomaly, and a port-delay note. The final memo still cited the original archive, but the local extract narrowed where she looked.
+
+Quoted stakeholder note: "The local pass did not replace judgment; it told me where judgment was needed."
+
+Open question: does extract quality drop when notes contain sarcasm, nested bullets, or partial meeting transcripts? The pilot did not test enough messy notes to answer that.
+
+Tension: the local pass was fast and cheap, but it sometimes flattened nuance. The team agreed that policy claims, legal exposure, and medical material should still trigger a full-source review by the primary AI or a human.
+

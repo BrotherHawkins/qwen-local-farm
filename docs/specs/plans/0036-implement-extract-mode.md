@@ -30,8 +30,8 @@ python -m unittest tests.test_sift_farm_extract tests.test_sift_farm tests.test_
 Optional runtime dogfood:
 
 ```powershell
-python sift.py farm run .run/dogfood_0036/input --mode extract --extract-preset research --output .run/dogfood_0036/results
-python sift.py farm schema validate .run/dogfood_0036/results/<run>/extract-results.json
+python sift.py farm run dogfood/extract_lite/inputs --mode extract --extract-preset research --chunk-strategy character --chunk-chars 2500 --output .run/dogfood_extract_lite/research_chunked
+python sift.py farm schema validate .run/dogfood_extract_lite/research_chunked/<run-id>/extract-results.json --json
 ```
 
 ## Notes

@@ -1,0 +1,54 @@
+{
+  "fixture": "extract_lite",
+  "version": 1,
+  "description": "Expected planted signals for synthetic extract-mode dogfood. Use as a scoring guide, not an exact golden output.",
+  "files": [
+    {
+      "path": "dogfood/extract_lite/inputs/001-evidence-small.txt",
+      "expected_types": ["claim", "fact", "example", "quote", "question", "tension"],
+      "signals": [
+        "Local Scout reduced frontier-context load by 38 percent in the pilot.",
+        "Sixteen of twenty-one weekly briefings used the local extracts without reopening the full archive.",
+        "The lab-notebook example shows one analyst finding battery-supply risks from three paragraphs instead of thirty pages.",
+        "The open question asks whether extract quality drops when notes contain sarcasm or nested bullets.",
+        "The tension is speed versus nuance: local scanning was fast, but the final reviewer still needed full documents for policy claims."
+      ]
+    },
+    {
+      "path": "dogfood/extract_lite/inputs/002-entities-small.txt",
+      "expected_types": ["entity", "link"],
+      "signals": [
+        "Mira Chen is the research lead.",
+        "Jon Patel is the procurement buyer.",
+        "Asha Morgan is the operations owner.",
+        "Northwind Analytics is the vendor.",
+        "LedgerLake is the data tool.",
+        "https://example.test/northwind/briefing and https://example.test/tools/ledgerlake are planted links."
+      ]
+    },
+    {
+      "path": "dogfood/extract_lite/inputs/003-work-small.txt",
+      "expected_types": ["task", "decision", "risk", "requirement", "blocker", "follow_up"],
+      "signals": [
+        "Decision: use tokenizer-aware chunking for long Markdown notes.",
+        "Task: Chris owns the timing-history table update.",
+        "Risk: CPU fallback may make demo runs appear stalled.",
+        "Requirement: every run-level JSON artifact must validate against a checked-in schema.",
+        "Blocker: the lab machine cannot run two 8B workers until the memory profile is confirmed.",
+        "Follow-up: revisit model-assisted dedupe after deterministic dedupe has dogfood records."
+      ]
+    },
+    {
+      "path": "dogfood/extract_lite/inputs/004-research-long-chunked.txt",
+      "expected_types": ["claim", "fact", "example", "question", "tension", "entity", "link"],
+      "signals": [
+        "The long fixture should chunk when run with --chunk-strategy character --chunk-chars 2500.",
+        "Multiple sections repeat the same SiftDesk claim so deterministic dedupe can merge sources.",
+        "Entities planted across sections include Lena Ortiz, Theo Grant, SiftDesk, CedarBench, and Harbor Notes.",
+        "The fixture includes links to https://example.test/siftdesk/report and https://example.test/cedarbench/method.",
+        "The repeated tension is fast extraction versus fragile source wording."
+      ]
+    }
+  ]
+}
+

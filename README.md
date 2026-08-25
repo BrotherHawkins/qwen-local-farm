@@ -6,6 +6,22 @@ Planning docs: [roadmap](docs/roadmap.md), [AI usage](docs/ai-usage.md), [chunki
 
 AI assistants can use the repo-shipped [skills library](skills/README.md) to guide setup and operation in skills-familiar tools such as Codex or Claude Code.
 
+## Contents
+
+- [Model Defaults](#model-defaults)
+- [Quick Start](#quick-start)
+- [Worker Farm](#worker-farm)
+- [What Gets Started](#what-gets-started)
+- [Agent Gateway Examples](#agent-gateway-examples)
+- [Changing Model Size](#changing-model-size)
+- [Adding Agent Patterns](#adding-agent-patterns)
+- [Benchmarks](#benchmarks)
+- [Larger Offline Models](#larger-offline-models)
+- [Useful Commands](#useful-commands)
+- [LAN Access](#lan-access)
+
+## Model Defaults
+
 Default model: `qwen3.5:4b`
 
 That is the comfortable default for an 8GB VRAM card. The larger installed models are available for slower offline work when you want more depth.
@@ -49,6 +65,8 @@ Windows users can also use the PowerShell convenience wrapper, `.\sift.ps1`, wit
 
 ## Worker Farm
 
+### Basic Run
+
 Use the farm when you want local offline work staged into files instead of a single immediate answer.
 
 Summarize every readable text file in a folder:
@@ -65,6 +83,8 @@ python sift.py farm run notes --output results --mode summarize
 
 Summarize mode automatically chunks oversized text files and reduces the chunk summaries into one file-level result. Chunk inputs and chunk summaries are written under each job folder so a caller can inspect the intermediate work.
 
+### Runtime Profiles
+
 Farm runs use a runtime profile so chunk sizes and capacity assumptions are explicit. If no profile is configured, the farm uses `local-8gb`, which preserves the original 8GB GPU dogfood default.
 
 Use a named profile or override specific values:
@@ -74,6 +94,8 @@ python sift.py farm run notes --mode summarize --profile local-12gb
 python sift.py farm run notes --mode summarize --profile local-24gb --chunk-chars 20000 --parallel-jobs 2
 python sift.py farm run notes --mode summarize --resource-mode cpu
 ```
+
+### Tokenizer Setup
 
 The default chunker uses character budgets. For fewer, larger chunks on supported Qwen models, set up exact local tokenizers and opt into token-aware chunking:
 
@@ -88,6 +110,8 @@ Tokenizer assets are cached under `.run/tokenizers/`, which is ignored by Git. V
 ```bash
 python sift.py farm tokenizer status
 ```
+
+### Doctor And Recommendations
 
 For read-only setup guidance, run:
 
@@ -133,7 +157,11 @@ Resource modes use this runtime vocabulary:
 
 Resource mode does not silently change the selected model or switch agents. Pick a larger or CPU-specific agent explicitly when quality/model size matters.
 
+### Concurrency
+
 `--parallel-jobs` controls farm worker slots: how many file jobs the farm starts at once. It does not launch extra Ollama servers or duplicate model copies. For true same-model parallel inference, Ollama must also be configured for parallel requests, such as with `OLLAMA_NUM_PARALLEL`, and the machine must have enough memory. Start with `--parallel-jobs 2` on a small folder before raising it.
+
+### Failure Policy
 
 Failure policy can be configured per run when you want stricter or more patient behavior:
 
@@ -145,6 +173,8 @@ python sift.py farm run notes --mode summarize --per-file-timeout-seconds 900
 `--max-attempts` retries the whole file job. `--chunk-max-attempts` and `--reduce-max-attempts` retry individual chunk-map and reduce model calls during chunked summarize jobs. `--per-file-timeout-seconds` preserves the public timeout knob and currently applies to each local model call.
 
 Failed jobs include failure guidance in `result.json`, `farm-status.json`, `FARM_STATUS.md`, and `farm status <run-id> --json` when the farm can classify the failure. The fields are intentionally simple: `code`, `category`, `retryable`, `retry_after_fix`, `message`, and `recommended_action`. `retryable: true` means retrying the same job may help. `retry_after_fix: true` means fix the input, model, config, or resource setting before repeating the retry.
+
+### Config File
 
 Power users and AI assistants can also write `.sift-farm.json` at the repo root:
 
@@ -186,6 +216,8 @@ Power users and AI assistants can also write `.sift-farm.json` at the repo root:
 
 Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, heading/overlap policy, concurrency settings, failure policy, and discovery filters. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
 
+### File Discovery
+
 Discovery filters can also be supplied per run:
 
 ```bash
@@ -194,6 +226,8 @@ python sift.py farm run notes --mode summarize --include "articles/*.txt" --excl
 ```
 
 Include patterns narrow otherwise eligible text files. Exclude patterns remove otherwise included files and win over include matches. Patterns match input-folder-relative paths using `/` separators. Built-in safety skips for binary files, archives, images, PDFs, Office documents, minified assets, and generated/vendor folders remain in force.
+
+### Status And Schemas
 
 For machine-readable inspection, use `python sift.py farm status --json` for a run overview or `python sift.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown. While chunked summarize jobs are active, status artifacts include `job.progress` with the current phase, chunk counts, reduce batch counts, and current running model call, plus in-flight entries in `timing.calls`.
 
@@ -213,6 +247,8 @@ python sift.py farm schema validate <run-dir>/timing-summary.json
 Without `--schema`, validation auto-detects the current core farm artifacts and post-run package JSON artifacts. Exit code `0` means valid, `1` means schema validation failed, and `2` means the artifact/schema could not be read or inferred.
 
 For performance, `summarize` asks the local model for compact labeled text and the farm parses that into the stable `result.json` envelope. It does not use Ollama JSON grammar mode for the main summary call, and the default summarize call is bounded with `think: false`, `num_predict: 384`, and `num_batch: 128` unless the selected agent already overrides those options.
+
+### Snippets And Packages
 
 When a later synthesis step needs a little more source evidence, ask summarize mode for verified verbatim snippets:
 
@@ -241,6 +277,8 @@ python sift.py farm synthesis bundle <run-ref> --label research-bundle
 Synthesis bundles are post-run artifacts under `.run/synthesis_bundles/` by default. They combine compact per-file summaries with selected verified snippets, still without making model calls. Bundle JSON includes character and estimated-token budget metadata. Use `--max-chars <n>` for an exact Markdown size cap, or `--max-estimated-tokens <n>` for a deterministic planning estimate based on `--chars-per-token` (default `4.0`).
 
 To compare dogfood runs over time, record compact local quality history with `python sift.py farm dogfood record <run-ref>` and compare records with `python sift.py farm dogfood compare <baseline.json> <candidate.json>`. For timing regressions, use `python sift.py farm dogfood timing record <run-ref>` and `python sift.py farm dogfood timing compare <baseline.json> <candidate.json>`. See `docs/dogfood-quality.md` for the scoring rubric and `docs/dogfood-timing.md` for timing interpretation.
+
+### Token-Aware Chunking
 
 Token-aware chunking can also be configured in `.sift-farm.json`:
 
@@ -299,7 +337,7 @@ For an experimental non-Qwen Ollama model, declare the family and keep tokenizer
 
 Character chunking can still run with experimental or unknown model families. Token-aware chunking requires exact tokenizer metadata and local tokenizer readiness.
 
-### Adding An Experimental Ollama Model
+### Experimental Ollama Models
 
 To try another local Ollama model family without changing farm commands:
 
@@ -349,6 +387,8 @@ Minimal experimental agent example:
 
 For exact token-aware chunking on a new model, add exact Hugging Face tokenizer metadata to the agent and verify it with `python sift.py farm tokenizer status --model <model>`. If the model should become a bundled default or recognized alias, extend the tokenizer adapter registry in `src/sift_farm_model_metadata.py` and add model-free tests for the mapping. Until exact tokenizer metadata is present and verified, token-aware chunking should fail early with guidance rather than guessing.
 
+### Heading Context And Overlap
+
 Markdown heading ancestry is enabled by default for chunked summarize inputs. Chunk input artifacts include a compact `Heading context` block so a worker processing chunk 4 still knows it is inside headings such as `# Title` and `## Section`. Overlap is opt-in:
 
 ```bash
@@ -359,6 +399,8 @@ python sift.py farm run notes --mode summarize --no-preserve-heading-ancestry
 
 Overlap adds prior source text as context for continuity, not as primary chunk coverage. It can improve boundary quality, but it spends prompt budget and may make summaries more repetitive, so the default is `0`.
 
+### Collections
+
 To gather ordinary per-job results from an existing run into one easier-to-inspect folder:
 
 ```bash
@@ -366,6 +408,8 @@ python sift.py farm collect <run-ref> --label review-pack
 ```
 
 `farm collect` writes `.run/farm_collections/<label>/FARM_COLLECTION.md`, `.run/farm_collections/<label>/farm-collection.json`, and copied `result.md` / `result.json` files under `items/`. It makes no model calls and does not copy source inputs, raw model responses, logs, or chunk artifacts by default. Use it when you want a flat review pack of existing results. Use snippet packs for evidence-only synthesis inputs, and synthesis bundles when you want compact summaries plus selected snippets.
+
+### Prompt Mode And Agents
 
 Apply custom instructions to every readable text file:
 
@@ -386,6 +430,8 @@ Filter file discovery without moving files:
 python sift.py farm run notes --mode summarize --include "articles/*.txt"
 python sift.py farm run notes --mode summarize --include "**/*.txt" --exclude "**/raw/**"
 ```
+
+### Run Inspection And Retry
 
 Inspect runs:
 

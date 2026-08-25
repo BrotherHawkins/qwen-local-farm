@@ -178,7 +178,7 @@ Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown. While chunked summarize jobs are active, status artifacts include `job.progress` with the current phase, chunk counts, reduce batch counts, and current running model call, plus in-flight entries in `timing.calls`.
 
-Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, recommendation reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
+Tracked JSON Schema-compatible contracts live under `schemas/` for the main machine-readable artifacts: `farm-status.json`, job `result.json`, status JSON envelopes, doctor reports, recommendation reports, retry-failed JSON, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Use `schemas/index.json` when a script or primary AI needs to discover the available contracts.
 
 Validate a JSON artifact before handing it to a script or downstream AI workflow:
 
@@ -282,6 +282,15 @@ python qwen.py farm status farm-run-2026-08-23-143022-a7f3
 python qwen.py farm status farm-run-2026-08-23-143022-a7f3 --json
 ```
 
+Retry only failed files from a previous run:
+
+```bash
+python qwen.py farm retry-failed farm-run-2026-08-23-143022-a7f3
+python qwen.py farm retry-failed farm-run-2026-08-23-143022-a7f3 --output .run/retries
+python qwen.py farm retry-failed farm-run-2026-08-23-143022-a7f3 --instructions "Retry with the same synthesis-focused summary style."
+python qwen.py farm retry-failed farm-run-2026-08-23-143022-a7f3 --json
+```
+
 Each run writes:
 
 ```text
@@ -299,6 +308,8 @@ jobs/job-0001/raw-response.txt
 If `--output` is omitted, runs are written under `.run/farm/`. If `--output` is provided, the farm creates a run folder inside that destination and records it in `.run/farm/runs.json` so `farm list` and `farm status` can still find it.
 
 During a long chunked summarize run, `FARM_STATUS.md` includes an `Active Jobs` section and `farm-status.json` includes active `progress` metadata. Use this to tell whether a job is planning chunks, mapping a specific chunk, reducing chunk summaries, or retrying a failed model call.
+
+`farm retry-failed` creates a new normal farm run containing only jobs that failed in the source run. The source run is not modified, and the retry run's status includes a `retry` section that links source job IDs to retry job IDs.
 
 ## What Gets Started
 

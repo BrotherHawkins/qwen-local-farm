@@ -18,6 +18,8 @@ from src.qwen_farm_chunks import (
     render_reduce_input,
 )
 from src.qwen_farm_files import (
+    DiscoveredFile,
+    DiscoveryResult,
     FARM_SCHEMA_VERSION,
     create_run_dir,
     discover_text_files,
@@ -135,10 +137,12 @@ def make_initial_status(
     run_dir: Path,
     mode: str,
     agent: dict[str, Any],
+    instructions: str | None,
     input_folder: Path,
     jobs: list[dict[str, Any]],
     skipped_files: list[str],
     runtime_config: dict[str, Any],
+    retry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     created_at = utc_timestamp()
     timing_created_at = timestamp_now()
@@ -150,6 +154,11 @@ def make_initial_status(
         "agent": agent["id"],
         "model": agent["model"],
         "runtime": compact_runtime_config(runtime_config),
+        "request": {
+            "mode": mode,
+            "instructions": instructions,
+            "agent": agent["id"],
+        },
         "input": {
             "path": str(input_folder),
             "kind": "folder",
@@ -169,6 +178,8 @@ def make_initial_status(
             "duration_ms": None,
         },
     }
+    if retry is not None:
+        status["retry"] = retry
     status["counts"] = count_jobs(jobs, skipped=len(skipped_files))
     return status
 
@@ -1483,6 +1494,233 @@ def resolve_run_agent_and_config(
     return agent, runtime_config
 
 
+def _source_input_folder(root: Path, source_status: dict[str, Any]) -> Path:
+    input_record = source_status.get("input") if isinstance(source_status.get("input"), dict) else {}
+    raw_path = str(input_record.get("path") or "")
+    if not raw_path:
+        raise ValueError("Source run status is missing input.path.")
+    input_folder = Path(raw_path)
+    if not input_folder.is_absolute():
+        input_folder = root / input_folder
+    return input_folder
+
+
+def _load_source_runtime_config(source_run_dir: Path) -> dict[str, Any] | None:
+    config_path = source_run_dir / "farm-config.resolved.json"
+    if not config_path.exists():
+        return None
+    return read_json(config_path)
+
+
+def _request_instructions(source_status: dict[str, Any]) -> tuple[bool, str | None]:
+    request = source_status.get("request") if isinstance(source_status.get("request"), dict) else {}
+    if "instructions" not in request:
+        return False, None
+    value = request.get("instructions")
+    return True, str(value) if value is not None else None
+
+
+def build_retry_failed_plan(
+    *,
+    root: Path,
+    source_run_dir: Path,
+    default_model: str,
+    instructions: str | None = None,
+    agent_id: str | None = None,
+) -> dict[str, Any]:
+    source_status = load_run_status(source_run_dir)
+    failed_jobs = [job for job in source_status.get("jobs", []) if isinstance(job, dict) and job.get("status") == "failed"]
+    if not failed_jobs:
+        raise ValueError(f"Source run has no failed jobs: {source_status.get('run_id', source_run_dir.name)}")
+
+    input_folder = _source_input_folder(root, source_status)
+    missing: list[str] = []
+    selected_files: list[DiscoveredFile] = []
+    retry_jobs: list[dict[str, Any]] = []
+
+    for index, job in enumerate(failed_jobs, start=1):
+        relative_path = str(job.get("input_path") or "")
+        if not relative_path:
+            missing.append(f"{job.get('job_id', f'job-{index:04d}')} missing input_path")
+            continue
+        source_path = input_folder / Path(relative_path)
+        if not source_path.is_file():
+            missing.append(relative_path)
+            continue
+        retry_job_id = job_id_for(index)
+        selected_files.append(DiscoveredFile(path=source_path, relative_path=relative_path))
+        retry_jobs.append(
+            {
+                "source_job_id": str(job.get("job_id") or ""),
+                "retry_job_id": retry_job_id,
+                "input_path": relative_path,
+                "source_error": job.get("error"),
+            }
+        )
+
+    if missing:
+        raise FileNotFoundError(
+            "Cannot retry failed jobs because source files are missing: " + ", ".join(missing)
+        )
+
+    source_mode = str(source_status.get("mode") or "summarize")
+    has_prior_instructions, prior_instructions = _request_instructions(source_status)
+    effective_instructions = instructions if instructions is not None else prior_instructions
+    warnings: list[str] = []
+    if instructions is None and not has_prior_instructions:
+        warnings.append("Source run does not contain request.instructions; retrying without prior instructions.")
+    if source_mode == "prompt" and not effective_instructions:
+        raise ValueError("Cannot retry a prompt-mode run without instructions. Pass --instructions.")
+
+    request = source_status.get("request") if isinstance(source_status.get("request"), dict) else {}
+    effective_agent_id = agent_id or str(request.get("agent") or source_status.get("agent") or "default")
+    runtime_config = _load_source_runtime_config(source_run_dir)
+    if runtime_config is not None:
+        runtime_config = deepcopy(runtime_config)
+        agent = load_agent(root, effective_agent_id, str(runtime_config.get("model") or default_model))
+        if model_is_explicit(runtime_config):
+            agent["model"] = runtime_config["model"]
+        runtime_config = set_effective_model(runtime_config, str(agent["model"]))
+        runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
+    else:
+        agent, runtime_config = resolve_run_agent_and_config(
+            root=root,
+            agent_id=effective_agent_id,
+            default_model=default_model,
+        )
+        warnings.append("Source run is missing farm-config.resolved.json; retrying with current defaults.")
+
+    source_run_id = str(source_status.get("run_id") or source_run_dir.name)
+    retry = {
+        "source_run_id": source_run_id,
+        "source_run_path": relative_to(source_run_dir, root),
+        "selected_statuses": ["failed"],
+        "source_failed_count": len(failed_jobs),
+        "retried_count": len(selected_files),
+        "jobs": retry_jobs,
+        "warnings": warnings,
+    }
+
+    return {
+        "source_run_dir": source_run_dir,
+        "source_status": source_status,
+        "input_folder": input_folder,
+        "discovery": DiscoveryResult(files=selected_files, skipped=[]),
+        "mode": source_mode,
+        "instructions": effective_instructions,
+        "agent_id": effective_agent_id,
+        "agent": agent,
+        "model": agent["model"],
+        "runtime_config": runtime_config,
+        "retry": retry,
+        "warnings": warnings,
+    }
+
+
+def retry_failed_result(status: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    retry = status.get("retry") if isinstance(status.get("retry"), dict) else {}
+    return {
+        "schema_version": 1,
+        "status": status.get("status"),
+        "source_run": {
+            "run_id": retry.get("source_run_id"),
+            "path": retry.get("source_run_path"),
+            "failed_jobs": retry.get("source_failed_count", 0),
+        },
+        "retry_run": {
+            "run_id": status.get("run_id"),
+            "path": (status.get("output") or {}).get("path") if isinstance(status.get("output"), dict) else None,
+            "retried_jobs": retry.get("retried_count", 0),
+        },
+        "counts": status.get("counts", {}),
+        "warnings": plan.get("warnings", []),
+        "errors": [],
+    }
+
+
+def retry_failed_error_result(*, run_ref: str, error: str) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "status": "error",
+        "source_run": {
+            "run_ref": run_ref,
+            "run_id": None,
+            "path": None,
+            "failed_jobs": 0,
+        },
+        "retry_run": {
+            "run_id": None,
+            "path": None,
+            "retried_jobs": 0,
+        },
+        "counts": {},
+        "warnings": [],
+        "errors": [error],
+    }
+
+
+def run_retry_failed_plan(
+    *,
+    root: Path,
+    plan: dict[str, Any],
+    output_dir: Path | None,
+    default_model: str,
+    ollama_base_url: str,
+    model_processor: ModelProcessor = default_model_processor,
+    token_counter: ExactTokenCounter | None = None,
+    token_counter_loader: TokenCounterLoader = load_exact_token_counter,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    status = run_farm(
+        root=root,
+        input_folder=plan["input_folder"],
+        output_dir=output_dir,
+        mode=str(plan["mode"]),
+        instructions=plan.get("instructions"),
+        agent_id=str(plan["agent_id"]),
+        default_model=default_model,
+        ollama_base_url=ollama_base_url,
+        runtime_config=deepcopy(plan["runtime_config"]),
+        model_processor=model_processor,
+        token_counter=token_counter,
+        token_counter_loader=token_counter_loader,
+        discovery=plan["discovery"],
+        retry=deepcopy(plan["retry"]),
+    )
+    return status, retry_failed_result(status, plan)
+
+
+def run_retry_failed(
+    *,
+    root: Path,
+    source_run_dir: Path,
+    output_dir: Path | None,
+    default_model: str,
+    ollama_base_url: str,
+    instructions: str | None = None,
+    agent_id: str | None = None,
+    model_processor: ModelProcessor = default_model_processor,
+    token_counter: ExactTokenCounter | None = None,
+    token_counter_loader: TokenCounterLoader = load_exact_token_counter,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    plan = build_retry_failed_plan(
+        root=root,
+        source_run_dir=source_run_dir,
+        default_model=default_model,
+        instructions=instructions,
+        agent_id=agent_id,
+    )
+    return run_retry_failed_plan(
+        root=root,
+        plan=plan,
+        output_dir=output_dir,
+        default_model=default_model,
+        ollama_base_url=ollama_base_url,
+        model_processor=model_processor,
+        token_counter=token_counter,
+        token_counter_loader=token_counter_loader,
+    )
+
+
 def run_farm(
     *,
     root: Path,
@@ -1518,6 +1756,8 @@ def run_farm(
     model_processor: ModelProcessor = default_model_processor,
     token_counter: ExactTokenCounter | None = None,
     token_counter_loader: TokenCounterLoader = load_exact_token_counter,
+    discovery: DiscoveryResult | None = None,
+    retry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if mode not in SUPPORTED_MODES:
         raise ValueError(f"Unsupported farm mode: {mode}")
@@ -1579,7 +1819,7 @@ def run_farm(
         token_counter = token_counter_loader(root=root, model=str(agent["model"]), local_files_only=True)
 
     farm_root = farm_home(root)
-    discovery = discover_text_files(input_folder)
+    discovery = discovery or discover_text_files(input_folder)
     run_id, run_dir = create_run_dir(farm_root, output_dir)
     remember_run(root, run_id, run_dir)
     write_json(run_dir / "farm-config.resolved.json", runtime_config)
@@ -1624,10 +1864,12 @@ def run_farm(
         run_dir=run_dir,
         mode=mode,
         agent=agent,
+        instructions=instructions,
         input_folder=input_folder,
         jobs=jobs,
         skipped_files=discovery.skipped,
         runtime_config=runtime_config,
+        retry=retry,
     )
     write_status(run_dir, status)
 

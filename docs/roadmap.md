@@ -89,6 +89,7 @@ Current state:
 - `python qwen.py farm run <input-folder> --mode summarize` processes readable text files into durable farm artifacts.
 - `python qwen.py farm list` and `python qwen.py farm status [run-id]` inspect farm state.
 - `python qwen.py farm collect <run-id>` flattens completed job results into an inspectable post-run folder.
+- `python qwen.py farm retry-failed <run-id>` reruns only failed files from a prior run as a new normal run.
 
 Roadmap:
 
@@ -128,7 +129,6 @@ Open questions:
 
 Near-term candidates:
 
-- Retry failed files from a previous run.
 - Queue-only runs.
 - Drop-folder scanning.
 
@@ -551,7 +551,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 - Implemented: bounded file-job scheduler concurrency from resolved profile settings.
 - Implemented: first-class resource modes with deterministic `auto` resolution and CPU enforcement.
 - Implemented: fixed failure-policy retry/timeout knobs.
-- Next: failed-file retry from prior runs.
+- Implemented: failed-file retry from prior runs.
 - Later: dynamic scheduler backoff and resource fallback.
 - Later: queue-only, background workers, and watch-folder workflows.
 
@@ -573,10 +573,9 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 ## Groomed Next Decisions
 
-These are the active product decisions after the first 27 change specs:
+These are the active product decisions after the first 28 change specs:
 
-1. Should failed-file retry be a post-run helper, a `farm run --retry-failed <run-id>` mode, or both?
-2. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
-3. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
-4. Which post-run package controls matter first: field filters, fitting policy, or snippet-pack budgets?
-5. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?
+1. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
+2. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
+3. Which post-run package controls matter first: field filters, fitting policy, or snippet-pack budgets?
+4. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?

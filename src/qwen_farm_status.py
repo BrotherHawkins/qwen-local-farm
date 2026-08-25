@@ -159,6 +159,28 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     for key in ["total", *COUNT_STATUSES]:
         lines.append(f"| {key} | {counts.get(key, 0)} |")
 
+    retry = status.get("retry") if isinstance(status.get("retry"), dict) else {}
+    if retry:
+        lines.extend(
+            [
+                "",
+                "## Retry",
+                "",
+                f"Source run: `{retry.get('source_run_id', '')}`",
+                f"Retried files: `{retry.get('retried_count', 0)}` of `{retry.get('source_failed_count', 0)}` failed source jobs",
+            ]
+        )
+        retry_jobs = retry.get("jobs") if isinstance(retry.get("jobs"), list) else []
+        if retry_jobs:
+            lines.extend(["", "| Source Job | Retry Job | Input | Source Error |", "| --- | --- | --- | --- |"])
+            for item in retry_jobs:
+                if not isinstance(item, dict):
+                    continue
+                lines.append(
+                    f"| `{item.get('source_job_id', '')}` | `{item.get('retry_job_id', '')}` | "
+                    f"`{item.get('input_path', '')}` | {item.get('source_error') or ''} |"
+                )
+
     lines.extend(
         [
             "",

@@ -95,6 +95,69 @@
         }
       }
     },
+    "request": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": ["string", "null"]
+        },
+        "agent": {
+          "type": "string"
+        }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "properties": {
+        "source_run_id": {
+          "type": "string"
+        },
+        "source_run_path": {
+          "type": "string"
+        },
+        "selected_statuses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_failed_count": {
+          "type": "integer"
+        },
+        "retried_count": {
+          "type": "integer"
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_job_id": {
+                "type": "string"
+              },
+              "retry_job_id": {
+                "type": "string"
+              },
+              "input_path": {
+                "type": "string"
+              },
+              "source_error": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "input": {
       "type": "object",
       "required": ["path", "kind"],

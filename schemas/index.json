@@ -68,6 +68,12 @@
       "status": "current"
     },
     {
+      "id": "https://qwen-local-farm.local/schemas/farm-retry-failed.schema.json",
+      "path": "schemas/farm-retry-failed.schema.json",
+      "surface": "python qwen.py farm retry-failed --json",
+      "status": "current"
+    },
+    {
       "id": "https://qwen-local-farm.local/schemas/farm-dogfood-record.schema.json",
       "path": "schemas/farm-dogfood-record.schema.json",
       "surface": "python qwen.py farm dogfood record",

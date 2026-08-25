@@ -114,6 +114,8 @@ def detect_schema(root: Path, artifact: dict[str, Any]) -> dict[str, Any]:
         and artifacts.get("manifest") == "farm-collection.json"
     ):
         matches.append("schemas/farm-collection.schema.json")
+    if schema_version == 1 and {"source_run", "retry_run", "counts", "warnings", "errors"}.issubset(artifact):
+        matches.append("schemas/farm-retry-failed.schema.json")
     if schema_version == 1 and {"recorded_at", "totals", "quality", "jobs"}.issubset(artifact):
         matches.append("schemas/farm-dogfood-record.schema.json")
     if schema_version == 1 and {"compared_at", "baseline", "candidate", "duration_ms", "jobs"}.issubset(artifact):

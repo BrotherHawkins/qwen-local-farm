@@ -15,10 +15,9 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0087 | Retry failed files from a previous run | Builds directly on configurable failure policy and reduces wasted reruns after partial failures. |
-| 2 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
-| 3 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
-| 4 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 1 | BL-0008 | Skip-list overrides | Gives callers control over noisy file discovery without moving files around. |
+| 2 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
+| 3 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
 
 ## Spec-Deferred Items
 
@@ -98,7 +97,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0072 | Implemented | 0020, 0022 | Resource-aware runtime mode and routing | 0022 implemented first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes in config, CLI, resolved artifacts, doctor, recommend, and recommendation apply. |
 | BL-0073 | Open | 0022 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |
 | BL-0074 | Open | 0022 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
-| BL-0075 | Open | 0022, 0025 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
+| BL-0075 | Open | 0022, 0025, 0028 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
 | BL-0076 | Open | 0022 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
 | BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
 | BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
@@ -109,10 +108,10 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0083 | Open | 0024 | Cross-run collections | Merge collected outputs across multiple farm runs after single-run collection behavior is stable. |
 | BL-0084 | Open | 0025, 0027 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy and in-progress visibility are stable. |
 | BL-0085 | Open | 0025, 0027 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
-| BL-0086 | Open | 0025 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
-| BL-0087 | Open | 0025, 0026 | Retry failed files from a previous run | Add a post-run or run command path for rerunning failed jobs without rebuilding the whole input set. |
-| BL-0088 | Open | 0025, 0026 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
-| BL-0089 | Open | 0025, 0026 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
+| BL-0086 | Open | 0025, 0028 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
+| BL-0087 | Implemented | 0025, 0026, 0028 | Retry failed files from a previous run | 0028 implemented `farm retry-failed <run-ref>` as a post-run helper that creates a new normal run containing only failed files from a prior run. |
+| BL-0088 | Open | 0025, 0026, 0028 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
+| BL-0089 | Open | 0025, 0026, 0028 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
 | BL-0090 | Open | 0026 | Semantic chunking | Use semantic boundaries or retrieval-style grouping only after deterministic heading/overlap chunking is stable. |
 | BL-0091 | Open | 0026 | Code-aware chunking | Split code by symbols, functions, classes, or language-aware units rather than generic paragraphs. |
 | BL-0092 | Open | 0026 | Frontmatter-aware note splitting | Treat note metadata/frontmatter as structured context when chunking Markdown-like notes. |
@@ -120,7 +119,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0094 | Open | 0026 | Automatic overlap tuning | Adjust overlap from quality/timing evidence only after fixed overlap settings prove useful. |
 | BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
 | BL-0096 | Open | 0027 | `farm status --watch` or live polling helpers | Add a user-friendly watch/polling surface after stable in-progress status fields exist. |
-| BL-0097 | Open | 0027 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
+| BL-0097 | Open | 0027, 0028 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
 
 ## Notes
 

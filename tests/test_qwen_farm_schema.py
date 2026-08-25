@@ -286,6 +286,35 @@ class FarmSchemaTests(unittest.TestCase):
         self.assertValid(overview, "farm-status-overview.schema.json")
         self.assertValid(run, "farm-status-run.schema.json")
 
+    def test_retry_failed_json_validates(self) -> None:
+        result = {
+            "schema_version": 1,
+            "status": "complete",
+            "source_run": {
+                "run_id": "farm-run-source",
+                "path": ".run/farm/farm-run-source",
+                "failed_jobs": 1,
+            },
+            "retry_run": {
+                "run_id": "farm-run-retry",
+                "path": ".run/farm/farm-run-retry",
+                "retried_jobs": 1,
+            },
+            "counts": {
+                "queued": 0,
+                "running": 0,
+                "complete": 1,
+                "complete_with_warnings": 0,
+                "failed": 0,
+                "skipped": 0,
+                "total": 1,
+            },
+            "warnings": [],
+            "errors": [],
+        }
+
+        self.assertValid(result, "farm-retry-failed.schema.json")
+
     def test_running_status_with_progress_validates(self) -> None:
         status = {
             "schema_version": "0.1",
@@ -295,6 +324,27 @@ class FarmSchemaTests(unittest.TestCase):
             "agent": "default",
             "model": "qwen-test:1b",
             "runtime": {},
+            "request": {
+                "mode": "summarize",
+                "instructions": None,
+                "agent": "default",
+            },
+            "retry": {
+                "source_run_id": "farm-run-source",
+                "source_run_path": ".run/farm/farm-run-source",
+                "selected_statuses": ["failed"],
+                "source_failed_count": 1,
+                "retried_count": 1,
+                "jobs": [
+                    {
+                        "source_job_id": "job-0002",
+                        "retry_job_id": "job-0001",
+                        "input_path": "long.txt",
+                        "source_error": "timed out",
+                    }
+                ],
+                "warnings": [],
+            },
             "input": {"path": "input", "kind": "folder"},
             "output": {"path": "output"},
             "counts": {
@@ -621,6 +671,17 @@ class FarmSchemaTests(unittest.TestCase):
                     "counts": {},
                 },
                 "schemas/farm-collection.schema.json",
+            ),
+            (
+                {
+                    "schema_version": 1,
+                    "source_run": {},
+                    "retry_run": {},
+                    "counts": {},
+                    "warnings": [],
+                    "errors": [],
+                },
+                "schemas/farm-retry-failed.schema.json",
             ),
             (
                 {

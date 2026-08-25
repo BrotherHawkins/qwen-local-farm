@@ -123,6 +123,40 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("chunk_map", markdown)
         self.assertIn("1/4 chunks complete, chunk-0002 running", markdown)
 
+    def test_status_markdown_shows_retry_provenance(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-retry",
+                "status": "complete",
+                "mode": "summarize",
+                "agent": "default",
+                "model": "qwen-test",
+                "runtime": {
+                    "summarize": {},
+                    "concurrency": {},
+                },
+                "counts": {"total": 1, "complete": 1},
+                "retry": {
+                    "source_run_id": "run-source",
+                    "source_failed_count": 1,
+                    "retried_count": 1,
+                    "jobs": [
+                        {
+                            "source_job_id": "job-0002",
+                            "retry_job_id": "job-0001",
+                            "input_path": "fail.txt",
+                            "source_error": "planned failure",
+                        }
+                    ],
+                },
+                "jobs": [],
+            }
+        )
+
+        self.assertIn("## Retry", markdown)
+        self.assertIn("Source run: `run-source`", markdown)
+        self.assertIn("`job-0002` | `job-0001` | `fail.txt`", markdown)
+
     def test_farm_overview_json_wraps_runs(self) -> None:
         runs = [
             {

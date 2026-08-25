@@ -331,6 +331,15 @@ Use `farm status --json` when a script or primary AI needs a machine-readable ov
 
 For active chunked summarize runs, inspect each running job's `progress` object before deciding a run is stuck. It reports the current phase (`planning_chunks`, `chunk_map`, or `reduce`), chunk totals and completed counts, reduce generation/batch counters, and the current running model call. The same running call appears in `timing.calls` with `status: "running"` until it completes or fails, so a primary AI can distinguish local preprocessing, chunk mapping, reduce work, and retries.
 
+When a completed run is `partial` or `failed`, prefer retrying failed files before rerunning the whole input folder:
+
+```bash
+python qwen.py farm retry-failed <run-id>
+python qwen.py farm retry-failed <run-id> --json
+```
+
+The retry command creates a new normal run containing only source jobs with `status: "failed"`. It preserves the source run's durable mode, agent, runtime config, and stored instructions when available. Use `--instructions` when retrying an older run that lacks `request.instructions`, or when the human wants to change the retry prompt. The source run is append-only evidence and is not modified.
+
 If `--output` is omitted, the farm writes outputs inside the run folder under `.run/farm/`. If `--output` is provided, the farm creates a structured run folder inside that destination and records it in `.run/farm/runs.json` so later status commands can find it.
 
 The first implementation processes immediately by default. A later `--queue-only` option can let callers stage work without processing it yet.
@@ -412,7 +421,7 @@ timing-summary.json
 
 The JSON status and result files are the source of truth for primary AIs and scripts. Markdown files exist for human inspection and readable summaries.
 
-Tracked JSON Schema-compatible contracts live in `schemas/`. Use `schemas/index.json` to discover the current contracts for persisted run status, job results, `farm status --json` envelopes, doctor reports, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Validation is model-free and does not require Ollama.
+Tracked JSON Schema-compatible contracts live in `schemas/`. Use `schemas/index.json` to discover the current contracts for persisted run status, job results, `farm status --json` envelopes, doctor reports, retry-failed JSON, timing summaries, snippet packs, synthesis bundles, and dogfood records/comparisons. Validation is model-free and does not require Ollama.
 
 Use `farm schema validate` when a primary AI or script needs to confirm that an artifact matches the expected contract before consuming it:
 

@@ -21,7 +21,7 @@ DEFAULT_PROFILE = "local-8gb"
 RESOURCE_MODES = {"auto", "gpu", "hybrid", "cpu"}
 EFFECTIVE_RESOURCE_MODES = {"gpu", "hybrid", "cpu"}
 
-TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency", "failure_policy"}
+TOP_LEVEL_FIELDS = {"profile", "resource_mode", "model", "summarize", "concurrency", "failure_policy", "discovery"}
 CHUNK_STRATEGIES = {"character", "token"}
 SUMMARIZE_FIELDS = {
     "chunk_strategy",
@@ -46,6 +46,7 @@ FAILURE_POLICY_FIELDS = {
     "chunk_max_attempts",
     "reduce_max_attempts",
 }
+DISCOVERY_FIELDS = {"include", "exclude"}
 DEFAULT_CHUNK_STRATEGY = "character"
 DEFAULT_TOKEN_SAFETY_MARGIN = 0.10
 DEFAULT_TOKEN_PROMPT_RESERVE = 1_024
@@ -85,6 +86,8 @@ class RuntimeOverrides:
     per_file_timeout_seconds: int | None = None
     chunk_max_attempts: int | None = None
     reduce_max_attempts: int | None = None
+    include: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
 
 
 def default_failure_policy() -> dict[str, int]:
@@ -93,6 +96,13 @@ def default_failure_policy() -> dict[str, int]:
         "per_file_timeout_seconds": DEFAULT_PER_FILE_TIMEOUT_SECONDS,
         "chunk_max_attempts": DEFAULT_CHUNK_MAX_ATTEMPTS,
         "reduce_max_attempts": DEFAULT_REDUCE_MAX_ATTEMPTS,
+    }
+
+
+def default_discovery() -> dict[str, list[str]]:
+    return {
+        "include": [],
+        "exclude": [],
     }
 
 
@@ -139,6 +149,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 1, "chunks": 1},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
         "local-4gb": {
             "profile": "local-4gb",
@@ -160,6 +171,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 1, "chunks": 1},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
         "local-8gb": {
             "profile": "local-8gb",
@@ -181,6 +193,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 1, "chunks": 1},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
         "local-12gb": {
             "profile": "local-12gb",
@@ -202,6 +215,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 1, "chunks": 1},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
         "local-24gb": {
             "profile": "local-24gb",
@@ -223,6 +237,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 2, "chunks": 2},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
         "custom": {
             "profile": "custom",
@@ -244,6 +259,7 @@ def built_in_profile(profile: str, default_model: str) -> dict[str, Any]:
             },
             "concurrency": {"jobs": 1, "chunks": 1},
             "failure_policy": default_failure_policy(),
+            "discovery": default_discovery(),
         },
     }
     return deepcopy(profiles[profile])
@@ -275,6 +291,20 @@ def validate_model(value: Any) -> str:
     if not model:
         raise ValueError("model must be a non-empty string.")
     return model
+
+
+def validate_pattern_list(value: Any, field_path: str) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field_path} must be an array of strings.")
+    patterns: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str):
+            raise ValueError(f"{field_path}[{index}] must be a string.")
+        pattern = item.strip()
+        if not pattern:
+            raise ValueError(f"{field_path}[{index}] must be a non-empty string.")
+        patterns.append(pattern)
+    return patterns
 
 
 def validate_chunk_strategy(value: Any) -> str:
@@ -458,6 +488,16 @@ def normalize_config_data(data: dict[str, Any]) -> dict[str, Any]:
                     failure_policy[field],
                     f"failure_policy.{field}",
                 )
+    if "discovery" in data:
+        discovery = data["discovery"]
+        if not isinstance(discovery, dict):
+            raise ValueError("discovery must be an object.")
+        reject_unknown_fields(discovery, DISCOVERY_FIELDS, "discovery")
+        normalized["discovery"] = {}
+        if "include" in discovery:
+            normalized["discovery"]["include"] = validate_pattern_list(discovery["include"], "discovery.include")
+        if "exclude" in discovery:
+            normalized["discovery"]["exclude"] = validate_pattern_list(discovery["exclude"], "discovery.exclude")
     return normalized
 
 
@@ -484,6 +524,12 @@ def merge_config(target: dict[str, Any], update: dict[str, Any]) -> None:
         target["concurrency"].update(update["concurrency"])
     if "failure_policy" in update:
         target["failure_policy"].update(update["failure_policy"])
+    if "discovery" in update:
+        target.setdefault("discovery", default_discovery())
+        if "include" in update["discovery"]:
+            target["discovery"]["include"].extend(update["discovery"]["include"])
+        if "exclude" in update["discovery"]:
+            target["discovery"]["exclude"].extend(update["discovery"]["exclude"])
 
 
 def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
@@ -572,6 +618,13 @@ def override_config(overrides: RuntimeOverrides) -> dict[str, Any]:
         )
     if failure_policy:
         data["failure_policy"] = failure_policy
+    discovery: dict[str, Any] = {}
+    if overrides.include:
+        discovery["include"] = validate_pattern_list(list(overrides.include), "--include")
+    if overrides.exclude:
+        discovery["exclude"] = validate_pattern_list(list(overrides.exclude), "--exclude")
+    if discovery:
+        data["discovery"] = discovery
     return data
 
 
@@ -684,6 +737,12 @@ def validate_resolved_config(config: dict[str, Any]) -> None:
     reject_unknown_fields(failure_policy, FAILURE_POLICY_FIELDS, "failure_policy")
     for field in sorted(FAILURE_POLICY_FIELDS):
         validate_positive_int(failure_policy.get(field), f"failure_policy.{field}")
+    discovery = config.get("discovery")
+    if not isinstance(discovery, dict):
+        raise ValueError("resolved discovery config must be an object.")
+    reject_unknown_fields(discovery, DISCOVERY_FIELDS, "discovery")
+    validate_pattern_list(discovery.get("include", []), "discovery.include")
+    validate_pattern_list(discovery.get("exclude", []), "discovery.exclude")
 
 
 def model_is_explicit(runtime_config: dict[str, Any]) -> bool:
@@ -715,6 +774,7 @@ def derive_token_budget(num_ctx: int, safety_margin: float) -> int:
 
 def finalize_runtime_config_for_agent(runtime_config: dict[str, Any], agent: dict[str, Any]) -> dict[str, Any]:
     updated = deepcopy(runtime_config)
+    updated.setdefault("discovery", default_discovery())
     updated = resolve_resource_mode_for_agent(updated, agent)
     summarize = updated["summarize"]
     summarize.setdefault("chunk_strategy", DEFAULT_CHUNK_STRATEGY)
@@ -858,5 +918,9 @@ def compact_runtime_config(runtime_config: dict[str, Any]) -> dict[str, Any]:
             "per_file_timeout_seconds": runtime_config["failure_policy"]["per_file_timeout_seconds"],
             "chunk_max_attempts": runtime_config["failure_policy"]["chunk_max_attempts"],
             "reduce_max_attempts": runtime_config["failure_policy"]["reduce_max_attempts"],
+        },
+        "discovery": {
+            "include": list(runtime_config.get("discovery", {}).get("include", [])),
+            "exclude": list(runtime_config.get("discovery", {}).get("exclude", [])),
         },
     }

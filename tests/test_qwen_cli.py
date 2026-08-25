@@ -54,6 +54,12 @@ class ParseArgsTests(unittest.TestCase):
                 "qwen8",
                 "--resource-mode",
                 "hybrid",
+                "--include",
+                "articles/*.txt",
+                "--include",
+                "notes/**/*.md",
+                "--exclude",
+                "**/raw/**",
             ],
         ):
             args = qwen.parse_args()
@@ -65,6 +71,8 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.instructions, "Summarize risks")
         self.assertEqual(args.agent, "qwen8")
         self.assertEqual(args.resource_mode, "hybrid")
+        self.assertEqual(args.include, ["articles/*.txt", "notes/**/*.md"])
+        self.assertEqual(args.exclude, ["**/raw/**"])
 
     def test_parse_args_accepts_token_chunk_overrides(self) -> None:
         with patch.object(

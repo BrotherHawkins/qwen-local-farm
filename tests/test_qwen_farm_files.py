@@ -53,6 +53,71 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIn("binary.dat", result.skipped)
         self.assertIn("node_modules/dep.txt", result.skipped)
 
+    def test_discover_text_files_applies_include_patterns(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "articles").mkdir()
+            (root / "notes").mkdir()
+            (root / "articles" / "a.txt").write_text("A", encoding="utf-8")
+            (root / "notes" / "b.md").write_text("B", encoding="utf-8")
+            (root / "c.txt").write_text("C", encoding="utf-8")
+
+            result = qwen_farm_files.discover_text_files(root, include=["articles/*.txt"])
+
+        self.assertEqual([item.relative_path for item in result.files], ["articles/a.txt"])
+        self.assertIn("notes/b.md", result.skipped)
+        self.assertIn("c.txt", result.skipped)
+        details = {item["path"]: item["reason"] for item in result.skipped_details or []}
+        self.assertEqual(details["notes/b.md"], "not_included_by_pattern")
+
+    def test_discover_text_files_applies_exclude_patterns(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "raw").mkdir()
+            (root / "articles").mkdir()
+            (root / "raw" / "page.txt").write_text("raw", encoding="utf-8")
+            (root / "articles" / "keep.txt").write_text("keep", encoding="utf-8")
+
+            result = qwen_farm_files.discover_text_files(root, exclude=["**/raw/**"])
+
+        self.assertEqual([item.relative_path for item in result.files], ["articles/keep.txt"])
+        self.assertIn("raw/page.txt", result.skipped)
+        detail = next(item for item in result.skipped_details or [] if item["path"] == "raw/page.txt")
+        self.assertEqual(detail["reason"], "excluded_by_pattern")
+        self.assertEqual(detail["pattern"], "**/raw/**")
+
+    def test_discover_text_files_exclude_wins_over_include(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "articles").mkdir()
+            (root / "articles" / "keep.txt").write_text("keep", encoding="utf-8")
+            (root / "articles" / "draft.txt").write_text("draft", encoding="utf-8")
+
+            result = qwen_farm_files.discover_text_files(
+                root,
+                include=["articles/*.txt"],
+                exclude=["**/draft.txt"],
+            )
+
+        self.assertEqual([item.relative_path for item in result.files], ["articles/keep.txt"])
+        detail = next(item for item in result.skipped_details or [] if item["path"] == "articles/draft.txt")
+        self.assertEqual(detail["reason"], "excluded_by_pattern")
+
+    def test_discover_text_files_include_does_not_force_unsafe_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "good.txt").write_text("good", encoding="utf-8")
+            (root / "image.png").write_bytes(b"\x89PNG\r\n")
+            (root / "node_modules").mkdir()
+            (root / "node_modules" / "dep.txt").write_text("dep", encoding="utf-8")
+
+            result = qwen_farm_files.discover_text_files(root, include=["**/*", "*.png"])
+
+        self.assertEqual([item.relative_path for item in result.files], ["good.txt"])
+        details = {item["path"]: item["reason"] for item in result.skipped_details or []}
+        self.assertEqual(details["image.png"], "built_in_skipped_suffix")
+        self.assertEqual(details["node_modules/dep.txt"], "built_in_skipped_dir")
+
     def test_make_run_id_pattern_when_suffix_generated(self) -> None:
         run_id = qwen_farm_files.make_run_id(datetime(2026, 8, 23, 14, 30, 22))
 

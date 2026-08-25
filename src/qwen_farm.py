@@ -43,6 +43,7 @@ from src.qwen_farm_profiles import (
     RuntimeOverrides,
     compact_runtime_config,
     default_failure_policy,
+    default_discovery,
     finalize_runtime_config_for_agent,
     model_is_explicit,
     resolve_runtime_config,
@@ -141,6 +142,7 @@ def make_initial_status(
     input_folder: Path,
     jobs: list[dict[str, Any]],
     skipped_files: list[str],
+    discovery_metadata: dict[str, Any],
     runtime_config: dict[str, Any],
     retry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -169,6 +171,7 @@ def make_initial_status(
         "counts": {},
         "jobs": jobs,
         "skipped_files": skipped_files,
+        "discovery": discovery_metadata,
         "created_at": created_at,
         "updated_at": created_at,
         "timing": {
@@ -1644,6 +1647,8 @@ def resolve_run_agent_and_config(
     per_file_timeout_seconds: int | None = None,
     chunk_max_attempts: int | None = None,
     reduce_max_attempts: int | None = None,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     runtime_config = resolve_runtime_config(
         root=root,
@@ -1670,6 +1675,8 @@ def resolve_run_agent_and_config(
             per_file_timeout_seconds=per_file_timeout_seconds,
             chunk_max_attempts=chunk_max_attempts,
             reduce_max_attempts=reduce_max_attempts,
+            include=tuple(include or ()),
+            exclude=tuple(exclude or ()),
         ),
     )
     agent = load_agent(root, agent_id, str(runtime_config["model"]))
@@ -1971,6 +1978,8 @@ def run_farm(
     per_file_timeout_seconds: int | None = None,
     chunk_max_attempts: int | None = None,
     reduce_max_attempts: int | None = None,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
     model_processor: ModelProcessor = default_model_processor,
     token_counter: ExactTokenCounter | None = None,
     token_counter_loader: TokenCounterLoader = load_exact_token_counter,
@@ -2008,6 +2017,8 @@ def run_farm(
             per_file_timeout_seconds=per_file_timeout_seconds,
             chunk_max_attempts=chunk_max_attempts,
             reduce_max_attempts=reduce_max_attempts,
+            include=include,
+            exclude=exclude,
         )
     else:
         agent = load_agent(root, agent_id, str(runtime_config["model"]))
@@ -2017,6 +2028,7 @@ def run_farm(
         runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
 
     runtime_config.setdefault("failure_policy", default_failure_policy())
+    runtime_config.setdefault("discovery", default_discovery())
     if preserve_heading_ancestry is not None:
         runtime_config["summarize"]["preserve_heading_ancestry"] = preserve_heading_ancestry
     if chunk_overlap_chars is not None:
@@ -2037,7 +2049,21 @@ def run_farm(
         token_counter = token_counter_loader(root=root, model=str(agent["model"]), local_files_only=True)
 
     farm_root = farm_home(root)
-    discovery = discovery or discover_text_files(input_folder)
+    discovery_config = runtime_config.get("discovery") if isinstance(runtime_config.get("discovery"), dict) else {}
+    discovery = discovery or discover_text_files(
+        input_folder,
+        include=discovery_config.get("include", []),
+        exclude=discovery_config.get("exclude", []),
+    )
+    discovery_metadata = {
+        "include": list(discovery_config.get("include", [])),
+        "exclude": list(discovery_config.get("exclude", [])),
+        "counts": {
+            "selected": len(discovery.files),
+            "skipped": len(discovery.skipped),
+        },
+        "skipped": list(discovery.skipped_details or []),
+    }
     run_id, run_dir = create_run_dir(farm_root, output_dir)
     remember_run(root, run_id, run_dir)
     write_json(run_dir / "farm-config.resolved.json", runtime_config)
@@ -2086,6 +2112,7 @@ def run_farm(
         input_folder=input_folder,
         jobs=jobs,
         skipped_files=discovery.skipped,
+        discovery_metadata=discovery_metadata,
         runtime_config=runtime_config,
         retry=retry,
     )

@@ -426,6 +426,69 @@ class FarmSchemaTests(unittest.TestCase):
 
         self.assertValid(status, "farm-status.schema.json")
 
+    def test_status_with_discovery_metadata_validates(self) -> None:
+        status = {
+            "schema_version": "0.1",
+            "run_id": "farm-run-discovery",
+            "status": "complete",
+            "mode": "summarize",
+            "agent": "default",
+            "model": "qwen-test:1b",
+            "runtime": {
+                "discovery": {
+                    "include": ["articles/*.txt"],
+                    "exclude": ["**/raw/**"],
+                }
+            },
+            "request": {"mode": "summarize", "instructions": None, "agent": "default"},
+            "input": {"path": "input", "kind": "folder"},
+            "output": {"path": "output"},
+            "counts": {
+                "queued": 0,
+                "running": 0,
+                "complete": 1,
+                "complete_with_warnings": 0,
+                "failed": 0,
+                "skipped": 2,
+                "total": 1,
+            },
+            "jobs": [
+                {
+                    "job_id": "job-0001",
+                    "status": "complete",
+                    "input_path": "articles/a.txt",
+                    "result_json": "jobs/job-0001/result.json",
+                    "result_md": "jobs/job-0001/result.md",
+                    "raw_response": "jobs/job-0001/raw-response.txt",
+                    "error": None,
+                    "warnings": [],
+                    "chunking": {"enabled": False},
+                    "snippets": {},
+                    "timing": {"calls": []},
+                }
+            ],
+            "skipped_files": ["raw/page.txt", "notes.md"],
+            "discovery": {
+                "include": ["articles/*.txt"],
+                "exclude": ["**/raw/**"],
+                "counts": {"selected": 1, "skipped": 2},
+                "skipped": [
+                    {"path": "raw/page.txt", "reason": "excluded_by_pattern", "pattern": "**/raw/**"},
+                    {"path": "notes.md", "reason": "not_included_by_pattern"},
+                ],
+            },
+            "created_at": "2026-08-24T00:00:00Z",
+            "updated_at": "2026-08-24T00:00:02Z",
+            "timing": {
+                "started_at": "2026-08-24T00:00:00.000Z",
+                "completed_at": "2026-08-24T00:00:02.000Z",
+                "duration_ms": 2000,
+            },
+        }
+
+        self.assertValid(status, "farm-status.schema.json")
+        self.assertValid(qwen_farm_status.run_status_json(status), "farm-status-run.schema.json")
+
     def test_running_status_with_progress_validates(self) -> None:
         status = {
             "schema_version": "0.1",

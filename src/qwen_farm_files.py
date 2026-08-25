@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import codecs
+import fnmatch
 import os
 import secrets
 from dataclasses import dataclass
@@ -62,6 +63,7 @@ class DiscoveredFile:
 class DiscoveryResult:
     files: list[DiscoveredFile]
     skipped: list[str]
+    skipped_details: list[dict[str, str]] | None = None
 
 
 def utc_timestamp() -> str:
@@ -139,11 +141,54 @@ def is_probably_text_file(path: Path, sample_size: int = 8192) -> bool:
         return False
 
 
+def built_in_skip_reason(path: Path, root: Path) -> str | None:
+    if has_skipped_dir(path, root):
+        return "built_in_skipped_dir"
+    if has_skipped_suffix(path):
+        return "built_in_skipped_suffix"
+    if not is_probably_text_file(path):
+        return "built_in_non_text"
+    return None
+
+
 def should_skip_file(path: Path, root: Path) -> bool:
-    return has_skipped_dir(path, root) or has_skipped_suffix(path) or not is_probably_text_file(path)
+    return built_in_skip_reason(path, root) is not None
 
 
-def discover_text_files(input_dir: Path) -> DiscoveryResult:
+def normalize_pattern(pattern: str) -> str:
+    return pattern.replace("\\", "/").strip()
+
+
+def normalize_patterns(patterns: list[str] | tuple[str, ...] | None) -> list[str]:
+    return [normalize_pattern(pattern) for pattern in (patterns or []) if normalize_pattern(pattern)]
+
+
+def match_path_pattern(path: str, pattern: str) -> bool:
+    normalized_path = path.replace("\\", "/")
+    normalized_pattern = normalize_pattern(pattern)
+    if os.name == "nt":
+        normalized_path = normalized_path.lower()
+        normalized_pattern = normalized_pattern.lower()
+    if fnmatch.fnmatchcase(normalized_path, normalized_pattern):
+        return True
+    if normalized_pattern.startswith("**/"):
+        return fnmatch.fnmatchcase(normalized_path, normalized_pattern[3:])
+    return False
+
+
+def first_matching_pattern(path: str, patterns: list[str]) -> str | None:
+    for pattern in patterns:
+        if match_path_pattern(path, pattern):
+            return pattern
+    return None
+
+
+def discover_text_files(
+    input_dir: Path,
+    *,
+    include: list[str] | tuple[str, ...] | None = None,
+    exclude: list[str] | tuple[str, ...] | None = None,
+) -> DiscoveryResult:
     if not input_dir.exists():
         raise FileNotFoundError(f"Input folder does not exist: {input_dir}")
     if not input_dir.is_dir():
@@ -151,14 +196,29 @@ def discover_text_files(input_dir: Path) -> DiscoveryResult:
 
     files: list[DiscoveredFile] = []
     skipped: list[str] = []
+    skipped_details: list[dict[str, str]] = []
+    include_patterns = normalize_patterns(include)
+    exclude_patterns = normalize_patterns(exclude)
 
     for path in sorted(input_dir.rglob("*")):
         if not path.is_file():
             continue
         rel = relative_to(path, input_dir)
-        if should_skip_file(path, input_dir):
+        reason = built_in_skip_reason(path, input_dir)
+        if reason is not None:
             skipped.append(rel)
+            skipped_details.append({"path": rel, "reason": reason})
+            continue
+        include_pattern = first_matching_pattern(rel, include_patterns) if include_patterns else None
+        if include_patterns and include_pattern is None:
+            skipped.append(rel)
+            skipped_details.append({"path": rel, "reason": "not_included_by_pattern"})
+            continue
+        exclude_pattern = first_matching_pattern(rel, exclude_patterns)
+        if exclude_pattern is not None:
+            skipped.append(rel)
+            skipped_details.append({"path": rel, "reason": "excluded_by_pattern", "pattern": exclude_pattern})
             continue
         files.append(DiscoveredFile(path=path, relative_path=rel))
 
-    return DiscoveryResult(files=files, skipped=skipped)
+    return DiscoveryResult(files=files, skipped=skipped, skipped_details=skipped_details)

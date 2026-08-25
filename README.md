@@ -172,11 +172,24 @@ Power users and AI assistants can also write `.qwen-farm.json` at the repo root:
     "per_file_timeout_seconds": 600,
     "chunk_max_attempts": 2,
     "reduce_max_attempts": 2
+  },
+  "discovery": {
+    "include": ["articles/*.txt", "notes/**/*.md"],
+    "exclude": ["**/raw/**", "**/*.tmp"]
   }
 }
 ```
 
-Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, heading/overlap policy, concurrency settings, and failure policy. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+Every run writes `farm-config.resolved.json` beside `farm-status.json` so humans, scripts, and primary AIs can inspect the effective profile, requested/effective resource mode, model, chunk sizing, heading/overlap policy, concurrency settings, failure policy, and discovery filters. Runs also write timing summaries so slow dogfood or batch runs can be inspected without a stopwatch.
+
+Discovery filters can also be supplied per run:
+
+```bash
+python qwen.py farm run notes --mode summarize --include "*.md"
+python qwen.py farm run notes --mode summarize --include "articles/*.txt" --exclude "**/raw/**"
+```
+
+Include patterns narrow otherwise eligible text files. Exclude patterns remove otherwise included files and win over include matches. Patterns match input-folder-relative paths using `/` separators. Built-in safety skips for binary files, archives, images, PDFs, Office documents, minified assets, and generated/vendor folders remain in force.
 
 For machine-readable inspection, use `python qwen.py farm status --json` for a run overview or `python qwen.py farm status <run-id> --json` for one run. The default `farm status` output stays human-readable Markdown. While chunked summarize jobs are active, status artifacts include `job.progress` with the current phase, chunk counts, reduce batch counts, and current running model call, plus in-flight entries in `timing.calls`.
 
@@ -273,6 +286,13 @@ Use a larger or CPU/RAM-oriented agent:
 ```bash
 python qwen.py farm run notes --mode summarize --agent qwen8
 python qwen.py farm run notes --mode summarize --agent qwen14-cpu
+```
+
+Filter file discovery without moving files:
+
+```bash
+python qwen.py farm run notes --mode summarize --include "articles/*.txt"
+python qwen.py farm run notes --mode summarize --include "**/*.txt" --exclude "**/raw/**"
 ```
 
 Inspect runs:

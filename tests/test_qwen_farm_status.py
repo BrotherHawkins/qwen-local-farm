@@ -198,6 +198,39 @@ class StatusCalculationTests(unittest.TestCase):
         self.assertIn("context_overflow (resource; retryable: no; retry after fix: yes)", markdown)
         self.assertIn("Next: Enable chunking.", markdown)
 
+    def test_status_markdown_shows_discovery_filters_and_skip_reasons(self) -> None:
+        markdown = qwen_farm_status.render_status_markdown(
+            {
+                "run_id": "run-filtered",
+                "status": "complete",
+                "mode": "summarize",
+                "agent": "default",
+                "model": "qwen-test",
+                "runtime": {
+                    "summarize": {},
+                    "concurrency": {},
+                    "discovery": {
+                        "include": ["articles/*.txt"],
+                        "exclude": ["**/raw/**"],
+                    },
+                },
+                "counts": {"total": 1, "complete": 1, "skipped": 2},
+                "jobs": [],
+                "skipped_files": ["raw/page.txt", "notes.md"],
+                "discovery": {
+                    "skipped": [
+                        {"path": "raw/page.txt", "reason": "excluded_by_pattern", "pattern": "**/raw/**"},
+                        {"path": "notes.md", "reason": "not_included_by_pattern"},
+                    ]
+                },
+            }
+        )
+
+        self.assertIn("Discovery include: `articles/*.txt`", markdown)
+        self.assertIn("Discovery exclude: `**/raw/**`", markdown)
+        self.assertIn("- `raw/page.txt` - excluded_by_pattern `**/raw/**`", markdown)
+        self.assertIn("- `notes.md` - not_included_by_pattern", markdown)
+
     def test_farm_overview_json_wraps_runs(self) -> None:
         runs = [
             {

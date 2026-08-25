@@ -130,6 +130,7 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     summarize = runtime.get("summarize") or {}
     concurrency = runtime.get("concurrency") or {}
     failure_policy = runtime.get("failure_policy") or {}
+    discovery_runtime = runtime.get("discovery") if isinstance(runtime.get("discovery"), dict) else {}
     lines = [
         f"# Farm Run {status.get('run_id', '')}",
         "",
@@ -169,6 +170,8 @@ def render_status_markdown(status: dict[str, Any]) -> str:
         f"Per-file timeout seconds: `{failure_policy.get('per_file_timeout_seconds', '')}`",
         f"Chunk max attempts: `{failure_policy.get('chunk_max_attempts', '')}`",
         f"Reduce max attempts: `{failure_policy.get('reduce_max_attempts', '')}`",
+        f"Discovery include: `{', '.join(discovery_runtime.get('include') or [])}`",
+        f"Discovery exclude: `{', '.join(discovery_runtime.get('exclude') or [])}`",
         "",
         "## Counts",
         "",
@@ -263,8 +266,22 @@ def render_status_markdown(status: dict[str, Any]) -> str:
     skipped = status.get("skipped_files") or []
     if skipped:
         lines.extend(["", "## Skipped Files", ""])
+        skipped_details = status.get("discovery", {}).get("skipped", []) if isinstance(status.get("discovery"), dict) else []
+        detail_by_path = {
+            item.get("path"): item
+            for item in skipped_details
+            if isinstance(item, dict) and item.get("path")
+        }
         for path in skipped:
-            lines.append(f"- `{path}`")
+            detail = detail_by_path.get(path) or {}
+            reason = detail.get("reason")
+            pattern = detail.get("pattern")
+            suffix = ""
+            if reason:
+                suffix = f" - {reason}"
+                if pattern:
+                    suffix += f" `{pattern}`"
+            lines.append(f"- `{path}`{suffix}")
 
     lines.append("")
     return "\n".join(lines)

@@ -164,6 +164,28 @@ class ExtractFarmRunTests(unittest.TestCase):
             self.assertTrue(all(kind == "chunk_map" for kind in kinds))
             self.assertTrue((run_dir / "jobs" / "job-0001" / "chunk-results" / "chunk-0001" / "raw-response.txt").exists())
 
+    def test_cli_resolved_extract_run_applies_shared_chunk_overrides_to_extract(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+
+            _agent, runtime = sift_farm.resolve_run_agent_and_config(
+                root=root,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                mode="extract",
+                chunk_strategy="character",
+                chunk_chars=2500,
+                chunk_overlap_chars=100,
+            )
+
+            self.assertEqual(runtime["summarize"]["chunk_chars"], 8000)
+            self.assertEqual(runtime["extract"]["chunk_strategy"], "character")
+            self.assertEqual(runtime["extract"]["chunk_chars"], 2500)
+            self.assertEqual(runtime["extract"]["chunk_overlap_chars"], 100)
+            self.assertIn("extract.chunk_chars", runtime["provenance"]["cli_override_fields"])
+            self.assertNotIn("summarize.chunk_chars", runtime["provenance"]["cli_override_fields"])
+
     def test_extract_partial_run_aggregate_includes_failures(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

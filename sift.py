@@ -598,6 +598,7 @@ def handle_farm(args: argparse.Namespace) -> None:
             root=ROOT,
             agent_id=args.agent,
             default_model=MODEL,
+            mode=args.mode,
             config_path=Path(args.config) if args.config else None,
             profile=args.profile,
             resource_mode=getattr(args, "resource_mode", None),

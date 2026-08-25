@@ -2057,6 +2057,7 @@ def resolve_run_agent_and_config(
     root: Path,
     agent_id: str,
     default_model: str,
+    mode: str | None = None,
     config_path: Path | None = None,
     profile: str | None = None,
     resource_mode: str | None = None,
@@ -2086,6 +2087,7 @@ def resolve_run_agent_and_config(
     include: list[str] | None = None,
     exclude: list[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    extract_mode = mode == "extract"
     runtime_config = resolve_runtime_config(
         root=root,
         default_model=default_model,
@@ -2094,15 +2096,15 @@ def resolve_run_agent_and_config(
             profile=profile,
             resource_mode=resource_mode,
             model=model,
-            chunk_strategy=chunk_strategy,
-            chunk_chars=chunk_chars,
+            chunk_strategy=None if extract_mode else chunk_strategy,
+            chunk_chars=None if extract_mode else chunk_chars,
             reduce_chars=reduce_chars,
-            chunk_tokens=chunk_tokens,
+            chunk_tokens=None if extract_mode else chunk_tokens,
             reduce_tokens=reduce_tokens,
-            token_safety_margin=token_safety_margin,
-            preserve_heading_ancestry=preserve_heading_ancestry,
-            chunk_overlap_chars=chunk_overlap_chars,
-            chunk_overlap_tokens=chunk_overlap_tokens,
+            token_safety_margin=None if extract_mode else token_safety_margin,
+            preserve_heading_ancestry=None if extract_mode else preserve_heading_ancestry,
+            chunk_overlap_chars=None if extract_mode else chunk_overlap_chars,
+            chunk_overlap_tokens=None if extract_mode else chunk_overlap_tokens,
             snippets=snippets,
             snippet_max_chars=snippet_max_chars,
             extract_preset=extract_preset,
@@ -2126,6 +2128,32 @@ def resolve_run_agent_and_config(
         apply_model_metadata(agent)
     runtime_config = set_effective_model(runtime_config, str(agent["model"]))
     runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
+    if extract_mode:
+        extract = runtime_config.setdefault("extract", {})
+        cli_fields = runtime_config.setdefault("provenance", {}).setdefault("cli_override_fields", [])
+        if chunk_strategy is not None:
+            extract["chunk_strategy"] = chunk_strategy
+            cli_fields.append("extract.chunk_strategy")
+        if chunk_chars is not None:
+            extract["chunk_chars"] = chunk_chars
+            cli_fields.append("extract.chunk_chars")
+        if chunk_tokens is not None:
+            extract["chunk_tokens"] = chunk_tokens
+            cli_fields.append("extract.chunk_tokens")
+        if token_safety_margin is not None:
+            extract["token_safety_margin"] = token_safety_margin
+            cli_fields.append("extract.token_safety_margin")
+        if preserve_heading_ancestry is not None:
+            extract["preserve_heading_ancestry"] = preserve_heading_ancestry
+            cli_fields.append("extract.preserve_heading_ancestry")
+        if chunk_overlap_chars is not None:
+            extract["chunk_overlap_chars"] = chunk_overlap_chars
+            cli_fields.append("extract.chunk_overlap_chars")
+        if chunk_overlap_tokens is not None:
+            extract["chunk_overlap_tokens"] = chunk_overlap_tokens
+            cli_fields.append("extract.chunk_overlap_tokens")
+        runtime_config["provenance"]["cli_override_fields"] = sorted(set(cli_fields))
+        runtime_config = finalize_runtime_config_for_agent(runtime_config, agent)
     return agent, runtime_config
 
 
@@ -2445,6 +2473,7 @@ def run_farm(
             root=root,
             agent_id=agent_id,
             default_model=default_model,
+            mode=mode,
             config_path=config_path,
             profile=profile,
             resource_mode=resource_mode,

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import json
 import sys
 import unittest
@@ -301,6 +303,34 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.run_dir, "farm-run-test")
         self.assertEqual(args.output, ".run/collections")
         self.assertEqual(args.label, "review")
+
+    def test_parse_args_accepts_farm_retry_failed(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "qwen.py",
+                "farm",
+                "retry-failed",
+                "farm-run-test",
+                "--output",
+                ".run/retries",
+                "--instructions",
+                "Retry with care.",
+                "--agent",
+                "qwen8",
+                "--json",
+            ],
+        ):
+            args = qwen.parse_args()
+
+        self.assertEqual(args.command, "farm")
+        self.assertEqual(args.farm_command, "retry-failed")
+        self.assertEqual(args.run_dir, "farm-run-test")
+        self.assertEqual(args.output, ".run/retries")
+        self.assertEqual(args.instructions, "Retry with care.")
+        self.assertEqual(args.agent, "qwen8")
+        self.assertTrue(args.json)
 
     def test_parse_args_accepts_farm_status_run_id(self) -> None:
         with patch.object(sys, "argv", ["qwen.py", "farm", "status", "farm-run-1"]):
@@ -783,6 +813,141 @@ class FarmHandlerTests(unittest.TestCase):
 
         status_text.assert_called_once_with(qwen.ROOT, None)
         printed.assert_has_calls([call("# Farm Overview")])
+
+    def test_retry_failed_json_prints_json_result(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="retry-failed",
+            run_dir="farm-run-1",
+            output="out",
+            instructions="Retry instructions.",
+            agent="qwen8",
+            json=True,
+        )
+        plan = {"model": "qwen-test:1b"}
+        status = {"run_id": "farm-run-2", "status": "complete", "output": {"path": "out/farm-run-2"}}
+        result = {
+            "schema_version": 1,
+            "status": "complete",
+            "source_run": {"run_id": "farm-run-1"},
+            "retry_run": {"run_id": "farm-run-2"},
+            "counts": {},
+            "warnings": [],
+            "errors": [],
+        }
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved) as resolve,
+            patch("src.qwen_farm.build_retry_failed_plan", return_value=plan) as build,
+            patch("qwen.ensure_model") as ensure,
+            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)) as run_retry,
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        resolve.assert_called_once_with(qwen.ROOT, "farm-run-1")
+        self.assertEqual(build.call_args.kwargs["source_run_dir"], resolved)
+        self.assertEqual(build.call_args.kwargs["instructions"], "Retry instructions.")
+        self.assertEqual(build.call_args.kwargs["agent_id"], "qwen8")
+        ensure.assert_called_once_with("qwen-test:1b")
+        self.assertEqual(run_retry.call_args.kwargs["output_dir"], Path("out"))
+        printed.assert_called_once()
+        self.assertEqual(json.loads(printed.call_args.args[0]), result)
+
+    def test_retry_failed_json_keeps_model_status_off_stdout(self) -> None:
+        resolved = Path("resolved-run")
+        args = argparse.Namespace(
+            farm_command="retry-failed",
+            run_dir="farm-run-1",
+            output="out",
+            instructions=None,
+            agent=None,
+            json=True,
+        )
+        plan = {"model": "qwen-test:1b"}
+        status = {"run_id": "farm-run-2", "status": "complete", "output": {"path": "out/farm-run-2"}}
+        result = {
+            "schema_version": 1,
+            "status": "complete",
+            "source_run": {"run_id": "farm-run-1"},
+            "retry_run": {"run_id": "farm-run-2"},
+            "counts": {},
+            "warnings": [],
+            "errors": [],
+        }
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=resolved),
+            patch("src.qwen_farm.build_retry_failed_plan", return_value=plan),
+            patch("qwen.ensure_model", side_effect=lambda _model: sys.stdout.write("Model is available\n")),
+            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            qwen.handle_farm(args)
+
+        self.assertEqual(json.loads(stdout.getvalue()), result)
+        self.assertNotIn("Model is available", stdout.getvalue())
+        self.assertIn("Model is available", stderr.getvalue())
+
+    def test_retry_failed_markdown_prints_summary(self) -> None:
+        args = argparse.Namespace(
+            farm_command="retry-failed",
+            run_dir="farm-run-1",
+            output=None,
+            instructions=None,
+            agent=None,
+            json=False,
+        )
+        status = {"run_id": "farm-run-2", "status": "complete", "output": {"path": ".run/farm/farm-run-2"}}
+        result = {
+            "source_run": {"run_id": "farm-run-1"},
+            "retry_run": {"retried_jobs": 1},
+            "warnings": ["Source run does not contain request.instructions; retrying without prior instructions."],
+        }
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=Path("resolved-run")),
+            patch("src.qwen_farm.build_retry_failed_plan", return_value={"model": "qwen-test:1b"}),
+            patch("qwen.ensure_model"),
+            patch("src.qwen_farm.run_retry_failed_plan", return_value=(status, result)),
+            patch("builtins.print") as printed,
+        ):
+            qwen.handle_farm(args)
+
+        printed.assert_has_calls(
+            [
+                call("Retry run complete: farm-run-2"),
+                call("Source run: farm-run-1"),
+                call("Retried files: 1"),
+                call("Status: complete"),
+                call("Output: .run/farm/farm-run-2"),
+                call("Warning: Source run does not contain request.instructions; retrying without prior instructions."),
+            ]
+        )
+
+    def test_retry_failed_json_error_exits_nonzero(self) -> None:
+        args = argparse.Namespace(
+            farm_command="retry-failed",
+            run_dir="farm-run-1",
+            output=None,
+            instructions=None,
+            agent=None,
+            json=True,
+        )
+
+        with (
+            patch("src.qwen_farm.resolve_run_reference", return_value=Path("resolved-run")),
+            patch("src.qwen_farm.build_retry_failed_plan", side_effect=ValueError("Source run has no failed jobs.")),
+            patch("builtins.print") as printed,
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                qwen.handle_farm(args)
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertEqual(json.loads(printed.call_args.args[0])["errors"], ["Source run has no failed jobs."])
 
     def test_snippets_pack_resolves_run_reference_before_building_pack(self) -> None:
         resolved = Path("resolved-run")

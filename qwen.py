@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 import json
 import os
 import platform
@@ -537,6 +538,47 @@ def handle_farm(args: argparse.Namespace) -> None:
 
         raise RuntimeError(f"Unknown farm synthesis command: {args.synthesis_command}")
 
+    if args.farm_command == "retry-failed":
+        try:
+            source_run_dir = qwen_farm.resolve_run_reference(ROOT, args.run_dir)
+            plan = qwen_farm.build_retry_failed_plan(
+                root=ROOT,
+                source_run_dir=source_run_dir,
+                default_model=MODEL,
+                instructions=args.instructions,
+                agent_id=args.agent,
+            )
+            if args.json:
+                with redirect_stdout(sys.stderr):
+                    ensure_model(str(plan["model"]))
+            else:
+                ensure_model(str(plan["model"]))
+            status, result = qwen_farm.run_retry_failed_plan(
+                root=ROOT,
+                plan=plan,
+                output_dir=Path(args.output) if args.output else None,
+                default_model=MODEL,
+                ollama_base_url=OLLAMA_BASE_URL,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            if args.json:
+                print(json.dumps(qwen_farm.retry_failed_error_result(run_ref=args.run_dir, error=str(exc)), ensure_ascii=False, indent=2))
+            else:
+                print(f"Retry failed: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
+
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"Retry run complete: {status['run_id']}")
+            print(f"Source run: {result['source_run']['run_id']}")
+            print(f"Retried files: {result['retry_run']['retried_jobs']}")
+            print(f"Status: {status['status']}")
+            print(f"Output: {status['output']['path']}")
+            for warning in result.get("warnings") or []:
+                print(f"Warning: {warning}")
+        return
+
     if args.farm_command == "run":
         agent, runtime_config = qwen_farm.resolve_run_agent_and_config(
             root=ROOT,
@@ -659,6 +701,13 @@ def parse_args() -> argparse.Namespace:
     farm_collect.add_argument("run_dir", metavar="run-ref")
     farm_collect.add_argument("--output")
     farm_collect.add_argument("--label")
+
+    farm_retry_failed = farm_subparsers.add_parser("retry-failed")
+    farm_retry_failed.add_argument("run_dir", metavar="run-ref")
+    farm_retry_failed.add_argument("--output")
+    farm_retry_failed.add_argument("--instructions")
+    farm_retry_failed.add_argument("--agent")
+    farm_retry_failed.add_argument("--json", action="store_true")
 
     farm_run = farm_subparsers.add_parser("run")
     farm_run.add_argument("input_folder")

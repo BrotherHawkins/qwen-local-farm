@@ -39,6 +39,24 @@ def fake_processor(**kwargs: object) -> FarmModelResult:
     )
 
 
+def always_success_processor(**kwargs: object) -> FarmModelResult:
+    file_path = str(kwargs["file_path"])
+    payload = {
+        "title": file_path,
+        "abstract": f"Recovered summary for {file_path}",
+        "bullets": ["recovered"],
+        "open_questions": [],
+        "confidence": "high",
+    }
+    return FarmModelResult(
+        payload=payload,
+        markdown=f"# {file_path}\n\nRecovered.",
+        raw_response="Title: recovered",
+        structured_valid=True,
+        warnings=[],
+    )
+
+
 def warning_processor(**kwargs: object) -> FarmModelResult:
     result = fake_processor(**kwargs)
     return FarmModelResult(
@@ -174,6 +192,209 @@ class FarmRunTests(unittest.TestCase):
             self.assertEqual(timing_summary["run_id"], status["run_id"])
             self.assertEqual(timing_summary["resource_mode"]["effective"], "gpu")
             self.assertEqual(timing_summary["aggregate_by_call_kind"]["single"]["count"], 2)
+
+    def test_run_farm_persists_request_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.txt").write_text("A", encoding="utf-8")
+
+            status = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "results",
+                mode="summarize",
+                instructions="Capture claims.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            self.assertEqual(status["request"]["mode"], "summarize")
+            self.assertEqual(status["request"]["instructions"], "Capture claims.")
+            self.assertEqual(status["request"]["agent"], "default")
+
+    def test_retry_failed_creates_new_run_for_failed_files_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.txt").write_text("A", encoding="utf-8")
+            (root / "input" / "fail.txt").write_text("Fail once", encoding="utf-8")
+
+            source = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "source-results",
+                mode="summarize",
+                instructions="Keep original intent.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+            source_run_dir = Path(source["output"]["path"])
+            before_source = qwen_farm.read_json(source_run_dir / "farm-status.json")
+
+            retry_status, retry_result = qwen_farm.run_retry_failed(
+                root=root,
+                source_run_dir=source_run_dir,
+                output_dir=root / "retry-results",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=always_success_processor,
+            )
+
+            after_source = qwen_farm.read_json(source_run_dir / "farm-status.json")
+            retry_run_dir = Path(retry_status["output"]["path"])
+            self.assertEqual(before_source, after_source)
+            self.assertEqual(source["status"], "partial")
+            self.assertEqual(retry_status["status"], "complete")
+            self.assertEqual(retry_status["counts"]["total"], 1)
+            self.assertEqual(retry_status["jobs"][0]["input_path"], "fail.txt")
+            self.assertEqual(retry_status["request"]["instructions"], "Keep original intent.")
+            self.assertEqual(retry_status["retry"]["source_run_id"], source["run_id"])
+            self.assertEqual(retry_status["retry"]["retried_count"], 1)
+            self.assertEqual(retry_status["retry"]["jobs"][0]["source_job_id"], "job-0002")
+            self.assertEqual(retry_status["retry"]["jobs"][0]["retry_job_id"], "job-0001")
+            self.assertEqual(retry_result["retry_run"]["run_id"], retry_status["run_id"])
+            self.assertTrue((retry_run_dir / "jobs" / "job-0001" / "result.json").exists())
+            self.assertIn("## Retry", (retry_run_dir / "FARM_STATUS.md").read_text(encoding="utf-8"))
+
+    def test_retry_failed_instructions_override_prior_request(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "fail.txt").write_text("Fail once", encoding="utf-8")
+            source = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "source-results",
+                mode="summarize",
+                instructions="Old instructions.",
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+
+            retry_status, _retry_result = qwen_farm.run_retry_failed(
+                root=root,
+                source_run_dir=Path(source["output"]["path"]),
+                output_dir=root / "retry-results",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                instructions="New instructions.",
+                model_processor=always_success_processor,
+            )
+
+            self.assertEqual(retry_status["request"]["instructions"], "New instructions.")
+
+    def test_retry_failed_rejects_source_run_without_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            (root / "input" / "a.txt").write_text("A", encoding="utf-8")
+            source = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "source-results",
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=always_success_processor,
+            )
+
+            with self.assertRaisesRegex(ValueError, "no failed jobs"):
+                qwen_farm.build_retry_failed_plan(
+                    root=root,
+                    source_run_dir=Path(source["output"]["path"]),
+                    default_model="qwen-test:1b",
+                )
+
+    def test_retry_failed_rejects_missing_source_files_before_model_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            (root / "input").mkdir()
+            fail_path = root / "input" / "fail.txt"
+            fail_path.write_text("Fail once", encoding="utf-8")
+            source = qwen_farm.run_farm(
+                root=root,
+                input_folder=root / "input",
+                output_dir=root / "source-results",
+                mode="summarize",
+                instructions=None,
+                agent_id="default",
+                default_model="qwen-test:1b",
+                ollama_base_url="http://127.0.0.1:11434",
+                model_processor=fake_processor,
+            )
+            fail_path.unlink()
+
+            with self.assertRaisesRegex(FileNotFoundError, "source files are missing"):
+                qwen_farm.build_retry_failed_plan(
+                    root=root,
+                    source_run_dir=Path(source["output"]["path"]),
+                    default_model="qwen-test:1b",
+                )
+
+    def test_retry_failed_rejects_older_prompt_run_without_instructions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "agents").mkdir()
+            input_dir = root / "input"
+            input_dir.mkdir()
+            (input_dir / "fail.txt").write_text("Prompt input", encoding="utf-8")
+            run_dir = root / "source-results" / "farm-run-old"
+            run_dir.mkdir(parents=True)
+            qwen_farm.write_json(
+                run_dir / "farm-status.json",
+                {
+                    "schema_version": "0.1",
+                    "run_id": "farm-run-old",
+                    "status": "failed",
+                    "mode": "prompt",
+                    "agent": "default",
+                    "model": "qwen-test:1b",
+                    "runtime": {},
+                    "input": {"path": str(input_dir), "kind": "folder"},
+                    "output": {"path": str(run_dir)},
+                    "counts": {"queued": 0, "running": 0, "complete": 0, "complete_with_warnings": 0, "failed": 1, "skipped": 0, "total": 1},
+                    "jobs": [
+                        {
+                            "job_id": "job-0001",
+                            "status": "failed",
+                            "input_path": "fail.txt",
+                            "result_json": None,
+                            "result_md": None,
+                            "raw_response": None,
+                            "error": "old failure",
+                            "warnings": [],
+                            "chunking": qwen_farm.single_pass_chunking(),
+                            "snippets": {},
+                            "timing": {"calls": []},
+                        }
+                    ],
+                    "skipped_files": [],
+                    "created_at": "2026-08-24T00:00:00Z",
+                    "updated_at": "2026-08-24T00:00:01Z",
+                    "timing": {"created_at": "2026-08-24T00:00:00Z", "started_at": "2026-08-24T00:00:00Z", "completed_at": "2026-08-24T00:00:01Z", "duration_ms": 1000},
+                },
+            )
+
+            with self.assertRaisesRegex(ValueError, "prompt-mode"):
+                qwen_farm.build_retry_failed_plan(
+                    root=root,
+                    source_run_dir=run_dir,
+                    default_model="qwen-test:1b",
+                )
 
     def test_default_summarize_processor_sets_fast_model_options(self) -> None:
         seen: dict[str, object] = {}

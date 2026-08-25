@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-local-farm.local/schemas/farm-retry-failed.schema.json",
+  "title": "Qwen Local Farm Retry Failed JSON",
+  "description": "CLI envelope printed by python qwen.py farm retry-failed --json.",
+  "type": "object",
+  "required": ["schema_version", "status", "source_run", "retry_run", "counts", "warnings", "errors"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "complete_with_warnings", "partial", "failed", "error"]
+    },
+    "source_run": {
+      "type": "object",
+      "properties": {
+        "run_ref": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": ["string", "null"]
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "failed_jobs": {
+          "type": "integer"
+        }
+      }
+    },
+    "retry_run": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": ["string", "null"]
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "retried_jobs": {
+          "type": "integer"
+        }
+      }
+    },
+    "counts": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

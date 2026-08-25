@@ -59,7 +59,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0034 | Open | 0004 | Per-agent or per-model routing across loaded models | Resource-aware model selection and scheduling. |
 | BL-0035 | Implemented | 0002, 0026 | Chunk overlap | 0026 added opt-in character and token overlap with explicit chunk metadata. |
 | BL-0036 | Implemented | 0004, 0005 | Farm timing metrics in run/job/chunk artifacts | Implemented by 0005 for runs, jobs, chunk map calls, reduce calls, and timing summary artifacts. |
-| BL-0037 | Implemented | 0004, 0006, 0019 | Dogfood benchmark history for timing regressions | 0019 implemented local timing history records and comparisons so slower runs can be spotted across implementation changes. |
+| BL-0037 | Implemented | 0004, 0005, 0006, 0019 | Dogfood benchmark history for timing regressions | 0019 implemented local timing history records and comparisons so slower runs can be spotted across implementation changes. |
 | BL-0038 | Implemented | 0005, 0027 | In-progress chunk and reduce timing/status visibility | 0027 implemented additive progress metadata for active chunk planning, chunk map, reduce work, and in-flight model calls in normal status artifacts. |
 | BL-0039 | Open | 0006 | Additional tokenizer adapters | Add exact tokenizer support for model families beyond the supported Qwen/Ollama aliases. |
 | BL-0040 | Open | 0006 | Estimated token fallback | Provide clearly labeled estimated token counting when exact local tokenization is unavailable. |
@@ -97,7 +97,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0072 | Implemented | 0020, 0022 | Resource-aware runtime mode and routing | 0022 implemented first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes in config, CLI, resolved artifacts, doctor, recommend, and recommendation apply. |
 | BL-0073 | Open | 0022 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |
 | BL-0074 | Open | 0022 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
-| BL-0075 | Open | 0022, 0025, 0028 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
+| BL-0075 | Open | 0022, 0025, 0028, 0029 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
 | BL-0076 | Open | 0022 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
 | BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
 | BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
@@ -108,7 +108,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0083 | Open | 0024 | Cross-run collections | Merge collected outputs across multiple farm runs after single-run collection behavior is stable. |
 | BL-0084 | Open | 0025, 0027 | Whole-run timeout enforcement | Add run-level deadline handling after first-pass fixed model-call timeout policy and in-progress visibility are stable. |
 | BL-0085 | Open | 0025, 0027 | True wall-clock whole-file timeout | Separate whole-file elapsed deadline from the current per-model-call timeout behavior. |
-| BL-0086 | Open | 0025, 0028 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
+| BL-0086 | Open | 0025, 0028, 0029 | Retry delay and backoff policy | Add retry delays, jitter, or exponential backoff only when fixed retry attempts are not enough. |
 | BL-0087 | Implemented | 0025, 0026, 0028 | Retry failed files from a previous run | 0028 implemented `farm retry-failed <run-ref>` as a post-run helper that creates a new normal run containing only failed files from a prior run. |
 | BL-0088 | Open | 0025, 0026, 0028 | Cross-run chunk resume | Reuse successful chunk artifacts from a prior failed run when retrying chunked jobs. |
 | BL-0089 | Open | 0025, 0026, 0028 | Partial reduce over missing chunks | Allow best-effort reduce over successful chunks only when the output contract can clearly mark partial coverage. |
@@ -119,7 +119,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0094 | Open | 0026 | Automatic overlap tuning | Adjust overlap from quality/timing evidence only after fixed overlap settings prove useful. |
 | BL-0095 | Open | 0026 | First-class chunking for extract/classify/review modes | Define mode-specific chunk safety, aggregation, and output contracts beyond summarize. |
 | BL-0096 | Open | 0027 | `farm status --watch` or live polling helpers | Add a user-friendly watch/polling surface after stable in-progress status fields exist. |
-| BL-0097 | Open | 0027, 0028 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
+| BL-0097 | Open | 0027, 0028, 0029 | Stale/interrupted run detection and repair | Detect or repair runs left `running` after process termination without confusing genuinely active runs. |
 | BL-0098 | Implemented | 0029 | Failure classification and retry guidance | 0029 added durable failure codes, categories, retryability flags, retry-after-fix guidance, and recommended actions to failed job artifacts and status/retry surfaces. |
 | BL-0099 | Open | 0029 | Skip non-retryable jobs by default in `retry-failed` | After failure classification is dogfooded, consider making `retry-failed` skip non-retryable jobs unless an explicit override is supplied. |
 | BL-0100 | Open | 0030 | `.qwenignore` or repo-local ignore files | Add repo-local ignore files only after CLI/config include/exclude patterns prove useful. |

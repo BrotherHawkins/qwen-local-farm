@@ -57,7 +57,7 @@ The human should be able to enable or disable farm availability, but should not 
 ## Near-Term Priorities
 
 1. Make partial failures easier to recover with failed-run retry helpers.
-2. Give callers better file-discovery controls such as include/exclude overrides.
+2. Dogfood and refine file-discovery controls now that include/exclude overrides exist.
 3. Keep setup guidance improving for less-technical users through doctor, recommend, apply, and model-installation guidance.
 4. Mature post-run packages so summaries, snippets, and bundles are easier to feed into frontier-model workflows.
 5. Add new modes only after the summarize/chunk/status foundation stays pleasant under dogfood pressure.
@@ -323,7 +323,8 @@ Default behavior:
 - Skip binary files.
 - Skip generated/vendor folders such as `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, and `__pycache__/`.
 - Skip obviously unsuitable files such as archives, images, PDFs, Office documents, and minified assets.
-- Add include/exclude overrides later.
+- Support include/exclude overrides for reproducible file discovery.
+- Add `.qwenignore`, force-include escapes, and richer discovery diagnostics only if include/exclude dogfood shows the need.
 
 Office, PDF, image, and archive handling should become explicit processing modes later.
 
@@ -583,7 +584,7 @@ The point is not just troubleshooting. The primary AI should be able to inspect 
 
 These are the active product decisions after the first 28 change specs:
 
-1. How much file discovery control is enough for `include`/`exclude` before it becomes its own matching language?
+1. After dogfooding `include`/`exclude`, is `.qwenignore`, force-include, or richer discovery diagnostics the next useful file-discovery step?
 2. Do less-technical setup flows need model installation guidance before deeper scheduler/resource routing work?
 3. Which post-run package controls matter first: field filters, fitting policy, or snippet-pack budgets?
 4. Which new mode earns first-class treatment first: `extract`, `classify`, or `review`?

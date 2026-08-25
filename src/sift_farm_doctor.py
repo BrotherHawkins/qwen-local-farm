@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from src import sift_farm
+from src.sift_model_installation import guidance_for_report
 from src.sift_farm_files import utc_timestamp
 from src.sift_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
 from src.sift_farm_profiles import compact_runtime_config
@@ -259,6 +260,17 @@ def build_doctor_report(
         },
         "agent": agent,
         "runtime": runtime,
+        "model_installation_guidance": guidance_for_report(
+            root=root,
+            agent=agent,
+            runtime=runtime,
+            ollama={
+                "found": ollama_found,
+                "endpoint_ready": endpoint_ready,
+                "models": models,
+            },
+            preferred_profile=profile,
+        ),
         "tokenizers": tokenizer,
         "runs": recent_runs(root),
         "profile_recommendation": latest_profile_recommendation(root),
@@ -348,6 +360,30 @@ def render_doctor_markdown(report: dict[str, Any]) -> str:
             f"- `{record.get('model')}`: ready `{bool(record.get('ready'))}`, "
             f"offline `{bool(record.get('offline_verified'))}`"
         )
+
+    guidance = (
+        report.get("model_installation_guidance")
+        if isinstance(report.get("model_installation_guidance"), dict)
+        else {}
+    )
+    lines.extend(
+        [
+            "",
+            "## Model Installation Guidance",
+            "",
+            f"- Guide: `{guidance.get('guide_path') or ''}`",
+            f"- Catalog: `{guidance.get('catalog_path') or ''}`",
+            f"- Suggested band: `{guidance.get('suggested_band') or ''}`",
+            f"- Recommended agent: `{guidance.get('recommended_agent') or ''}`",
+            f"- Recommended model: `{guidance.get('recommended_model') or ''}`",
+            f"- Missing models: `{', '.join(guidance.get('missing_models') or [])}`",
+        ]
+    )
+    for item in guidance.get("next_actions") or []:
+        if not isinstance(item, dict):
+            continue
+        approval = "approval required" if item.get("approval_required") else "no approval required"
+        lines.append(f"- `{item.get('id')}` {approval}: `{item.get('command') or ''}`")
 
     runs = report.get("runs", {}) if isinstance(report.get("runs"), dict) else {}
     lines.extend(

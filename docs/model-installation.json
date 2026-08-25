@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "guide_path": "docs/model-installation.md",
+  "default_band": "local-8gb",
+  "hardware_bands": [
+    {
+      "id": "cpu-small",
+      "label": "CPU-only or unknown GPU",
+      "machine_shape": "No usable GPU, unknown GPU, or a user who wants to avoid VRAM pressure.",
+      "recommended_profile": "cpu-small",
+      "recommended_agent": "qwen8-cpu",
+      "recommended_model": "qwen3:8b",
+      "resource_mode": "cpu",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3:8b",
+          "approval_required": true,
+          "reason": "Downloads the CPU/RAM-oriented local worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent qwen8-cpu --profile cpu-small --resource-mode cpu"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent qwen8-cpu --profile cpu-small --resource-mode cpu --output .run/smoke/output"
+      ],
+      "warnings": [
+        "CPU/RAM runs can be much slower than GPU runs.",
+        "Use tiny smoke inputs before a large folder."
+      ],
+      "notes": [
+        "This path avoids VRAM pressure by forcing num_gpu 0 through the CPU agent/resource mode."
+      ]
+    },
+    {
+      "id": "local-4gb",
+      "label": "About 4 GB VRAM",
+      "machine_shape": "Small GPU where the default model may work but needs conservative context and concurrency.",
+      "recommended_profile": "local-4gb",
+      "recommended_agent": "default",
+      "recommended_model": "qwen3.5:4b",
+      "resource_mode": "auto",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3.5:4b",
+          "approval_required": true,
+          "reason": "Downloads Sift's tested default local worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent default --profile local-4gb --resource-mode auto"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent default --profile local-4gb --output .run/smoke/output"
+      ],
+      "warnings": [
+        "Keep parallel jobs at 1 until a small smoke test passes.",
+        "If VRAM is tight, try --resource-mode cpu or a CPU agent before raising chunk size."
+      ],
+      "notes": [
+        "This is a cautious path for machines below the original 8 GB dogfood target."
+      ]
+    },
+    {
+      "id": "local-8gb",
+      "label": "About 8 GB VRAM",
+      "machine_shape": "The original Sift dogfood target with enough VRAM for the tested default model.",
+      "recommended_profile": "local-8gb",
+      "recommended_agent": "default",
+      "recommended_model": "qwen3.5:4b",
+      "resource_mode": "auto",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3.5:4b",
+          "approval_required": true,
+          "reason": "Downloads Sift's tested default local worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent default --profile local-8gb --resource-mode auto"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent default --profile local-8gb --output .run/smoke/output"
+      ],
+      "warnings": [
+        "Start with parallel jobs at 1 before trying parallel work.",
+        "Use the recommendation report before changing persistent config."
+      ],
+      "notes": [
+        "This is the comfortable default path for Sift's current local benchmark machine."
+      ]
+    },
+    {
+      "id": "local-12gb",
+      "label": "About 12 GB VRAM",
+      "machine_shape": "A midrange GPU where the default model is safe and the 8B model is worth measuring.",
+      "recommended_profile": "local-12gb",
+      "recommended_agent": "qwen8",
+      "recommended_model": "qwen3:8b",
+      "resource_mode": "auto",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3:8b",
+          "approval_required": true,
+          "reason": "Downloads the deeper tested offline worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent qwen8 --profile local-12gb --resource-mode auto"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent qwen8 --profile local-12gb --output .run/smoke/output"
+      ],
+      "warnings": [
+        "Measure 8B on a tiny input before using it for a large batch.",
+        "Do not raise farm or Ollama parallelism until single-job timing looks healthy."
+      ],
+      "notes": [
+        "If 8B is too slow or memory-heavy, use the default agent with the same profile."
+      ]
+    },
+    {
+      "id": "local-24gb",
+      "label": "About 24 GB VRAM",
+      "machine_shape": "A larger local GPU where 8B should be practical and 14B experiments become reasonable.",
+      "recommended_profile": "local-24gb",
+      "recommended_agent": "qwen8",
+      "recommended_model": "qwen3:8b",
+      "resource_mode": "auto",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3:8b",
+          "approval_required": true,
+          "reason": "Downloads the deeper tested offline worker model."
+        },
+        {
+          "command": "ollama pull qwen3:14b",
+          "approval_required": true,
+          "reason": "Downloads an optional slower 14B model for careful offline experiments."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent qwen8 --profile local-24gb --resource-mode auto"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent qwen8 --profile local-24gb --output .run/smoke/output",
+        "python sift.py farm run .run/smoke/input --mode summarize --agent qwen14-hybrid --profile local-24gb --resource-mode hybrid --output .run/smoke/output-14b"
+      ],
+      "warnings": [
+        "14B runs are slower even when they fit.",
+        "Profile local-24gb allows more concurrency, but benchmark parallel load before relying on it."
+      ],
+      "notes": [
+        "Use qwen8 first; use qwen14-hybrid only when quality matters more than speed."
+      ]
+    },
+    {
+      "id": "larger-local",
+      "label": "Larger RAM/VRAM machine",
+      "machine_shape": "A workstation-class local machine with more headroom than the built-in tested bands.",
+      "recommended_profile": "local-24gb",
+      "recommended_agent": "qwen14-hybrid",
+      "recommended_model": "qwen3:14b",
+      "resource_mode": "hybrid",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3:14b",
+          "approval_required": true,
+          "reason": "Downloads the strongest bundled tested local worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent qwen14-hybrid --profile local-24gb --resource-mode hybrid"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent qwen14-hybrid --profile local-24gb --resource-mode hybrid --output .run/smoke/output"
+      ],
+      "warnings": [
+        "Larger models need dogfood timing and quality evidence on the actual machine.",
+        "Sift does not yet normalize benchmark guidance across machines."
+      ],
+      "notes": [
+        "Start from the largest built-in profile, then tune only after measured runs."
+      ]
+    },
+    {
+      "id": "apple-unified",
+      "label": "Apple Silicon or unified memory",
+      "machine_shape": "macOS systems where memory is unified and NVIDIA-style VRAM checks do not apply.",
+      "recommended_profile": "local-8gb",
+      "recommended_agent": "default",
+      "recommended_model": "qwen3.5:4b",
+      "resource_mode": "auto",
+      "install_commands": [
+        {
+          "command": "ollama pull qwen3.5:4b",
+          "approval_required": true,
+          "reason": "Downloads Sift's tested default local worker model."
+        }
+      ],
+      "setup_commands": [
+        "python sift.py farm doctor --json",
+        "python sift.py farm recommend --agent default --profile local-8gb --resource-mode auto"
+      ],
+      "smoke_test_commands": [
+        "python sift.py farm run .run/smoke/input --mode summarize --agent default --profile local-8gb --output .run/smoke/output"
+      ],
+      "warnings": [
+        "Use doctor, recommend, and a smoke test because unified memory does not map cleanly to NVIDIA VRAM bands.",
+        "Expect GPU status output to differ from NVIDIA systems."
+      ],
+      "notes": [
+        "Treat this as a measure-first path rather than a fixed VRAM rule."
+      ]
+    }
+  ],
+  "approval_boundaries": [
+    "Ask before installing Ollama.",
+    "Ask before running ollama pull commands.",
+    "Ask before installing tokenizer Python packages.",
+    "Ask before running python sift.py farm recommend apply --write.",
+    "Ask before changing persistent service environment variables."
+  ]
+}

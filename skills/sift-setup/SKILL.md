@@ -25,19 +25,21 @@ The goal is to make setup feel guided and beginner-friendly. Prefer Sift's read-
 ## Setup Flow
 
 1. Confirm the user has cloned Sift and that your current working directory is the Sift repo root.
-2. Read `README.md`, `docs/platforms.md`, and `docs/ai-usage.md` as needed.
+2. Read `README.md`, `docs/platforms.md`, `docs/model-installation.md`, and `docs/ai-usage.md` as needed.
 3. Run `python sift.py --help` to confirm the entrypoint works.
 4. Run `python sift.py farm doctor --json` and inspect the JSON before summarizing.
-5. Explain doctor status in plain language: Python, Ollama, selected model, tokenizer readiness, runtime profile, and recent runs.
-6. If Ollama, Python, or the selected model is missing, explain the next command before running anything that installs software or downloads a model.
-7. Run `python sift.py farm recommend --json` only after the local service/model state is ready enough for the tiny probe.
-8. Preview config changes with `python sift.py farm recommend apply --json`.
-9. Ask before running `python sift.py farm recommend apply --write --json` because it writes `.sift-farm.json`.
-10. Run tokenizer setup only when useful for token-aware chunking, and ask before downloading tokenizer assets.
-11. Create tiny smoke-test inputs and outputs under `.run/`, then run a small `farm run`.
-12. Inspect `farm-status.json`, `FARM_STATUS.md`, job `result.json`, job `result.md`, and `timing-summary.json`.
-13. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json`.
-14. End with the current run ID, final status, output path, and the next useful action.
+5. Inspect `model_installation_guidance` in doctor output and use `docs/model-installation.md` before recommending model pulls.
+6. Explain doctor status in plain language: Python, Ollama, selected model, tokenizer readiness, runtime profile, hardware band guidance, and recent runs.
+7. If Ollama, Python, or the selected model is missing, explain the next command before running anything that installs software or downloads a model.
+8. Run `python sift.py farm recommend --json` only after the local service/model state is ready enough for the tiny probe.
+9. Inspect recommendation `model_installation_guidance` before proposing config or model changes.
+10. Preview config changes with `python sift.py farm recommend apply --json`.
+11. Ask before running `python sift.py farm recommend apply --write --json` because it writes `.sift-farm.json`.
+12. Run tokenizer setup only when useful for token-aware chunking, and ask before downloading tokenizer assets.
+13. Create tiny smoke-test inputs and outputs under `.run/`, then run a small `farm run`.
+14. Inspect `farm-status.json`, `FARM_STATUS.md`, job `result.json`, job `result.md`, and `timing-summary.json`.
+15. Validate important JSON artifacts with `python sift.py farm schema validate <path> --json`.
+16. End with the current run ID, final status, output path, and the next useful action.
 
 ## Safety Boundaries
 
@@ -59,5 +61,6 @@ Use plain language. Translate local model terms into practical meaning:
 - Tokenizers help Sift split long files more accurately.
 - Doctor checks the current setup without changing it.
 - Recommend measures a tiny local probe and suggests conservative settings.
+- Model installation guidance maps the machine to a safe first model/profile path.
 - `.run/` is where local experiments and generated artifacts should go.
 

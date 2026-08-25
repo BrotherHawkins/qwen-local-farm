@@ -69,6 +69,8 @@ If token-aware chunking reports a missing tokenizer, rerun `python sift.py farm 
 
 `python sift.py setup` checks for Ollama and prints platform-specific install help if it is missing.
 
+After Ollama is installed, use [model installation guidance](model-installation.md) to choose the first local model/profile path for the machine. The machine-readable companion file is [model-installation.json](model-installation.json).
+
 Common install paths:
 
 | Platform | Option |

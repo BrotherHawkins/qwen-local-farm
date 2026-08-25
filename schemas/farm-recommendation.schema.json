@@ -14,6 +14,7 @@
     "profile",
     "concurrency",
     "summarize",
+    "model_installation_guidance",
     "evidence",
     "warnings",
     "next_actions",
@@ -166,6 +167,66 @@
         },
         "reason": {
           "type": "string"
+        }
+      }
+    },
+    "model_installation_guidance": {
+      "type": "object",
+      "required": [
+        "guide_path",
+        "catalog_path",
+        "schema_path",
+        "suggested_band",
+        "recommended_profile",
+        "recommended_agent",
+        "recommended_model",
+        "resource_mode",
+        "selected_agent",
+        "selected_model",
+        "selected_profile",
+        "selected_resource_mode",
+        "model_installed",
+        "missing_models",
+        "next_actions",
+        "approval_required",
+        "notes"
+      ],
+      "properties": {
+        "guide_path": {"type": "string"},
+        "catalog_path": {"type": "string"},
+        "schema_path": {"type": "string"},
+        "suggested_band": {"type": "string"},
+        "band_label": {"type": "string"},
+        "recommended_profile": {"type": "string"},
+        "recommended_agent": {"type": "string"},
+        "recommended_model": {"type": "string"},
+        "resource_mode": {"type": "string", "enum": ["auto", "gpu", "hybrid", "cpu"]},
+        "selected_agent": {"type": "string"},
+        "selected_model": {"type": "string"},
+        "selected_profile": {"type": "string"},
+        "selected_resource_mode": {"type": "string", "enum": ["auto", "gpu", "hybrid", "cpu"]},
+        "model_installed": {"type": ["boolean", "string"]},
+        "missing_models": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "command", "approval_required", "reason"],
+            "properties": {
+              "id": {"type": "string"},
+              "command": {"type": "string"},
+              "approval_required": {"type": "boolean"},
+              "reason": {"type": "string"}
+            }
+          }
+        },
+        "approval_required": {"type": "boolean"},
+        "notes": {
+          "type": "array",
+          "items": {"type": "string"}
         }
       }
     },

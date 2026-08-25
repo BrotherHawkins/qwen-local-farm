@@ -15,8 +15,8 @@ This section is advisory. Specs and accepted plans still define what gets implem
 
 | Rank | Backlog | Candidate Next Work | Why Now |
 | ---: | --- | --- | --- |
-| 1 | BL-0023 | Hardware-specific model installation guidance | Improves the less-technical setup path now that doctor/recommend/apply exist. |
-| 2 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 1 | BL-0060, BL-0064, BL-0066 | Post-run package shaping and budget controls | Makes snippet/synthesis outputs easier to feed into frontier-model workflows with predictable context budgets. |
+| 2 | BL-0107 | Platform-specific skill installation helpers | Builds naturally on the repo-shipped skills and new model installation guidance. |
 | 3 | BL-0099 | Skip non-retryable jobs by default in `retry-failed` | Builds directly on the new failure guidance after a little dogfood confidence. |
 
 ## Spec-Deferred Items
@@ -45,7 +45,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0020 | Implemented | 0003, 0006, 0015 | `farm doctor` for machine, Ollama, and tokenizer inspection | 0015 implemented read-only human/JSON setup reports with tokenizer readiness and next-step guidance for less technical users. |
 | BL-0021 | Implemented | 0003, 0006, 0015, 0020 | Benchmark-based profile recommendation | 0020 implemented measured local profile, chunking, resource-mode, and concurrency recommendations. |
 | BL-0022 | Implemented | 0003, 0006, 0015, 0021 | Automatic config writing from recommendation output | 0021 implemented a safe preview/write workflow for applying recommendation JSON to `.sift-farm.json`; doctor and recommend remain read-only by default. |
-| BL-0023 | Open | 0003, 0015 | Hardware-specific model installation guidance | Help users pick/install models for CPU/GPU capacity; 0015 only reports current setup and next commands. |
+| BL-0023 | Implemented | 0003, 0015, 0033 | Hardware-specific model installation guidance | 0033 added human and machine-readable model installation guidance plus doctor/recommend pointers. |
 | BL-0024 | Open | 0003 | Per-mode profile fields beyond summarize and prompt | Extend runtime profiles as new modes become first-class. |
 | BL-0025 | Open | 0003, 0025 | Dynamic concurrency adjustment after runtime failures | Back off after memory/timeouts or other resource failures; 0025 only drafts fixed retry policy knobs. |
 | BL-0026 | Open | 0003 | Remote/frontier model profiles | Allow profile-style config for non-local model execution if supported later. |
@@ -76,7 +76,7 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0051 | Open | 0009 | Tracked aggregate dogfood history | Decide whether selected aggregate history should live in tracked docs once local records prove useful. |
 | BL-0052 | Open | 0009 | Dogfood quality dashboard or charts | Build charts or a small dashboard for quality and timing trends if JSON/Markdown comparisons become too hard to scan. |
 | BL-0053 | Open | 0009 | Statistical quality thresholds or CI gates | Define objective thresholds before adding pass/fail gates for subjective quality measures. |
-| BL-0054 | Open | 0009 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles. |
+| BL-0054 | Open | 0009, 0033 | Cross-machine benchmark normalization | Normalize dogfood timing and quality history across different local hardware profiles; 0033 keeps hardware recommendations conservative until this exists. |
 | BL-0055 | Open | 0009 | Broader dogfood mode support | Extend dogfood quality records beyond summarize/snippet workflows when additional farm modes mature. |
 | BL-0056 | Open | 0010 | Cross-run snippet packs | Merge evidence across separate farm runs only after single-run snippet packs are stable. |
 | BL-0057 | Open | 0010 | Snippet pack browsing UI | Add UI or dashboard support for browsing snippet packs if Markdown/JSON packs are not enough. |
@@ -95,10 +95,10 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0070 | Open | 0016 | Generated schema documentation | Generate human-readable schema documentation from tracked schema files once contracts stabilize. |
 | BL-0071 | Open | 0016 | Strict schema mode | Add a stricter validation mode that rejects unknown/additional fields after artifact contracts mature. |
 | BL-0072 | Implemented | 0020, 0022 | Resource-aware runtime mode and routing | 0022 implemented first-class `gpu`, `hybrid`, `cpu`, and `auto` resource modes in config, CLI, resolved artifacts, doctor, recommend, and recommendation apply. |
-| BL-0073 | Open | 0022 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |
-| BL-0074 | Open | 0022 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
+| BL-0073 | Open | 0022, 0033 | Automatic model-size upgrades or downgrades | Keep model id explicit until quality/performance tradeoffs are better specified. |
+| BL-0074 | Open | 0022, 0033 | Automatic agent switching based on resource mode | Route from resource intent to a different agent only after explicit-agent preservation proves too manual. |
 | BL-0075 | Open | 0022, 0025, 0028, 0029 | Runtime retry on a different resource mode after failure | Consider retrying CPU/hybrid after memory or placement failures once failure classes are reliable. |
-| BL-0076 | Open | 0022 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
+| BL-0076 | Open | 0022, 0033 | GPU memory reservation or exact VRAM fit checks | Add stronger VRAM fit checks only when they can be measured without brittle platform assumptions. |
 | BL-0077 | Open | 0023 | Generated dashboard rewriting | Generate or rewrite `SPEC_DASHBOARD.md` after the audit-only checker proves stable. |
 | BL-0078 | Open | 0023 | Deferred-to-backlog semantic audits | Detect deferred follow-up bullets that are missing backlog rows beyond simple process documentation. |
 | BL-0079 | Open | 0023 | Cross-file documentation link checking | Check broader docs links outside the spec/plans/dashboard surface. |
@@ -129,12 +129,13 @@ This section is advisory. Specs and accepted plans still define what gets implem
 | BL-0104 | Implemented | 0031 | Model family adapter foundation | 0031 added normalized backend/family/support/tokenizer/context metadata so Qwen remains the tested default while other Ollama model families can be added later. |
 | BL-0105 | Open | 0031 | Non-Qwen dogfood benchmark matrix | Add quality/performance dogfood runs for selected non-Qwen local families only after adapter metadata exists. |
 | BL-0106 | Open | 0031 | Product naming and CLI alias review | Revisit Qwen-centered naming only if broader model-family support becomes a real product promise. |
-| BL-0107 | Open | 0032 | Platform-specific skill installation helpers | Add helper commands or docs for installing Sift skills into specific AI apps only after the portable skill folder shape proves useful. |
+| BL-0107 | Open | 0032, 0033 | Platform-specific skill installation helpers | Add helper commands or docs for installing Sift skills into specific AI apps only after the portable skill folder shape proves useful. |
 | BL-0108 | Open | 0032 | Published AI skill packages | Package or publish Sift skills for Codex, Claude Code, or other app ecosystems after local repo-shipped skills are stable. |
-| BL-0109 | Open | 0032 | First-run interactive setup wizard | Add a guided setup wizard only if skill-driven doctor/recommend/apply flows still feel too manual for less technical users. |
+| BL-0109 | Open | 0032, 0033 | First-run interactive setup wizard | Add a guided setup wizard only if skill-driven doctor/recommend/apply/model-install guidance still feels too manual for less technical users. |
 | BL-0110 | Open | 0032 | Generated skill metadata documentation | Generate docs from skill frontmatter if the skill library grows beyond a few hand-maintained skills. |
 | BL-0111 | Open | 0032 | Specialized Sift skills | Add focused skills for dogfood benchmarking, model extension, article ingestion, or advanced troubleshooting after the initial setup/operator skills are dogfooded. |
 | BL-0112 | Open | 0032 | Skill manifest JSON Schema | Add a tracked schema for `skills/index.json` if the manifest starts being consumed by automation beyond the first model-free sync tests. |
+| BL-0113 | Open | 0033 | Automatic Ollama/model installation helpers | Add explicit user-approved helper commands only after hardware-specific guidance proves accurate. |
 
 ## Notes
 

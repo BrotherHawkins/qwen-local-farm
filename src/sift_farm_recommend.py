@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from src import sift_farm
+from src.sift_model_installation import guidance_for_report
 from src.sift_farm_files import utc_timestamp
 from src.sift_farm_model_metadata import apply_model_metadata, exact_tokenizer_models
 from src.sift_farm_profiles import compact_runtime_config, derive_token_budget, normalize_config_data, read_config_file
@@ -183,6 +184,13 @@ def build_recommendation_report(
         "profile": profile_rec,
         "concurrency": concurrency,
         "summarize": summarize,
+        "model_installation_guidance": guidance_for_report(
+            root=root,
+            agent=agent,
+            runtime=runtime,
+            ollama=ollama,
+            preferred_profile=profile,
+        ),
         "evidence": {
             "benchmark": benchmark,
             "ollama": ollama,
@@ -419,6 +427,11 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
     model_metadata = report.get("model_metadata") if isinstance(report.get("model_metadata"), dict) else {}
     evidence = report.get("evidence") if isinstance(report.get("evidence"), dict) else {}
     benchmark = evidence.get("benchmark") if isinstance(evidence.get("benchmark"), dict) else {}
+    guidance = (
+        report.get("model_installation_guidance")
+        if isinstance(report.get("model_installation_guidance"), dict)
+        else {}
+    )
 
     lines = [
         "# Farm Recommendation",
@@ -437,6 +450,7 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
         f"- Farm parallel jobs: `{parallel_jobs.get('recommended')}` ({parallel_jobs.get('confidence')} confidence)",
         f"- `OLLAMA_NUM_PARALLEL`: `{ollama_parallel.get('recommended')}` ({ollama_parallel.get('confidence')} confidence)",
         f"- Summarize chunk strategy: `{summarize.get('chunk_strategy')}` ({summarize.get('confidence')} confidence)",
+        f"- Model install guide: `{guidance.get('guide_path') or ''}`",
     ]
     if summarize.get("chunk_strategy") == "token":
         lines.extend(
@@ -469,6 +483,8 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
             f"- Benchmark status: `{benchmark.get('status')}`",
             f"- Benchmark duration ms: `{benchmark.get('duration_ms')}`",
             f"- Benchmark message: `{benchmark.get('message') or ''}`",
+            f"- Suggested hardware band: `{guidance.get('suggested_band') or ''}`",
+            f"- Missing models: `{', '.join(guidance.get('missing_models') or [])}`",
             "",
             "## Warnings",
             "",
@@ -488,6 +504,25 @@ def render_recommendation_markdown(report: dict[str, Any]) -> str:
             lines.append(f"- `{item.get('priority')}` {item.get('message')}{command}")
     else:
         lines.append("No required next actions.")
+
+    lines.extend(["", "## Model Installation Guidance", ""])
+    if guidance:
+        lines.extend(
+            [
+                f"- Guide: `{guidance.get('guide_path') or ''}`",
+                f"- Catalog: `{guidance.get('catalog_path') or ''}`",
+                f"- Recommended profile: `{guidance.get('recommended_profile') or ''}`",
+                f"- Recommended agent: `{guidance.get('recommended_agent') or ''}`",
+                f"- Recommended model: `{guidance.get('recommended_model') or ''}`",
+            ]
+        )
+        for item in guidance.get("next_actions") or []:
+            if not isinstance(item, dict):
+                continue
+            approval = "approval required" if item.get("approval_required") else "no approval required"
+            lines.append(f"- `{item.get('id')}` {approval}: `{item.get('command') or ''}`")
+    else:
+        lines.append("No model installation guidance.")
 
     lines.extend(
         [

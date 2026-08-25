@@ -77,6 +77,33 @@ def recommendation_fixture(status: str = "ready") -> dict[str, Any]:
             "confidence": "high",
             "reason": "Tokenizer is ready.",
         },
+        "model_installation_guidance": {
+            "guide_path": "docs/model-installation.md",
+            "catalog_path": "docs/model-installation.json",
+            "schema_path": "schemas/model-installation.schema.json",
+            "suggested_band": "local-8gb",
+            "band_label": "About 8 GB VRAM",
+            "recommended_profile": "local-8gb",
+            "recommended_agent": "default",
+            "recommended_model": "qwen3.5:4b",
+            "resource_mode": "auto",
+            "selected_agent": "default",
+            "selected_model": "qwen3.5:4b",
+            "selected_profile": "local-8gb",
+            "selected_resource_mode": "gpu",
+            "model_installed": True,
+            "missing_models": [],
+            "next_actions": [
+                {
+                    "id": "recommend.measure",
+                    "command": "python sift.py farm recommend --json",
+                    "approval_required": False,
+                    "reason": "Runs the normal measured recommendation path once the selected model is available.",
+                }
+            ],
+            "approval_required": False,
+            "notes": ["Use this guidance as a starting point."],
+        },
         "evidence": {
             "benchmark": {},
             "ollama": {},
@@ -124,6 +151,9 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertEqual(report["concurrency"]["ollama_num_parallel"]["recommended"], 1)
             self.assertEqual(report["summarize"]["chunk_strategy"], "token")
             self.assertEqual(report["summarize"]["chunk_tokens"], 4096)
+            self.assertEqual(report["model_installation_guidance"]["guide_path"], "docs/model-installation.md")
+            self.assertEqual(report["model_installation_guidance"]["suggested_band"], "local-8gb")
+            self.assertEqual(report["model_installation_guidance"]["missing_models"], [])
             self.assertEqual(report["evidence"]["benchmark"]["status"], "complete")
             self.assertEqual(report["next_actions"], [])
 
@@ -172,6 +202,7 @@ class FarmRecommendTests(unittest.TestCase):
             self.assertIn("not dogfood-tested", report["summarize"]["reason"])
             self.assertIn("Model family: `llama`", markdown)
             self.assertIn("Model support: `experimental`", markdown)
+            self.assertIn("## Model Installation Guidance", markdown)
 
     def test_missing_ollama_degrades_to_needs_setup_without_probe(self) -> None:
         def failing_request(*_args: object, **_kwargs: object) -> dict[str, Any]:

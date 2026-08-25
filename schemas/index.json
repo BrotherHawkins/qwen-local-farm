@@ -84,6 +84,12 @@
       "path": "schemas/farm-dogfood-comparison.schema.json",
       "surface": "python sift.py farm dogfood compare",
       "status": "current"
+    },
+    {
+      "id": "https://sift.local/schemas/model-installation.schema.json",
+      "path": "schemas/model-installation.schema.json",
+      "surface": "docs/model-installation.json",
+      "status": "current"
     }
   ]
 }
